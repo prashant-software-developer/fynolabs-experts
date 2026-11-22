@@ -14,15 +14,28 @@ const state = vi.hoisted(() => {
   return { user: null as unknown, db: null as unknown, Redirect };
 });
 
-vi.mock("@/lib/auth/session", () => ({
-  getCurrentUser: async () => state.user,
-  requireUser: async () => {
-    const u = state.user as { blocked?: boolean } | null;
-    if (!u) throw new state.Redirect("/signin");
-    if (u.blocked) throw new state.Redirect("/no-access");
-    return u;
-  },
-}));
+vi.mock("@/lib/auth/session", () => {
+  type U = { kind?: string; blocked?: boolean } | null;
+  const team = () => {
+    const u = state.user as U;
+    return u && u.kind !== "expert" ? u : null;
+  };
+  return {
+    getAccount: async () => {
+      const u = state.user as U;
+      if (!u) return null;
+      return u.kind === "expert" ? u : { kind: "team", user: u };
+    },
+    getCurrentUser: async () => team(),
+    requireUser: async () => {
+      const u = state.user as U;
+      if (!u) throw new state.Redirect("/signin");
+      if (u.kind === "expert") throw new state.Redirect("/team-only");
+      if (u.blocked) throw new state.Redirect("/no-access");
+      return u;
+    },
+  };
+});
 vi.mock("@/db/client", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/db/client")>()), getDb: async () => state.db }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
 vi.mock("next/navigation", () => ({
@@ -39,12 +52,12 @@ import { openLocalDbWithClient } from "@/db/local/open";
 import { rowsOf, type DB } from "@/db/client";
 import { experts, partners, placements, requirements, submissions, teamMembers } from "@/db/schema";
 import type { Role } from "@/lib/auth/permissions";
-import { deleteExpert, recordConsent, saveExpert, setExpertStatus } from "@/app/(app)/experts/actions";
-import { previewCsvImport, runJobsSync } from "@/app/(app)/import/actions";
-import { savePlacement, savePlacementProgress } from "@/app/(app)/placements/actions";
-import { savePartner } from "@/app/(app)/partners/actions";
-import { saveRequirement, shortlist, updateSubmission } from "@/app/(app)/requirements/actions";
-import { addTeamMember } from "@/app/(app)/settings/team/actions";
+import { deleteExpert, recordConsent, saveExpert, setExpertStatus } from "@/app/admin/experts/actions";
+import { previewCsvImport, runJobsSync } from "@/app/admin/import/actions";
+import { savePlacement, savePlacementProgress } from "@/app/admin/placements/actions";
+import { savePartner } from "@/app/admin/partners/actions";
+import { saveRequirement, shortlist, updateSubmission } from "@/app/admin/requirements/actions";
+import { addTeamMember } from "@/app/admin/settings/team/actions";
 import { GET as exportExperts } from "@/app/api/experts/export/route";
 import { GET as downloadFile } from "@/app/api/files/[id]/route";
 import { GET as exportPlacements } from "@/app/api/placements/export/route";
@@ -99,7 +112,7 @@ describe("server actions refuse forbidden roles", () => {
     }
     expect(await db.select({ id: experts.id }).from(experts).where(eq(experts.id, e.id))).toHaveLength(1);
     as("admin");
-    expect(await landing(deleteExpert(form({ id: e.id, confirm: "DELETE" })))).toMatch(/^\/experts\?ok=Expert deleted/);
+    expect(await landing(deleteExpert(form({ id: e.id, confirm: "DELETE" })))).toMatch(/^\/admin\/experts\?ok=Expert deleted/);
     expect(await db.select({ id: experts.id }).from(experts).where(eq(experts.id, e.id))).toHaveLength(0);
   });
 
@@ -128,7 +141,7 @@ describe("server actions refuse forbidden roles", () => {
     const e = await anExpert();
     as("pod_lead", [acme]);
     expect(await landing(recordConsent(form({ id: e.id, consent: "no" })))).toMatch(/error=.*can't edit experts/);
-    expect(await landing(setExpertStatus(form({ id: e.id, status: "inactive", returnTo: "/experts?layout=board" })))).toMatch(/^\/experts\?layout=board&error=/);
+    expect(await landing(setExpertStatus(form({ id: e.id, status: "inactive", returnTo: "/admin/experts?layout=board" })))).toMatch(/^\/admin\/experts\?layout=board&error=/);
     as("recruiter");
     const next = e.cvConsent === "no" ? "yes" : "no";
     expect(await landing(recordConsent(form({ id: e.id, consent: next })))).toMatch(/ok=CV consent recorded/);
@@ -186,9 +199,9 @@ describe("pod-lead partner scoping", () => {
     const acmeSub = rows.find((r) => r.partnerId === acme && r.status === "partner_review")!;
     const nwSub = rows.find((r) => r.partnerId === northwind)!;
     as("pod_lead", [acme]);
-    expect(await landing(updateSubmission(form({ id: nwSub.id, to: "withdrawn", returnTo: "/submissions" })))).toMatch(/error=.*outside your pods/);
+    expect(await landing(updateSubmission(form({ id: nwSub.id, to: "withdrawn", returnTo: "/admin/submissions" })))).toMatch(/error=.*outside your pods/);
     expect((await db.select().from(submissions).where(eq(submissions.id, nwSub.id)))[0].status).toBe(nwSub.status);
-    expect(await landing(updateSubmission(form({ id: acmeSub.id, to: "rejected", returnTo: "/submissions" })))).toMatch(/ok=Submission updated/);
+    expect(await landing(updateSubmission(form({ id: acmeSub.id, to: "rejected", returnTo: "/admin/submissions" })))).toMatch(/ok=Submission updated/);
     expect((await db.select().from(submissions).where(eq(submissions.id, acmeSub.id)))[0].status).toBe("rejected");
   });
 

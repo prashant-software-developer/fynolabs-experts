@@ -130,7 +130,7 @@ export function viewHref(id: string | null, c: ViewConfig, extra?: Record<string
   if (id) p.set("v", id);
   for (const [k, v] of Object.entries(extra ?? {})) if (v) p.set(k, v);
   const s = p.toString();
-  return s ? `/experts?${s}` : "/experts";
+  return s ? `/admin/experts?${s}` : "/admin/experts";
 }
 
 export const EMPTY_CONFIG: ViewConfig = { filters: {}, sort: null, columns: [...DEFAULT_COLUMNS], layout: "table" };

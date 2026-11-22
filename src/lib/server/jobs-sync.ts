@@ -1,10 +1,12 @@
 // Jobs-site sync: copies people from the jobs site (jobs.fynolabs.si) into the hub.
 //
-// READ ONLY on the jobs site: this file only runs SELECT statements against public.xdl_jobs_*.
+// READ ONLY on the jobs site: this file only runs SELECT statements against public.xdl_jobs_*,
+// either in the same database or in a separate one (JOBS_DATABASE_URL, see jobs-source.ts).
 // Rules:
 //  - match on expert_sources (jobs_site, user id), then email, then LinkedIn URL;
 //  - new people are created; existing people only get EMPTY fields filled (team edits win);
-//  - the newest jobs-site resume becomes the current CV unless someone uploaded one here;
+//  - the newest jobs-site resume becomes the current CV unless someone uploaded one here (same
+//    database: a pointer, streamed on download; separate database: a copy in hub.expert_files);
 //  - last_synced_at is refreshed for everyone seen;
 //  - people deleted on request are skipped.
 import { sql } from "drizzle-orm";
@@ -14,7 +16,7 @@ import { experts } from "@/db/schema";
 import { mapJobsUser, type JobsApplication, type JobsUser } from "@/lib/import/jobs";
 import { planImport } from "@/lib/import/plan";
 import { logActivity, type Actor } from "./activity";
-import { linkJobsCv } from "./cv";
+import { copyJobsCv, linkJobsCv } from "./cv";
 import { applyPlan, loadIndex } from "./import-apply";
 
 export type JobsSyncResult =
@@ -62,11 +64,22 @@ async function readJobsSite(db: DB) {
   return { users, files, apps };
 }
 
-export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolean } = {}): Promise<JobsSyncResult> {
-  if (!(await jobsTablesExist(db))) {
-    return { ok: false, message: "The jobs-site tables (public.xdl_jobs_users) aren't in this database." };
+/**
+ * `source`: where the jobs-site tables are (default: the same database as `db`). Only SELECTs
+ * ever run against it.
+ */
+export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolean; source?: DB } = {}): Promise<JobsSyncResult> {
+  const source = opts.source ?? db;
+  const separate = source !== db;
+  if (!(await jobsTablesExist(source))) {
+    return {
+      ok: false,
+      message: separate
+        ? "The jobs-site tables (public.xdl_jobs_users) aren't in the JOBS_DATABASE_URL database."
+        : "The jobs-site tables (public.xdl_jobs_users) aren't in this database. If they're in another one (the old Engine), set JOBS_DATABASE_URL and run npm run import:jobs.",
+    };
   }
-  const { users, files, apps } = await readJobsSite(db);
+  const { users, files, apps } = await readJobsSite(source);
   const appsByUser = new Map<number, JobsApplication[]>();
   for (const a of apps) appsByUser.set(Number(a.user_id), [...(appsByUser.get(Number(a.user_id)) ?? []), a]);
   const drafts = users.map((u) => mapJobsUser({ ...u, id: Number(u.id) }, appsByUser.get(Number(u.id)) ?? []));
@@ -94,6 +107,11 @@ export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolea
   for (const f of files) {
     const expertId = res.expertByRow.get(Number(f.user_id));
     if (!expertId) continue;
+    if (separate) {
+      // Copy the bytes over: the app's own database must not depend on the old one.
+      if (await copyJobsCv(db, source, expertId, { id: Number(f.id), filename: f.filename, mime: f.mime, createdAt: f.created_at ? new Date(f.created_at) : null })) cvsLinked++;
+      continue;
+    }
     const linked = await linkJobsCv(db, expertId, {
       id: Number(f.id),
       filename: f.filename,
@@ -116,7 +134,7 @@ export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolea
     entityId: "jobs_site",
     actor,
     action: "jobs_site_sync",
-    detail: { users: users.length, created: res.created, updated: res.updated, unchanged: res.unchanged, skipped: res.skipped, duplicates: res.duplicates, cvsLinked },
+    detail: { users: users.length, created: res.created, updated: res.updated, unchanged: res.unchanged, skipped: res.skipped, duplicates: res.duplicates, cvsLinked, separateDatabase: separate },
   });
 
   return {

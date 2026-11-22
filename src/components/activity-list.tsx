@@ -33,19 +33,19 @@ function hrefFor(a: Activity): string | null {
   const d = (a.detail ?? {}) as Record<string, unknown>;
   switch (a.entityType) {
     case "expert":
-      return a.action === "deleted_on_request" ? null : `/experts/${a.entityId}`;
+      return a.action === "deleted_on_request" ? null : `/admin/experts/${a.entityId}`;
     case "requirement":
-      return `/requirements/${a.entityId}`;
+      return `/admin/requirements/${a.entityId}`;
     case "submission":
-      return typeof d.requirementId === "string" ? `/requirements/${d.requirementId}?tab=submissions` : null;
+      return typeof d.requirementId === "string" ? `/admin/requirements/${d.requirementId}?tab=submissions` : null;
     case "placement":
-      return `/placements/${a.entityId}`;
+      return `/admin/placements/${a.entityId}`;
     case "partner":
-      return `/partners`;
+      return `/admin/partners`;
     case "team_member":
-      return `/settings/team`;
+      return `/admin/settings/team`;
     default:
-      return a.entityType === "import" ? "/import" : null;
+      return a.entityType === "import" ? "/admin/import" : null;
   }
 }
 

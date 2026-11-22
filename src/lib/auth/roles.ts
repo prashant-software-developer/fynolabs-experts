@@ -35,6 +35,9 @@ export function devRole(env: Record<string, string | undefined> = process.env): 
 }
 
 export const DEV_ROLE_COOKIE = "hub_dev_role";
+/** Extra "Preview as" values (local development only): the demo expert, or signed out. */
+export const DEV_PREVIEW_EXPERT = "expert";
+export const DEV_PREVIEW_GUEST = "guest";
 
 /**
  * 1. Local dev auto sign-in: the preview cookie, else DEV_ROLE, else admin.

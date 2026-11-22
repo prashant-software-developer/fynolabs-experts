@@ -111,3 +111,51 @@ export async function linkJobsCv(
   });
   return true;
 }
+
+/**
+ * Copies a jobs-site resume's bytes from a separate (read-only) database into hub.expert_files.
+ * external_ref "jobs:<id>" remembers which file it was, so re-running copies nothing twice. It
+ * becomes the current CV unless the current one was uploaded in the hub by someone.
+ */
+export async function copyJobsCv(db: DB, source: DB, expertId: string, f: { id: number; filename: string; mime: string; createdAt: Date | null }): Promise<boolean> {
+  const ref = `jobs:${f.id}`;
+  const [existing] = await db
+    .select({ id: expertFiles.id })
+    .from(expertFiles)
+    .where(and(eq(expertFiles.expertId, expertId), eq(expertFiles.externalRef, ref)))
+    .limit(1);
+  let fileId = existing?.id ?? null;
+  let copied = false;
+  if (!fileId) {
+    const [r] = rowsOf<{ b64: string; size: number }>(await source.execute(sql`select encode(data, 'base64') as b64, size from public.xdl_jobs_files where id = ${f.id} limit 1`));
+    if (!r) return false;
+    const [row] = await db
+      .insert(expertFiles)
+      .values({
+        expertId,
+        kind: "cv",
+        filename: f.filename.slice(0, 200),
+        mime: f.mime,
+        size: Buffer.from(r.b64, "base64").byteLength,
+        storage: "upload",
+        externalRef: ref,
+        data: sql`decode(${r.b64}, 'base64')`,
+        createdBy: "jobs-site import",
+        ...(f.createdAt ? { createdAt: f.createdAt } : {}),
+      })
+      .returning({ id: expertFiles.id });
+    fileId = row.id;
+    copied = true;
+  }
+  // Current CV: replace nothing a person uploaded here; older jobs-site copies or pointers may be replaced.
+  const updated = await db
+    .update(experts)
+    .set({ cvRef: `upload:${fileId}` })
+    .where(
+      sql`${experts.id} = ${expertId} and ${experts.cvRef} is distinct from ${`upload:${fileId}`} and (
+        ${experts.cvRef} is null or ${experts.cvRef} like 'jobs:file:%' or ${experts.cvRef} in (
+          select 'upload:' || ef.id from hub.expert_files ef where ef.expert_id = ${expertId} and ef.external_ref like 'jobs:%'))`,
+    )
+    .returning({ id: experts.id });
+  return copied || updated.length > 0;
+}

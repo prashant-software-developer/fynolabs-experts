@@ -4,11 +4,13 @@ import "./globals.css";
 
 const inter = localFont({ src: "./inter.woff2", variable: "--font-inter", weight: "100 900", display: "swap" });
 
+const site = (process.env.PUBLIC_SITE_NAME || "FynoLabs").trim();
+
 export const metadata: Metadata = {
-  title: { default: "Expert Hub", template: "%s · Expert Hub" },
-  description: "Internal: every expert in one place, matched to partner requirements.",
-  robots: { index: false, follow: false },
+  title: { default: `${site} · Expert jobs`, template: `%s · ${site}` },
+  description: "Remote work for engineers, scientists and domain experts in AI training and evaluation.",
   icons: { icon: "/icon.svg" },
+  ...(process.env.PUBLIC_SITE_URL ? { metadataBase: new URL(process.env.PUBLIC_SITE_URL) } : {}),
 };
 
 export const dynamic = "force-dynamic";

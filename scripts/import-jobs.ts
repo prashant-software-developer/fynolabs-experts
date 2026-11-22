@@ -1,10 +1,11 @@
-// npm run import:jobs: the jobs-site sync from the command line (same as the button on /import).
+// npm run import:jobs: the jobs-site sync from the command line (same as the button on /admin/import).
 //   npm run import:jobs                 local demo database
 //   npm run import:jobs -- --dry-run    show what would change, change nothing
 // Against a real database: DATABASE_URL=... CONFIRM_DB=yes npm run import:jobs
-// Reads public.xdl_jobs_* (never writes there) and writes hub.* only.
+// Old jobs-site tables in another database (the shared "Engine"): also set JOBS_DATABASE_URL.
+// Reads public.xdl_jobs_* (never writes there) and writes hub.* in DATABASE_URL only.
 import os from "node:os";
-import { loadEnv, requireConfirm } from "./_env";
+import { describeTarget, loadEnv, requireConfirm } from "./_env";
 
 loadEnv();
 
@@ -17,9 +18,13 @@ async function main() {
   }
   const { getDb } = await import("../src/db/client");
   const { syncJobsSite } = await import("../src/lib/server/jobs-sync");
+  const { jobsSourceConfig, openJobsSource } = await import("../src/lib/server/jobs-source");
+  const cfg = jobsSourceConfig();
+  if (cfg.mode === "separate") console.log(`Reading the jobs site (read only) from: ${describeTarget(cfg.url)}`);
   const db = await getDb();
+  const { source } = await openJobsSource(db);
   const actor = process.env.HUB_ACTOR || `cli:${os.userInfo().username}`;
-  const res = await syncJobsSite(db, actor, { dryRun });
+  const res = await syncJobsSite(db, actor, { dryRun, source });
   if (!res.ok) {
     console.error(res.message);
     process.exit(1);

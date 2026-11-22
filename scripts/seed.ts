@@ -20,10 +20,14 @@ async function main() {
   }
   const { openLocalDbWithClient } = await import("../src/db/local/open");
   const { seedIfEmpty } = await import("../src/db/local/seed");
+  const { seedJobsIfEmpty } = await import("../src/db/local/seed-jobs");
   const { db, client } = await openLocalDbWithClient({ dataDir: dir, seed: false });
   const added = await seedIfEmpty(db);
+  const jobsAdded = await seedJobsIfEmpty(db);
   await client.close();
-  console.log(added ? "Demo data added (all fictional)." : "The local database already has experts; nothing added. Use --reset to start over.");
+  if (added) console.log("Demo data added (all fictional).");
+  else if (jobsAdded) console.log("Demo jobs and applications added to the existing demo data (all fictional).");
+  else console.log("The local database already has demo data; nothing added. Use --reset to start over.");
 }
 
 main().catch((err) => {

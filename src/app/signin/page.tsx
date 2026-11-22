@@ -1,19 +1,20 @@
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { authSettings, isDevBypass } from "@/lib/auth/allow";
-import { getCurrentUser } from "@/lib/auth/session";
+import { nextAfterSignIn, safePath } from "@/lib/auth/account";
+import { getAccount } from "@/lib/auth/session";
+import { DevRoleSwitcher } from "@/components/role-controls";
+import { GoogleButton } from "@/components/site/sign-in-buttons";
 import { Notice } from "@/components/ui/feedback";
 
-export const metadata = { title: "Sign in" };
-
-function safeBack(raw: string | undefined): string {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
-}
+export const metadata = { title: "Team sign-in", robots: { index: false, follow: false } };
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const back = safeBack(sp.callbackUrl);
-  if (isDevBypass() || (await getCurrentUser())) redirect(back);
+  const back = safePath(sp.callbackUrl) ?? "/admin";
+  const account = await getAccount();
+  if (account) redirect(nextAfterSignIn(account.kind, back));
+  const dev = isDevBypass();
   const { domain } = authSettings();
   const error = sp.error;
   return (
@@ -25,33 +26,30 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           <div className="space-y-2">
             <p className="eyebrow text-primary">FynoLabs</p>
             <h1 className="text-title text-foreground">Expert Hub</h1>
-            <p className="text-sm text-muted-foreground">Sign in with your @{domain} Google account.</p>
+            <p className="text-sm text-muted-foreground">Team sign-in with your @{domain} Google account.</p>
           </div>
         </div>
-        {error ? (
-          <Notice tone="error">
-            {error === "AccessDenied"
-              ? `That account can't use Expert Hub. Use a verified @${domain} Google account.`
-              : "Sign-in didn't work. Try again."}
-          </Notice>
-        ) : null}
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: back });
-          }}
-        >
-          <button className="flex h-11 w-full items-center justify-center gap-3 rounded-md border border-input bg-background text-sm font-medium text-foreground transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z" />
-              <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z" />
-              <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1z" />
-              <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z" />
-            </svg>
-            Continue with Google
-          </button>
-        </form>
-        <p className="text-center text-xs text-muted-foreground">Internal tool. Access is limited to the core team.</p>
+        {error ? <Notice tone="error">{error === "AccessDenied" ? "That account couldn't sign in. Use a Google account with a verified email." : "Sign-in didn't work. Try again."}</Notice> : null}
+        {dev ? (
+          <div className="space-y-3">
+            <Notice tone="warning">Local development: you are previewing signed out. Pick a team role to sign back in automatically.</Notice>
+            <div className="flex justify-center">
+              <DevRoleSwitcher current="guest" />
+            </div>
+          </div>
+        ) : (
+          <form
+            action={async () => {
+              "use server";
+              await signIn("google", { redirectTo: `/auth/continue?next=${encodeURIComponent(back)}` });
+            }}
+          >
+            <GoogleButton />
+          </form>
+        )}
+        <p className="text-center text-xs text-muted-foreground">
+          For the core team. Experts: <a href="/join" className="text-foreground underline-offset-4 hover:underline">sign in here</a>.
+        </p>
       </div>
     </main>
   );

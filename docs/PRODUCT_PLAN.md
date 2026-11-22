@@ -1,6 +1,6 @@
 # Expert Hub: product plan
 
-Written 22 Nov 2026 from Prashant's brief. One platform and one central database of experts on the shared Neon "Engine". It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
+Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built). One platform and one central database of experts, in the app's own Neon project ("expert-hub"; the old jobs site's tables in the shared "Engine" are read once by the import). It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
 
 ## The flow we are building
 
@@ -57,7 +57,7 @@ The pattern on Mercor, Outlier, micro1 and Handshake AI: a light sign-up, a prof
 ## Architecture
 
 - **App:** Next.js (App Router), TypeScript, Drizzle ORM, Tailwind with the FynoLabs design system.
-- **Database:** Neon Engine, with this app's tables in the `hub` schema. The existing `public.xdl_jobs_*` tables are read during the transition and never written. Development and tests use PGlite; changes are tried on a Neon branch before production.
+- **Database:** the app's own Neon project ("expert-hub"), with its tables in the `hub` schema. The old `public.xdl_jobs_*` tables in Engine are read by the import (`JOBS_DATABASE_URL`, read-only user) and never written; CVs are copied over. Development and tests use PGlite; changes are tried on a Neon branch before production.
 - **Auth:** Auth.js. Experts use Google, LinkedIn or an email code. The team uses Google limited to @xocket.sh. Roles and permissions are checked on every action.
 - **Files:** CVs in the database now; object storage (Neon or R2) when volume grows.
 - **Email:** Resend. Slack messages go through the Slack API, for internal channels only.
@@ -82,8 +82,8 @@ Generous white space, short labels, and tables over side-by-side columns.
 
 | Phase | What ships | Status |
 |---|---|---|
-| 1 | Internal hub: expert database, requirement matching, partner submissions, placements and pay | Built 22 Nov (v1); FynoLabs design system pass next |
-| 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply, screening) | Next |
+| 1 | Internal hub: expert database, requirement matching, partner submissions, placements and pay | Built 22 Nov (v1), with roles, saved views and the FynoLabs design system |
+| 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply) | Built 23 Nov: jobs with a form builder (17 field types, templates), public applications merged into the expert record, Matches and invites, job board with Google Jobs data, expert sign-up, onboarding, profile, data export and deletion requests; team app moved to `/admin`. Screening assessments and the longer job pipeline move to Phase 3 |
 | 3 | Admin parity with the Lovable admin (accounts, leads, calendar, campaigns, platforms and referrals, projects, fees and earnings, analytics), plus views, saved views, custom fields and automations | After 2 |
 | 4 | Cut-over: migrate data from the Lovable admin and the jobs site, move the jobs.fynolabs.si domain, retire the old admin | Last |
 

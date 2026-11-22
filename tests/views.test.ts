@@ -42,8 +42,8 @@ describe("view config <-> URL", () => {
     expect(sameConfig(a, configFromParams({ domain: "Physics" }))).toBe(false);
     expect(hasViewParams({ v: "abc", page: "2" })).toBe(false);
     expect(hasViewParams({ v: "abc", layout: "board" })).toBe(true);
-    expect(viewHref("abc", a)).toBe("/experts?domain=Physics&country=India&v=abc");
-    expect(viewHref(null, configFromParams({}))).toBe("/experts");
+    expect(viewHref("abc", a)).toBe("/admin/experts?domain=Physics&country=India&v=abc");
+    expect(viewHref(null, configFromParams({}))).toBe("/admin/experts");
   });
 
   it("cleans whatever is stored", () => {

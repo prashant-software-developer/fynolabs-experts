@@ -1,0 +1,120 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { getDb } from "@/db/client";
+import { can } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
+import { label } from "@/lib/constants";
+import { one, type SearchParams } from "@/lib/filters";
+import { fmtDate } from "@/lib/format";
+import { publicState } from "@/lib/jobs-public";
+import { applicantCounts } from "@/lib/server/applications";
+import { getJob, jobFields } from "@/lib/server/jobs";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/client";
+import { FlashFromParams } from "@/components/ui/feedback";
+import { PageHeader } from "@/components/ui/layout";
+import { Tabs } from "@/components/ui/tabs";
+import { setJobSharing } from "../actions";
+import { ApplicantsTab, DetailsTab, FormTab, MatchesTab, ShareTab } from "./tabs";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const found = await getJob(await getDb(), id);
+  return { title: found ? found.job.title : "Job" };
+}
+
+const TABS = ["details", "form", "applicants", "matches", "share"] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function JobPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
+  const { id } = await params;
+  const sp = await searchParams;
+  const user = await requireUser();
+  const db = await getDb();
+  const found = await getJob(db, id);
+  if (!found) notFound();
+  const { job, partnerName, requirementTitle } = found;
+  const [fields, counts] = await Promise.all([jobFields(db, id), applicantCounts(db, id)]);
+  const applicants = Object.values(counts).reduce((a, b) => a + b, 0);
+  const asked = one(sp.tab) as Tab;
+  const tab: Tab = TABS.includes(asked) ? asked : applicants ? "applicants" : "details";
+  const base = `/admin/jobs/${id}`;
+  const manage = can(user.role, "jobs.manage");
+  const state = publicState(job);
+  const here = `${base}?tab=${tab}`;
+  const quick = (status: string, text: string, variant: "primary" | "secondary" = "secondary") => (
+    <form action={setJobSharing}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="status" value={status} />
+      <input type="hidden" name="returnTo" value={here} />
+      <SubmitButton size="sm" variant={variant} pendingText="Saving...">
+        {text}
+      </SubmitButton>
+    </form>
+  );
+  return (
+    <>
+      <PageHeader
+        title={job.title}
+        back={{ href: "/admin/jobs", label: "Jobs" }}
+        meta={
+          <>
+            <StatusBadge value={job.status} />
+            <Badge tone={job.visibility === "public" ? "outline" : "muted"}>{label(job.visibility)}</Badge>
+            {job.featured ? <Badge tone="info">Featured</Badge> : null}
+            {state === "closed" && job.status === "open" ? <Badge tone="warning">Past closing date</Badge> : null}
+            <span className="text-muted-foreground">
+              {applicants} {applicants === 1 ? "applicant" : "applicants"}
+              {counts.new ? ` · ${counts.new} new` : ""}
+            </span>
+            {partnerName ? <span className="text-muted-foreground">· Partner: {partnerName} (internal)</span> : null}
+            {job.requirementId && requirementTitle ? (
+              <Link href={`/admin/requirements/${job.requirementId}`} className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                · Requirement: {requirementTitle}
+              </Link>
+            ) : null}
+            {job.closesOn ? <span className="text-muted-foreground">· Closes {fmtDate(job.closesOn)}</span> : null}
+          </>
+        }
+        actions={
+          <>
+            <ButtonLink href={`/jobs/${job.slug}`} target="_blank" variant="secondary" size="sm">
+              <ExternalLink className="h-3.5 w-3.5" /> {state === "hidden" ? "Preview page" : "Public page"}
+            </ButtonLink>
+            {manage && job.status === "draft" ? quick("open", "Open job", "primary") : null}
+            {manage && job.status === "open" ? (
+              <>
+                {quick("paused", "Pause")}
+                {quick("closed", "Close")}
+              </>
+            ) : null}
+            {manage && job.status === "paused" ? (
+              <>
+                {quick("open", "Reopen", "primary")}
+                {quick("closed", "Close")}
+              </>
+            ) : null}
+            {manage && job.status === "closed" ? quick("open", "Reopen") : null}
+          </>
+        }
+      />
+      <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+      <Tabs
+        tabs={[
+          { href: `${base}?tab=details`, label: "Details", active: tab === "details" },
+          { href: `${base}?tab=form`, label: "Form", active: tab === "form", count: fields.filter((f) => f.type !== "section").length },
+          { href: `${base}?tab=applicants`, label: "Applicants", active: tab === "applicants", count: applicants },
+          { href: `${base}?tab=matches`, label: "Matches", active: tab === "matches" },
+          { href: `${base}?tab=share`, label: "Share", active: tab === "share" },
+        ]}
+      />
+      {tab === "details" ? <DetailsTab job={job} user={user} partnerName={partnerName} requirementTitle={requirementTitle} /> : null}
+      {tab === "form" ? <FormTab job={job} user={user} fields={fields} sp={sp} /> : null}
+      {tab === "applicants" ? <ApplicantsTab job={job} user={user} fields={fields} sp={sp} counts={counts} /> : null}
+      {tab === "matches" ? <MatchesTab job={job} user={user} /> : null}
+      {tab === "share" ? <ShareTab job={job} user={user} sp={sp} /> : null}
+    </>
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useState, useTransition, type FormEvent } from "react";
-import { savePlacement, type PlacementFormState } from "@/app/(app)/placements/actions";
+import { savePlacement, type PlacementFormState } from "@/app/admin/placements/actions";
 import { PLACEMENT_BASIS, PLACEMENT_STATUSES, label } from "@/lib/constants";
 import type { PlacementFormValues } from "@/lib/forms/placement";
 import { computeMoney, formatMoney } from "@/lib/money";

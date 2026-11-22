@@ -1,6 +1,6 @@
 import { SENT_TO_PARTNER, SUBMISSION_STATUSES, label } from "@/lib/constants";
 import { checkSubmissionMove } from "@/lib/workflow";
-import { updateSubmission } from "@/app/(app)/requirements/actions";
+import { updateSubmission } from "@/app/admin/requirements/actions";
 import { SubmitButton } from "./ui/client";
 
 /** Status picker for one submission. Options that need CV consent are disabled, with the reason. */

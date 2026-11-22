@@ -21,8 +21,8 @@ if not exist node_modules (
   )
 )
 echo.
-echo Starting Expert Hub on http://localhost:3000 (demo data, signed in as dev@xocket.sh).
+echo Starting Expert Hub: admin at http://localhost:3000/admin, job board at http://localhost:3000 (demo data, signed in as dev@xocket.sh).
 echo Keep this window open while you use the app. Close it to stop.
-start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000"
+start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000/admin"
 call npm run dev
 pause

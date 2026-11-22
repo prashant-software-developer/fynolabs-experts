@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { applyCsvImport, previewCsvImport, runJobsSync } from "@/app/(app)/import/actions";
+import { applyCsvImport, previewCsvImport, runJobsSync } from "@/app/admin/import/actions";
 import type { CsvPreview } from "@/lib/server/csv-import";
 import type { JobsSyncResult } from "@/lib/server/jobs-sync";
 import { Badge } from "./ui/badge";
@@ -40,7 +40,7 @@ export function JobsSyncPanel({ available }: { available: boolean }) {
               </ul>
             ) : null}
             {!result.dryRun ? (
-              <Link href="/experts?source=jobs_site" className="mt-2 inline-block font-medium underline">
+              <Link href="/admin/experts?source=jobs_site" className="mt-2 inline-block font-medium underline">
                 See jobs-site experts
               </Link>
             ) : null}
@@ -128,7 +128,7 @@ export function CsvImportPanel() {
         done.ok ? (
           <Notice tone="success" title="Import finished">
             {done.created} created · {done.updated} filled in · {done.unchanged} unchanged · {done.duplicates} left for review · {done.skipped} skipped.{" "}
-            <Link href={`/experts?source=${done.kind}`} className="font-medium underline">
+            <Link href={`/admin/experts?source=${done.kind}`} className="font-medium underline">
               See them
             </Link>
           </Notice>

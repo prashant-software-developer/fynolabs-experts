@@ -18,7 +18,7 @@ export function ColumnPicker({ selected }: { selected: string[] }) {
     else p.set("cols", value);
     p.delete("ok");
     p.delete("error");
-    start(() => router.replace(`/experts${p.size ? `?${p.toString()}` : ""}`, { scroll: false }));
+    start(() => router.replace(`/admin/experts${p.size ? `?${p.toString()}` : ""}`, { scroll: false }));
   };
   const toggle = (id: string) => apply(selected.includes(id) ? selected.filter((c) => c !== id) : [...selected, id]);
   return (

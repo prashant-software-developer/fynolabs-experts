@@ -1,30 +1,26 @@
-// Auth.js (next-auth v5): Google sign-in, limited to the team's domain.
+// Auth.js (next-auth v5) for the server: Google for everyone, plus email links (Resend) and
+// LinkedIn when configured. The account type (team or expert) is worked out at sign-in and kept in
+// the session cookie for the middleware; the server re-checks it on every request.
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { isAllowedEmail } from "@/lib/auth/allow";
+import Resend from "next-auth/providers/resend";
+import { authConfig, signInMethods } from "./auth.config";
+import { tokenAdapter } from "@/lib/auth/token-adapter";
+
+const emailLinks = signInMethods().includes("email");
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Google({
-      // Reads AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET from the environment.
-      // `hd` only pre-selects the team domain in Google's account picker; the real check is below.
-      // Left out when ALLOWED_EMAILS lists outside addresses, so those people can pick their account.
-      authorization: {
-        params: { prompt: "select_account", ...(process.env.ALLOWED_EMAILS ? {} : { hd: process.env.ALLOWED_DOMAIN || "xocket.sh" }) },
-      },
-    }),
-  ],
-  session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
-  pages: { signIn: "/signin", error: "/signin" },
-  trustHost: true,
+  ...authConfig,
+  providers: [...authConfig.providers, ...(emailLinks ? [Resend({ apiKey: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM })] : [])],
+  // Email links need somewhere to keep the one-time tokens (hub.auth_verification_tokens).
+  ...(emailLinks ? { adapter: tokenAdapter() } : {}),
   callbacks: {
-    signIn({ account, profile }) {
-      if (account?.provider !== "google") return false;
-      // Google must say the email is verified, and it must be on the allow list.
-      return profile?.email_verified === true && isAllowedEmail(profile.email);
-    },
-    jwt({ token, profile }) {
-      if (profile?.email) token.email = profile.email.toLowerCase();
+    ...authConfig.callbacks,
+    async jwt(params) {
+      const token = await authConfig.callbacks.jwt(params);
+      if (params.account && token.email) {
+        const { accountKindFor } = await import("@/lib/server/account-kind");
+        token.kind = await accountKindFor(String(token.email));
+      }
       return token;
     },
   },

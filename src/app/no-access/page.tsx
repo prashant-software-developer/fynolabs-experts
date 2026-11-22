@@ -8,7 +8,7 @@ export const metadata = { title: "No access" };
 export default async function NoAccessPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin");
-  if (!user.blocked) redirect("/");
+  if (!user.blocked) redirect("/admin");
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm space-y-6 text-center">

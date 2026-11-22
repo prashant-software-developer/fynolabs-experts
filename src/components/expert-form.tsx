@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useTransition, type FormEvent } from "react";
-import { saveExpert, type ExpertFormState } from "@/app/(app)/experts/actions";
+import { saveExpert, type ExpertFormState } from "@/app/admin/experts/actions";
 import { AVAILABILITY, CV_CONSENT, DOMAINS, EXPERT_STATUSES, label } from "@/lib/constants";
 import type { ExpertFormValues } from "@/lib/forms/expert";
 import { Button } from "./ui/button";
@@ -33,7 +33,7 @@ export function ExpertForm({ id, initial, cancelHref, showRate = true }: { id?: 
             <ul className="mt-1 list-inside list-disc">
               {state.duplicates.map((d) => (
                 <li key={d.id}>
-                  <Link className="underline" href={`/experts/${d.id}`} target="_blank">
+                  <Link className="underline" href={`/admin/experts/${d.id}`} target="_blank">
                     {d.fullName}
                   </Link>{" "}
                   (same {d.matchedBy === "email" ? "email" : "LinkedIn URL"})

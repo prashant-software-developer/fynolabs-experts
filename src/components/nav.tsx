@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Briefcase, Building2, ClipboardList, LayoutDashboard, Menu, Send, ShieldCheck, Upload, Users, X, type LucideIcon } from "lucide-react";
+import { Briefcase, Building2, ClipboardList, ExternalLink, LayoutDashboard, Megaphone, Menu, Send, ShieldCheck, Upload, Users, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 
 type NavLink = { href: string; label: string; icon: LucideIcon };
@@ -14,26 +14,27 @@ export type NavAccess = { import: boolean; team: boolean };
 // Grouped like the website admin's sidebar: what the work is about, not where the data lives.
 function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
   const groups: { label: string; links: NavLink[] }[] = [
-    { label: "Workspace", links: [{ href: "/", label: "Dashboard", icon: LayoutDashboard }] },
+    { label: "Workspace", links: [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] },
     {
       label: "Talent",
-      links: [{ href: "/experts", label: "Experts", icon: Users }, ...(access.import ? [{ href: "/import", label: "Import", icon: Upload }] : [])],
+      links: [{ href: "/admin/experts", label: "Experts", icon: Users }, ...(access.import ? [{ href: "/admin/import", label: "Import", icon: Upload }] : [])],
     },
     {
       label: "Delivery",
       links: [
-        { href: "/requirements", label: "Requirements", icon: ClipboardList },
-        { href: "/submissions", label: "Submissions", icon: Send },
-        { href: "/placements", label: "Placements", icon: Briefcase },
-        { href: "/partners", label: "Partners", icon: Building2 },
+        { href: "/admin/requirements", label: "Requirements", icon: ClipboardList },
+        { href: "/admin/jobs", label: "Jobs", icon: Megaphone },
+        { href: "/admin/submissions", label: "Submissions", icon: Send },
+        { href: "/admin/placements", label: "Placements", icon: Briefcase },
+        { href: "/admin/partners", label: "Partners", icon: Building2 },
       ],
     },
   ];
-  if (access.team) groups.push({ label: "Settings", links: [{ href: "/settings/team", label: "Team & access", icon: ShieldCheck }] });
+  if (access.team) groups.push({ label: "Settings", links: [{ href: "/admin/settings/team", label: "Team & access", icon: ShieldCheck }] });
   return groups;
 }
 
-const isActive = (path: string, href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
+const isActive = (path: string, href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
 
 function NavGroups({ path, access, onNavigate }: { path: string; access: NavAccess; onNavigate?: () => void }) {
   return (
@@ -73,7 +74,7 @@ function NavGroups({ path, access, onNavigate }: { path: string; access: NavAcce
 /** The FynoLabs mark, wordmark and the app's name. */
 export function Brand({ compact }: { compact?: boolean }) {
   return (
-    <Link href="/" className="flex items-center gap-2.5 text-foreground">
+    <Link href="/admin" className="flex items-center gap-2.5 text-foreground">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/brand/fynolabs-mark.svg" alt="" width={24} height={24} className={compact ? "h-6 w-6" : "h-7 w-7"} />
       <span className="flex flex-col gap-0.5 whitespace-nowrap">
@@ -97,6 +98,12 @@ export function Sidebar({ access }: { access: NavAccess }) {
         <nav className="flex-1 overflow-y-auto px-3 pt-5 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main">
           <NavGroups path={path} access={access} />
         </nav>
+        <div className="border-t border-sidebar-border px-3 py-3">
+          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/70 hover:text-foreground">
+            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            Public job board
+          </a>
+        </div>
       </aside>
     </div>
   );

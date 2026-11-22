@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { ensure, isForbidden, type Action } from "./permissions";
-import { getCurrentUser, type CurrentUser } from "./session";
+import { getAccount, type CurrentUser } from "./session";
 
-/** For API routes: the signed-in user allowed to do `action`, or a 401 / 403 JSON response. */
+export const TEAM_ONLY = "This is for the FynoLabs team only.";
+
+/** For API routes: the signed-in team member allowed to do `action`, or a 401 / 403 JSON response. */
 export async function apiGuard(action: Action, ctx?: { partnerId?: string | null }): Promise<CurrentUser | NextResponse> {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  const account = await getAccount();
+  if (!account) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  if (account.kind !== "team") return NextResponse.json({ error: TEAM_ONLY }, { status: 403 });
+  const user = account.user;
   try {
     ensure(user, action, ctx);
   } catch (e) {

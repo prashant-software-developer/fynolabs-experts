@@ -14,7 +14,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_SUMMARY: Record<Role, string> = {
   admin: "Everything, plus team & access, imports, delete on request and partners.",
-  recruiter: "Experts, requirements, matching and submissions. No money.",
+  recruiter: "Experts, requirements, jobs and applicants, matching and submissions. No money.",
   pod_lead: "Reads experts and requirements. Submissions and placements for their partners only; updates hours, tasks and status. No money.",
   finance: "Reads experts, requirements and submissions. Full placements with money, and the placements export.",
   viewer: "Read only. No money, contact details masked, no exports.",
@@ -56,6 +56,12 @@ export type Action =
   | "partners.manage"
   | "team.manage"
   | "settings.manage"
+  | "jobs.read"
+  | "jobs.manage"
+  | "jobs.rate_note"
+  | "applications.read"
+  | "applications.manage"
+  | "applications.export"
   | "views.save"
   | "views.share"
   | "views.manage_any";
@@ -96,6 +102,12 @@ export const MATRIX: Record<Action, readonly Role[]> = {
   "partners.manage": A,
   "team.manage": A,
   "settings.manage": A,
+  "jobs.read": ALL,
+  "jobs.manage": AR, // create, edit, build the form, publish, invite
+  "jobs.rate_note": AF, // a job's internal rate note is money
+  "applications.read": ALL, // contact details masked for viewers
+  "applications.manage": AR, // status, notes, bulk status
+  "applications.export": AR,
   "views.save": ALL, // personal saved views are a preference, not a record change
   "views.share": ["admin", "recruiter", "pod_lead", "finance"],
   "views.manage_any": A,
@@ -134,6 +146,12 @@ export const ACTION_LABELS: Record<Action, string> = {
   "partners.manage": "add or edit partners",
   "team.manage": "manage team & access",
   "settings.manage": "change settings",
+  "jobs.read": "see jobs",
+  "jobs.manage": "create or change jobs",
+  "jobs.rate_note": "see rate notes",
+  "applications.read": "see applications",
+  "applications.manage": "change applications",
+  "applications.export": "export applicants",
   "views.save": "save views",
   "views.share": "share views",
   "views.manage_any": "change other people's views",

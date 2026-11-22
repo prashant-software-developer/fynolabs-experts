@@ -1,6 +1,6 @@
 import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { activity, erasures, expertFiles, expertSources, experts, placements, submissions, type Expert } from "@/db/schema";
+import { activity, applications, dataRequests, erasures, expertFiles, expertSources, experts, placements, submissions, type Expert } from "@/db/schema";
 import { EXPERT_STATUSES } from "@/lib/constants";
 import type { ExpertFilters } from "@/lib/filters";
 import { emailHash } from "@/lib/normalize";
@@ -213,7 +213,7 @@ export function currentCv<T extends { id: string; storage: string; externalRef: 
 }
 
 /**
- * Delete on request: removes the expert, their sources, files and submissions (cascade), keeps
+ * Delete on request: removes the expert, their sources, files, applications, invites and submissions (cascade), keeps
  * placement money rows without the person, deletes their activity rows and remembers only a hash
  * of the email so imports don't bring them back.
  */
@@ -229,6 +229,10 @@ export async function deleteExpertOnRequest(db: DB, id: string, actor: Actor): P
   await db.delete(activity).where(and(eq(activity.entityType, "expert"), eq(activity.entityId, id)));
   const subIds = (await db.select({ id: submissions.id }).from(submissions).where(eq(submissions.expertId, id))).map((r) => r.id);
   if (subIds.length) await db.delete(activity).where(and(eq(activity.entityType, "submission"), inArray(activity.entityId, subIds)));
+  const appIds = (await db.select({ id: applications.id }).from(applications).where(eq(applications.expertId, id))).map((r) => r.id);
+  if (appIds.length) await db.delete(activity).where(and(eq(activity.entityType, "application"), inArray(activity.entityId, appIds)));
+  // A "Delete my data" request from the portal is now done (the row keeps no link to the person).
+  await db.update(dataRequests).set({ status: "done", handledBy: actorEmail(actor), handledAt: new Date() }).where(and(eq(dataRequests.expertId, id), eq(dataRequests.status, "open")));
   await db.delete(experts).where(eq(experts.id, id));
   await logActivity(db, { entityType: "expert", entityId: id, actor, action: "deleted_on_request", detail: { sources: srcs.map((s) => s.source) } });
   return true;

@@ -33,7 +33,7 @@ export type Availability = (typeof AVAILABILITY)[number];
 export const CV_CONSENT = ["unknown", "yes", "no"] as const;
 export type CvConsent = (typeof CV_CONSENT)[number];
 
-export const SOURCES = ["jobs_site", "admin_crm", "register", "partner", "manual"] as const;
+export const SOURCES = ["jobs_site", "admin_crm", "register", "partner", "manual", "job_form", "portal"] as const;
 export type Source = (typeof SOURCES)[number];
 
 export const PARTNER_KINDS = ["data_partner", "frontier_lab", "expert_platform", "agency", "other"] as const;
@@ -66,6 +66,32 @@ export const FILE_STORAGE = ["jobs_db", "upload"] as const;
 export const DEGREE_LEVELS = ["bachelors", "masters", "phd"] as const;
 export type DegreeLevel = (typeof DEGREE_LEVELS)[number];
 
+export const JOB_STATUSES = ["draft", "open", "paused", "closed"] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export const JOB_VISIBILITY = ["public", "unlisted", "internal"] as const;
+export type JobVisibility = (typeof JOB_VISIBILITY)[number];
+
+export const EMPLOYMENT_TYPES = ["contract", "part_time", "full_time", "freelance"] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+
+export const APPLICATION_STATUSES = ["new", "reviewing", "shortlisted", "submitted_to_partner", "rejected", "hired", "withdrawn"] as const;
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
+
+/** What an expert sees for their own application (internal wording stays internal). */
+export const APPLICATION_STATUS_FOR_EXPERT: Record<ApplicationStatus, string> = {
+  new: "Received",
+  reviewing: "In review",
+  shortlisted: "Shortlisted",
+  submitted_to_partner: "Profile shared for the role",
+  rejected: "Not selected this time",
+  hired: "Selected",
+  withdrawn: "Withdrawn",
+};
+
+/** The public company label a job gets unless the team types another one. Never a client's name. */
+export const DEFAULT_COMPANY_LABEL = "AI data partner (via FynoLabs)";
+
 const LABELS: Record<string, string> = {
   applicant: "Applicant",
   screening: "Screening",
@@ -86,6 +112,20 @@ const LABELS: Record<string, string> = {
   register: "Talent register",
   partner: "Partner",
   manual: "Manual",
+  job_form: "Job form",
+  portal: "Expert portal",
+  draft: "Draft",
+  public: "Public",
+  unlisted: "Unlisted",
+  internal: "Internal",
+  contract: "Contract",
+  part_time: "Part-time",
+  full_time: "Full-time",
+  freelance: "Freelance",
+  new: "New",
+  reviewing: "Reviewing",
+  submitted_to_partner: "Submitted to partner",
+  hired: "Hired",
   data_partner: "AI data partner",
   frontier_lab: "Frontier lab",
   expert_platform: "Expert platform",

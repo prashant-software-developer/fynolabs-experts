@@ -16,16 +16,20 @@ export const MIGRATIONS = {
 
 export type LocalDb = { db: DB; client: PGlite };
 
-export async function openLocalDbWithClient(opts: { dataDir?: string; seed?: boolean }): Promise<LocalDb> {
+export async function openLocalDbWithClient(opts: { dataDir?: string; seed?: boolean; jobsStub?: boolean }): Promise<LocalDb> {
   if (opts.dataDir) mkdirSync(opts.dataDir, { recursive: true });
   const client = opts.dataDir ? new PGlite(opts.dataDir) : new PGlite();
   await client.waitReady;
-  await client.exec(JOBS_STUB_SQL);
+  // A copy of the old jobs site's tables, like the shared Engine database had. Off for tests of a
+  // dedicated database (its own Neon project), where they live elsewhere (JOBS_DATABASE_URL).
+  if (opts.jobsStub !== false) await client.exec(JOBS_STUB_SQL);
   const db = drizzle({ client, schema }) as unknown as DB;
   await migrate(drizzle({ client }), MIGRATIONS);
   if (opts.seed) {
     const { seedIfEmpty } = await import("./seed");
     await seedIfEmpty(db);
+    const { seedJobsIfEmpty } = await import("./seed-jobs");
+    await seedJobsIfEmpty(db);
   }
   if (opts.dataDir && process.env.NODE_ENV !== "test") {
     console.info(`[expert-hub] Using the local PGlite database in ${opts.dataDir} (DATABASE_URL is not set).`);

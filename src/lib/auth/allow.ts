@@ -1,4 +1,5 @@
-// Who may use Expert Hub. Pure functions, safe to import anywhere (including middleware).
+// Who counts as the team by settings, and the local dev sign-in bypass. Pure functions, safe to
+// import anywhere (including middleware). Experts (anyone else) are handled in account.ts.
 
 export type AuthSettings = { domain: string; emails: string[] };
 
@@ -11,7 +12,7 @@ export function authSettings(env: Record<string, string | undefined> = process.e
   return { domain, emails };
 }
 
-/** Only "someone@<ALLOWED_DOMAIN>" (exactly that domain, not a subdomain) or a listed address. */
+/** Team by settings: "someone@<ALLOWED_DOMAIN>" (exactly that domain, not a subdomain) or a listed address. */
 export function isAllowedEmail(email: string | null | undefined, settings: AuthSettings = authSettings()): boolean {
   const e = (email ?? "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+$/.test(e)) return false;
@@ -20,7 +21,8 @@ export function isAllowedEmail(email: string | null | undefined, settings: AuthS
 }
 
 /**
- * Local development without Google keys: everyone is a fake dev@xocket.sh user.
+ * Local development without Google keys: everyone is a fake dev@xocket.sh user (or, through the
+ * "Preview as" menu, the demo expert or a signed-out guest).
  * Requires NODE_ENV=development (only `npm run dev` sets that) AND no Google credentials, and is
  * never on for Vercel. Production builds compile this to `false`.
  */
@@ -49,3 +51,6 @@ export function isDevBypass(): boolean {
 }
 
 export const DEV_USER = { email: "dev@xocket.sh", name: "Dev (local bypass)" } as const;
+
+/** Local development only: "Preview as -> Expert (portal)" signs in as this demo expert (seeded, fictional). */
+export const DEV_EXPERT = { email: "demo.expert@example.com", name: "Riya Portaldemo" } as const;

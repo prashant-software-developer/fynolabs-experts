@@ -41,6 +41,10 @@ const textArray = (name: string) =>
 const inList = (col: string, values: readonly string[]) =>
   sql.raw(`${col} in (${values.map((v) => `'${v}'`).join(", ")})`);
 
+// Where an expert record came from. job_form = applied through a job's application form;
+// portal = signed up on the expert portal.
+const SOURCE_VALUES = ["jobs_site", "admin_crm", "register", "partner", "manual", "job_form", "portal"] as const;
+
 export const experts = hub.table(
   "experts",
   {
@@ -73,6 +77,9 @@ export const experts = hub.table(
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
     lastContactedAt: ts("last_contacted_at"),
+    // Expert portal: first sign-in, and the onboarding steps they have saved.
+    portalJoinedAt: ts("portal_joined_at"),
+    onboardingDone: textArray("onboarding_done"),
     // Kept up to date by the trigger hub.experts_search_refresh (see drizzle/0001_*.sql).
     search: tsvector("search"),
   },
@@ -93,7 +100,7 @@ export const experts = hub.table(
     check("experts_cv_consent_check", inList("cv_consent", ["unknown", "yes", "no"])),
     check(
       "experts_primary_source_check",
-      inList("primary_source", ["jobs_site", "admin_crm", "register", "partner", "manual"]),
+      inList("primary_source", SOURCE_VALUES),
     ),
     check("experts_years_check", sql`${t.yearsExperience} is null or ${t.yearsExperience} between 0 and 70`),
   ],
@@ -115,7 +122,7 @@ export const expertSources = hub.table(
   (t) => [
     unique("expert_sources_source_external_key").on(t.source, t.externalId),
     index("expert_sources_expert_idx").on(t.expertId),
-    check("expert_sources_source_check", inList("source", ["jobs_site", "admin_crm", "register", "partner", "manual"])),
+    check("expert_sources_source_check", inList("source", SOURCE_VALUES)),
   ],
 );
 
@@ -143,7 +150,7 @@ export const expertFiles = hub.table(
   (t) => [
     index("expert_files_expert_idx").on(t.expertId, t.createdAt),
     check("expert_files_storage_check", inList("storage", ["jobs_db", "upload"])),
-    check("expert_files_kind_check", inList("kind", ["cv"])),
+    check("expert_files_kind_check", inList("kind", ["cv", "attachment"])),
   ],
 );
 
@@ -357,6 +364,185 @@ export const savedViews = hub.table(
   ],
 );
 
+/**
+ * A job opportunity: what the public sees (title, summary, description, company label) plus the
+ * internal link to a partner and requirement. Public pages never show partner_id, requirement_id
+ * or internal_rate_note.
+ */
+export const jobs = hub.table(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    publicCompanyLabel: text("public_company_label").notNull().default("AI data partner (via FynoLabs)"),
+    partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "set null" }),
+    requirementId: uuid("requirement_id").references(() => requirements.id, { onDelete: "set null" }),
+    summary: text("summary"),
+    description: text("description"),
+    location: text("location"),
+    employmentType: text("employment_type").notNull().default("contract"),
+    domains: textArray("domains"),
+    skills: textArray("skills"),
+    countriesAllowed: textArray("countries_allowed"),
+    countriesBlocked: textArray("countries_blocked"),
+    minYears: integer("min_years"),
+    openings: integer("openings").notNull().default(1),
+    status: text("status").notNull().default("draft"),
+    visibility: text("visibility").notNull().default("public"),
+    featured: boolean("featured").notNull().default(false),
+    closesOn: date("closes_on", { mode: "string" }),
+    internalRateNote: text("internal_rate_note"),
+    publishedAt: ts("published_at"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("jobs_slug_key").on(t.slug),
+    index("jobs_status_idx").on(t.status, t.visibility),
+    index("jobs_partner_idx").on(t.partnerId),
+    index("jobs_requirement_idx").on(t.requirementId),
+    check("jobs_status_check", inList("status", ["draft", "open", "paused", "closed"])),
+    check("jobs_visibility_check", inList("visibility", ["public", "unlisted", "internal"])),
+    check("jobs_employment_type_check", inList("employment_type", ["contract", "part_time", "full_time", "freelance"])),
+    check("jobs_openings_check", sql`${t.openings} between 1 and 1000`),
+    check("jobs_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+  ],
+);
+
+/** The application form of a job, one row per field, in `position` order. */
+export const jobFormFields = hub.table(
+  "job_form_fields",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    type: text("type").notNull(),
+    label: text("label").notNull(),
+    helpText: text("help_text"),
+    required: boolean("required").notNull().default(false),
+    options: jsonb("options").$type<{ choices?: string[] }>(),
+    mapsTo: text("maps_to"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("job_form_fields_job_idx").on(t.jobId, t.position),
+    check(
+      "job_form_fields_type_check",
+      inList("type", ["short_text", "long_text", "email", "phone", "url", "number", "single_select", "multi_select", "checkboxes", "yes_no", "date", "country", "years", "skills", "file", "consent", "section"]),
+    ),
+  ],
+);
+
+/** Reusable application forms (a list of field definitions). */
+export const formTemplates = hub.table(
+  "form_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    fields: jsonb("fields").$type<Record<string, unknown>[]>().notNull(),
+    createdBy: text("created_by"),
+    shared: boolean("shared").notNull().default(true),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("form_templates_name_idx").on(t.name)],
+);
+
+/** One application per person per job. Applying again updates the answers on the same row. */
+export const applications = hub.table(
+  "applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("new"),
+    answers: jsonb("answers").$type<Record<string, unknown>>().notNull(),
+    source: jsonb("source").$type<{ utm?: Record<string, string>; ref?: string; invited?: boolean }>(),
+    ipHash: text("ip_hash"),
+    internalNote: text("internal_note"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("applications_job_expert_key").on(t.jobId, t.expertId),
+    index("applications_job_idx").on(t.jobId, t.status),
+    index("applications_expert_idx").on(t.expertId),
+    check("applications_status_check", inList("status", ["new", "reviewing", "shortlisted", "submitted_to_partner", "rejected", "hired", "withdrawn"])),
+  ],
+);
+
+/** Experts the team invited to a job from its Matches tab. */
+export const jobInvites = hub.table(
+  "job_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    emailed: boolean("emailed").notNull().default(false),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique("job_invites_job_expert_key").on(t.jobId, t.expertId)],
+);
+
+/** Public form submissions, for rate limits. Only hashes of the IP or email, kept for a day. */
+export const submitAttempts = hub.table(
+  "submit_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    keyHash: text("key_hash").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("submit_attempts_key_idx").on(t.kind, t.keyHash, t.createdAt)],
+);
+
+/** "Delete my data" (and similar) requests from the expert portal, for the team to act on. */
+export const dataRequests = hub.table(
+  "data_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "set null" }),
+    kind: text("kind").notNull().default("delete"),
+    status: text("status").notNull().default("open"),
+    note: text("note"),
+    handledBy: text("handled_by"),
+    handledAt: ts("handled_at"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("data_requests_status_idx").on(t.status, t.createdAt),
+    check("data_requests_kind_check", inList("kind", ["delete", "export"])),
+    check("data_requests_status_check", inList("status", ["open", "done"])),
+  ],
+);
+
+/**
+ * Auth.js email sign-in links (only used when the email provider is configured). Auth.js stores
+ * a hash of the token, never the link itself. Users are identified by email; there is no user table.
+ */
+export const authVerificationTokens = hub.table(
+  "auth_verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: ts("expires").notNull(),
+  },
+  (t) => [uniqueIndex("auth_verification_tokens_key").on(t.identifier, t.token)],
+);
+
 export type Expert = typeof experts.$inferSelect;
 export type NewExpert = typeof experts.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
@@ -367,3 +553,7 @@ export type ExpertFile = Omit<typeof expertFiles.$inferSelect, "data">;
 export type Activity = typeof activity.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type SavedView = typeof savedViews.$inferSelect;
+export type Job = typeof jobs.$inferSelect;
+export type JobFormField = typeof jobFormFields.$inferSelect;
+export type FormTemplate = typeof formTemplates.$inferSelect;
+export type Application = typeof applications.$inferSelect;
