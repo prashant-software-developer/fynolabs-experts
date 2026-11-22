@@ -1,0 +1,207 @@
+import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
+import type { DB } from "@/db/client";
+import { activity, erasures, expertFiles, expertSources, experts, placements, submissions, type Expert } from "@/db/schema";
+import type { ExpertFilters } from "@/lib/filters";
+import { emailHash } from "@/lib/normalize";
+import { logActivity } from "./activity";
+
+/** Columns for lists (everything except the search vector). */
+export const expertListColumns = {
+  id: experts.id,
+  fullName: experts.fullName,
+  email: experts.email,
+  phone: experts.phone,
+  country: experts.country,
+  region: experts.region,
+  city: experts.city,
+  linkedinUrl: experts.linkedinUrl,
+  headline: experts.headline,
+  domain: experts.domain,
+  skills: experts.skills,
+  languages: experts.languages,
+  yearsExperience: experts.yearsExperience,
+  highestDegree: experts.highestDegree,
+  fieldOfStudy: experts.fieldOfStudy,
+  university: experts.university,
+  hoursPerWeek: experts.hoursPerWeek,
+  availability: experts.availability,
+  rateExpectationUsd: experts.rateExpectationUsd,
+  status: experts.status,
+  cvConsent: experts.cvConsent,
+  cvConsentAt: experts.cvConsentAt,
+  cvRef: experts.cvRef,
+  notes: experts.notes,
+  tags: experts.tags,
+  primarySource: experts.primarySource,
+  createdAt: experts.createdAt,
+  updatedAt: experts.updatedAt,
+  lastContactedAt: experts.lastContactedAt,
+};
+export type ExpertRow = Omit<Expert, "search">;
+
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+/** "pyth numer" -> "pyth:* & numer:*" (prefix search on every word). */
+export function toTsQuery(q: string): string | null {
+  const words = (q.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 8);
+  return words.length ? words.map((w) => `${w}:*`).join(" & ") : null;
+}
+
+export function expertConditions(f: ExpertFilters): SQL[] {
+  const conds: SQL[] = [];
+  if (f.q) {
+    const tsq = toTsQuery(f.q);
+    const like = `%${escapeLike(f.q)}%`;
+    const parts: SQL[] = [ilike(experts.email, like), ilike(experts.linkedinUrl, like), ilike(experts.phone, like)];
+    if (tsq) parts.unshift(sql`${experts.search} @@ to_tsquery('simple', ${tsq})`);
+    conds.push(or(...parts)!);
+  }
+  if (f.domain) conds.push(eq(experts.domain, f.domain));
+  if (f.skills.length) conds.push(arrayContains(experts.skills, f.skills));
+  if (f.country) conds.push(eq(experts.country, f.country));
+  if (f.status) conds.push(eq(experts.status, f.status));
+  if (f.availability) conds.push(eq(experts.availability, f.availability));
+  if (f.consent) conds.push(eq(experts.cvConsent, f.consent));
+  if (f.tag) conds.push(arrayContains(experts.tags, [f.tag]));
+  if (f.minYears != null) conds.push(gte(experts.yearsExperience, f.minYears));
+  if (f.source) {
+    conds.push(
+      or(
+        eq(experts.primarySource, f.source),
+        sql`exists (select 1 from ${expertSources} where ${expertSources.expertId} = ${experts.id} and ${expertSources.source} = ${f.source})`,
+      )!,
+    );
+  }
+  return conds;
+}
+
+function orderFor(f: ExpertFilters): SQL[] {
+  const d = f.dir === "asc" ? asc : desc;
+  switch (f.sort) {
+    case "name":
+      return [d(experts.fullName)];
+    case "domain":
+      return [d(experts.domain), asc(experts.fullName)];
+    case "country":
+      return [d(experts.country), asc(experts.fullName)];
+    case "years":
+      return [f.dir === "asc" ? sql`${experts.yearsExperience} asc nulls first` : sql`${experts.yearsExperience} desc nulls last`, asc(experts.fullName)];
+    case "status":
+      return [d(experts.status), asc(experts.fullName)];
+    case "created":
+      return [d(experts.createdAt)];
+    case "rank": {
+      const tsq = toTsQuery(f.q);
+      if (tsq) return [sql`ts_rank(${experts.search}, to_tsquery('simple', ${tsq})) desc`, asc(experts.fullName)];
+      return [desc(experts.updatedAt)];
+    }
+    default:
+      return [d(experts.updatedAt)];
+  }
+}
+
+export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number }) {
+  const where = and(...expertConditions(f));
+  const [rows, [{ n }]] = await Promise.all([
+    db.select(expertListColumns).from(experts).where(where).orderBy(...orderFor(f)).limit(opts.limit).offset(opts.offset),
+    db.select({ n: count() }).from(experts).where(where),
+  ]);
+  return { rows: rows as ExpertRow[], total: Number(n) };
+}
+
+export async function getExpert(db: DB, id: string): Promise<ExpertRow | null> {
+  if (!isUuid(id)) return null;
+  const [row] = await db.select(expertListColumns).from(experts).where(eq(experts.id, id)).limit(1);
+  return (row as ExpertRow) ?? null;
+}
+
+export function isUuid(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+export type Duplicate = { id: string; fullName: string; matchedBy: "email" | "linkedin" };
+
+export async function findDuplicates(db: DB, input: { email: string | null; linkedinUrl: string | null; excludeId?: string }): Promise<Duplicate[]> {
+  const parts: SQL[] = [];
+  if (input.email) parts.push(eq(experts.email, input.email));
+  if (input.linkedinUrl) parts.push(sql`lower(${experts.linkedinUrl}) = ${input.linkedinUrl.toLowerCase()}`);
+  if (!parts.length) return [];
+  const conds = [or(...parts)!];
+  if (input.excludeId) conds.push(ne(experts.id, input.excludeId));
+  const rows = await db
+    .select({ id: experts.id, fullName: experts.fullName, email: experts.email, linkedinUrl: experts.linkedinUrl })
+    .from(experts)
+    .where(and(...conds))
+    .limit(5);
+  return rows.map((r) => ({
+    id: r.id,
+    fullName: r.fullName,
+    matchedBy: input.email && r.email === input.email ? "email" : "linkedin",
+  }));
+}
+
+export async function distinctValues(db: DB) {
+  const [countries, domains] = await Promise.all([
+    db.selectDistinct({ v: experts.country }).from(experts).where(sql`${experts.country} is not null`).orderBy(asc(experts.country)),
+    db.selectDistinct({ v: experts.domain }).from(experts).where(sql`${experts.domain} is not null`).orderBy(asc(experts.domain)),
+  ]);
+  return { countries: countries.map((r) => r.v!).filter(Boolean), domains: domains.map((r) => r.v!).filter(Boolean) };
+}
+
+export async function sourcesFor(db: DB, expertId: string) {
+  return db.select().from(expertSources).where(eq(expertSources.expertId, expertId)).orderBy(asc(expertSources.createdAt));
+}
+
+export async function filesFor(db: DB, expertId: string) {
+  return db
+    .select({
+      id: expertFiles.id,
+      expertId: expertFiles.expertId,
+      kind: expertFiles.kind,
+      filename: expertFiles.filename,
+      mime: expertFiles.mime,
+      size: expertFiles.size,
+      storage: expertFiles.storage,
+      externalRef: expertFiles.externalRef,
+      createdBy: expertFiles.createdBy,
+      createdAt: expertFiles.createdAt,
+    })
+    .from(expertFiles)
+    .where(eq(expertFiles.expertId, expertId))
+    .orderBy(desc(expertFiles.createdAt));
+}
+
+/** The file cv_ref points at ("jobs:file:12" or "upload:<uuid>"), else the newest file. */
+export function currentCv<T extends { id: string; storage: string; externalRef: string | null }>(cvRef: string | null, files: T[]): T | null {
+  if (cvRef?.startsWith("upload:")) {
+    const f = files.find((x) => x.id === cvRef.slice("upload:".length));
+    if (f) return f;
+  }
+  if (cvRef?.startsWith("jobs:file:")) {
+    const f = files.find((x) => x.storage === "jobs_db" && x.externalRef === cvRef.slice("jobs:file:".length));
+    if (f) return f;
+  }
+  return files[0] ?? null;
+}
+
+/**
+ * Delete on request: removes the expert, their sources, files and submissions (cascade), keeps
+ * placement money rows without the person, deletes their activity rows and remembers only a hash
+ * of the email so imports don't bring them back.
+ */
+export async function deleteExpertOnRequest(db: DB, id: string, actor: string): Promise<boolean> {
+  const e = await getExpert(db, id);
+  if (!e) return false;
+  const srcs = await sourcesFor(db, id);
+  const rows: { emailSha256: string | null; source: string | null; externalId: string | null; actorEmail: string }[] = [];
+  if (e.email) rows.push({ emailSha256: emailHash(e.email), source: null, externalId: null, actorEmail: actor });
+  for (const s of srcs) rows.push({ emailSha256: null, source: s.source, externalId: s.externalId, actorEmail: actor });
+  if (rows.length) await db.insert(erasures).values(rows);
+  await db.update(placements).set({ notes: null, updatedAt: new Date() }).where(eq(placements.expertId, id));
+  await db.delete(activity).where(and(eq(activity.entityType, "expert"), eq(activity.entityId, id)));
+  const subIds = (await db.select({ id: submissions.id }).from(submissions).where(eq(submissions.expertId, id))).map((r) => r.id);
+  if (subIds.length) await db.delete(activity).where(and(eq(activity.entityType, "submission"), inArray(activity.entityId, subIds)));
+  await db.delete(experts).where(eq(experts.id, id));
+  await logActivity(db, { entityType: "expert", entityId: id, actor, action: "deleted_on_request", detail: { sources: srcs.map((s) => s.source) } });
+  return true;
+}
