@@ -46,10 +46,10 @@ npm run dev
 
 The old team addresses (`/experts`, `/requirements`, ...) redirect to `/admin/...`.
 
-That's it. Without any settings the app:
+That's it. With `DATABASE_URL` in `.env.local` it uses the real database (expert-hub) instead, under a red "Real database (production)" bar, and the demo-only parts below are off. Without any settings the app:
 
 - uses a **built-in demo database** (PGlite, a real Postgres that runs inside Node) stored in `.data/`, created and filled with **made-up demo data** the first time (experts, requirements, five jobs with forms and a few applications);
-- **signs you in automatically** as `dev@xocket.sh` (a yellow bar says so). This only happens with `npm run dev` and no Google keys. It can't happen on the live site.
+- **signs you in automatically** as `dev@xocket.sh` (a yellow bar says so). This only happens with `npm run dev` and no Google keys, and only on this computer (the dev server listens on 127.0.0.1). It can't happen on the live site.
 - makes you an **admin** (set `DEV_ROLE=recruiter`, `pod_lead`, `finance` or `viewer` in `.env.local` to start as another role). A **Preview as** menu in the top bar switches roles on the fly, so you can check what each role sees. It also has **Expert (portal)**, which signs you in as the demo expert `demo.expert@example.com`, and **Signed out (guest)**, to see the public site as a visitor. All of this exists only in local development, never in a production build.
 
 To start the demo data over: stop the app, run `npm run db:seed -- --reset`, start it again.
@@ -105,7 +105,8 @@ The rules live in one small file, `src/lib/match/score.ts`, with tests in `tests
 
 ## How imports work
 
-- **Jobs site** (button on `/admin/import`, or `npm run import:jobs`): reads the old jobs site's tables (**read only**), from `JOBS_DATABASE_URL` when set (the shared Engine project; CVs are then copied into the hub) or else from the same database. New people are added. For people already in the hub (same jobs-site user, same email, or same LinkedIn URL) it **only fills fields that are empty**, so anything the team typed is never overwritten. The newest jobs-site CV becomes the current CV unless someone uploaded one here; the file itself stays on the jobs site and is streamed when you download it.
+- **Everything from Engine** (`Copy experts from Engine.bat`, or `npm run copy:engine`): every expert record from the old jobs site's database (Engine), **read only**, into the hub's database: an exact replica of the expert tables in the schema `engine_copy` (login secrets left out), plus every person, profile detail, CV and tax form, the old jobs (internal) and every application with its screening answers mapped into `hub`. Dry run first; safe to run again any time until jobs.fynolabs.si moves over. Details: [DEPLOY.md step 3](docs/DEPLOY.md#3-copy-everything-from-engine), [DATA.md](docs/DATA.md#the-copy-from-engine-npm-run-copyengine).
+- **Jobs site, people only** (button on `/admin/import`, or `npm run import:jobs`): reads the old jobs site's tables (**read only**), from `JOBS_DATABASE_URL` when set (the shared Engine project; CVs are then copied into the hub) or else from the same database. New people are added. For people already in the hub (same jobs-site user, same email, or same LinkedIn URL) it **only fills fields that are empty**, so anything the team typed is never overwritten. The newest jobs-site CV becomes the current CV unless someone uploaded one here; the file itself stays on the jobs site and is streamed when you download it.
 - **Spreadsheets** (Talent register, admin CRM export): save as CSV, upload, look at the preview (new / fill in / no change / **review** for possible duplicates / skip), then import. Same "fill empty fields only" rule. The register has no email column, so a name that matches an existing expert is held back for review, unless you tick "treat an exact name match as the same person".
 - Running an import twice never creates duplicates: `expert_sources` remembers where everyone came from.
 
@@ -118,7 +119,7 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 - Rates are internal. They never appear in exports to partners.
 - Someone asks to be removed (by email, or **Delete my data** in the portal): profile → Edit → *Delete on request* (admins only).
 - Experts only ever see their own record, and never internal notes, status, rates or partners.
-- Viewers see masked email and phone; only admins and finance see money.
+- Viewers see masked email and phone; only admins and finance see money, including the payout details and tax forms copied from the jobs site.
 
 ## Commands
 
@@ -132,14 +133,15 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 | `npm run db:migrate` | Applies migrations to `DATABASE_URL` (the app's own Neon project). Refuses unless `CONFIRM_DB=yes` is also set, prints which database it targets, and refuses anything outside the `hub` schema. |
 | `npm run db:seed` | Local demo data only (refuses if `DATABASE_URL` is set). `-- --reset` starts over. |
 | `npm run import:jobs` | Jobs-site sync from the command line (`-- --dry-run` to preview). Reads `JOBS_DATABASE_URL` when set. Needs `CONFIRM_DB=yes` against a real database. |
+| `npm run copy:engine` | Copy every expert record from Engine into `DATABASE_URL` (`-- --dry-run` first; `--source-env <file> --source-key <KEY>` or `ENGINE_DATABASE_URL` for Engine). Needs `CONFIRM_DB=yes`. On Windows: `Copy experts from Engine.bat`. |
 
 Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.example).
 
 ## How it's built
 
 - **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
-- **Postgres** through **Drizzle ORM**. Production: the app's own Neon project (`@neondatabase/serverless`, HTTP driver). Local and tests: PGlite.
-- All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the import.
+- **Postgres** through **Drizzle ORM**. Production: the app's own Neon project, "expert-hub" (`@neondatabase/serverless`, HTTP driver), the one real environment: `npm run dev` uses it too when `DATABASE_URL` is set (red bar). Local and tests: PGlite.
+- All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the copy and the import; the copy keeps its replica in the schema **`engine_copy`**, outside `hub`.
 - **Auth.js v5** (next-auth): Google for everyone, plus email links (Resend) and LinkedIn when configured. The middleware is the first gate (public / signed-in / team); every page, action and download checks the account and role again on the server (`src/lib/auth/`).
 - **Vitest** for tests.
 
@@ -149,12 +151,12 @@ src/components/     forms, tables, jobs/ (form fields, apply form, public job), 
 src/db/             schema.ts (hub tables), client.ts, local/ (PGlite, demo data, demo jobs, jobs-site stub)
 src/lib/forms/      job-fields (field types, validation, template, profile mapping), job, expert, requirement forms
 src/lib/match/      dictionary, paste reader, scorer
-src/lib/import/     register / CRM / jobs-site mapping and the import planner
+src/lib/import/     register / CRM / jobs-site mapping, the import planner, engine/ (the copy from Engine: read-only source, replica, hub mapping, report)
 src/lib/auth/       accounts (team / expert / guest, access rules), roles, permissions (can / masking), the guard
 src/lib/server/     database work (experts, requirements, jobs, applications, portal, submissions, placements, CVs, imports, team, saved views)
 drizzle/            SQL migrations (hub schema only)
-scripts/            migrate, seed, import-jobs
-tests/              unit tests + PGlite integration test
+scripts/            migrate, seed, import-jobs, copy-from-engine
+tests/              unit tests + PGlite integration tests (fixtures/: the jobs site's real schema for the copy)
 docs/               DEPLOY.md, DATA.md, LOCAL_TESTING.md, PRODUCT_PLAN.md, screenshots/
 ```
 

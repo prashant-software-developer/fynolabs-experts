@@ -1,10 +1,10 @@
 // Writes an import plan to the database (creates and fills empty fields), with activity rows.
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { erasures, expertSources, experts } from "@/db/schema";
+import { activity, erasures, expertSources, experts } from "@/db/schema";
 import { buildIndex, type ExistingExpert, type ImportPlan, type PlanRow } from "@/lib/import/plan";
 import type { ExpertDraft } from "@/lib/import/types";
-import { logActivity, type Actor } from "./activity";
+import { actorEmail, actorRole, type Actor } from "./activity";
 
 export async function loadIndex(db: DB) {
   const [rows, srcs, erased] = await Promise.all([
@@ -64,6 +64,13 @@ export async function applyPlan(db: DB, plan: ImportPlan, actor: Actor): Promise
   const result: ApplyResult = { created: 0, updated: 0, unchanged: 0, skipped: 0, duplicates: 0, expertByRow: new Map() };
   const now = new Date();
   const touchedSources: { source: string; externalId: string }[] = [];
+  // Activity rows and new source links are written in batches at the end: one round trip per
+  // created expert instead of three (the copy from Engine creates thousands over the internet).
+  const log: (typeof activity.$inferInsert)[] = [];
+  const links = new Map<string, { expertId: string; source: string; externalId: string }>();
+  const note = (entityId: string, action: string, detail: Record<string, unknown>) =>
+    log.push({ entityType: "expert", entityId, actorEmail: actorEmail(actor), actorRole: actorRole(actor), action, detail });
+  const link = (expertId: string, r: PlanRow) => links.set(`${r.source}|${r.externalId}`, { expertId, source: r.source, externalId: r.externalId! });
 
   for (const r of plan.rows) {
     if (r.action === "skip") {
@@ -88,8 +95,8 @@ export async function applyPlan(db: DB, plan: ImportPlan, actor: Actor): Promise
       }
       result.created++;
       result.expertByRow.set(r.row, row.id);
-      if (r.externalId) await upsertSource(db, row.id, r, now);
-      await logActivity(db, { entityType: "expert", entityId: row.id, actor, action: "created", detail: { source: r.source } });
+      if (r.externalId) link(row.id, r);
+      note(row.id, "created", { source: r.source });
       continue;
     }
     // update / unchanged
@@ -100,15 +107,26 @@ export async function applyPlan(db: DB, plan: ImportPlan, actor: Actor): Promise
       if (patch.cvConsent) patch.cvConsentAt = now;
       await db.update(experts).set({ ...patch, updatedAt: now }).where(eq(experts.id, id));
       result.updated++;
-      await logActivity(db, { entityType: "expert", entityId: id, actor, action: "updated_by_import", detail: { source: r.source, fields: Object.keys(r.patch) } });
+      note(id, "updated_by_import", { source: r.source, fields: Object.keys(r.patch) });
     } else {
       result.unchanged++;
     }
     if (r.externalId) {
       if (r.matchedBy === "source") touchedSources.push({ source: r.source, externalId: r.externalId });
-      else await upsertSource(db, id, r, now);
+      else link(id, r);
     }
   }
+  const all = [...links.values()];
+  for (let i = 0; i < all.length; i += 500) {
+    await db
+      .insert(expertSources)
+      .values(all.slice(i, i + 500).map((l) => ({ ...l, lastSyncedAt: now })))
+      .onConflictDoUpdate({
+        target: [expertSources.source, expertSources.externalId],
+        set: { lastSyncedAt: now, expertId: sql`${expertSources.expertId}` },
+      });
+  }
+  for (let i = 0; i < log.length; i += 500) await db.insert(activity).values(log.slice(i, i + 500));
   // One statement to refresh "last synced" on everyone we matched by an earlier import.
   for (const source of new Set(touchedSources.map((t) => t.source))) {
     const ids = touchedSources.filter((t) => t.source === source).map((t) => t.externalId);
@@ -120,16 +138,6 @@ export async function applyPlan(db: DB, plan: ImportPlan, actor: Actor): Promise
     }
   }
   return result;
-}
-
-async function upsertSource(db: DB, expertId: string, r: PlanRow, now: Date) {
-  await db
-    .insert(expertSources)
-    .values({ expertId, source: r.source, externalId: r.externalId!, lastSyncedAt: now })
-    .onConflictDoUpdate({
-      target: [expertSources.source, expertSources.externalId],
-      set: { lastSyncedAt: now, expertId: sql`${expertSources.expertId}` },
-    });
 }
 
 export { buildIndex };

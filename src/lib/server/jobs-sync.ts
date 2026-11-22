@@ -14,7 +14,7 @@ import type { DB } from "@/db/client";
 import { rowsOf } from "@/db/client";
 import { experts } from "@/db/schema";
 import { mapJobsUser, type JobsApplication, type JobsUser } from "@/lib/import/jobs";
-import { planImport } from "@/lib/import/plan";
+import { planImport, type ExistingIndex, type ImportPlan } from "@/lib/import/plan";
 import { logActivity, type Actor } from "./activity";
 import { copyJobsCv, linkJobsCv } from "./cv";
 import { applyPlan, loadIndex } from "./import-apply";
@@ -39,29 +39,73 @@ export async function jobsTablesExist(db: DB): Promise<boolean> {
   return Boolean(rowsOf<{ ok: boolean }>(res)[0]?.ok);
 }
 
-async function readJobsSite(db: DB) {
-  const users = rowsOf<JobsUser>(
-    await db.execute(sql`
-      select id, email, name, country, city, state, linkedin_url, headline, domain, years_experience,
-             highest_degree, field_of_study, university, hours_per_week, phone, skills, languages
-      from public.xdl_jobs_users
-      where coalesce(is_admin, false) = false
-      order by id`),
+/** Where the jobs-site tables are: public.xdl_jobs_* on the jobs site, or engine_copy.* (the copy in the hub's database). */
+export type JobsLocation = { schema: string; prefix: string };
+export const JOBS_SITE_TABLES: JobsLocation = { schema: "public", prefix: "xdl_jobs_" };
+
+/** Runs one SELECT and returns its rows. Lets the same reads run on a DB handle or a read-only source connection. */
+export type Reader = (text: string) => Promise<Record<string, unknown>[]>;
+export const dbReader =
+  (db: DB): Reader =>
+  async (text) =>
+    rowsOf<Record<string, unknown>>(await db.execute(sql.raw(text)));
+
+const ident = (s: string) => {
+  if (!/^[a-z_][a-z0-9_]*$/.test(s)) throw new Error(`Not a plain identifier: ${s}`);
+  return `"${s}"`;
+};
+export const tableName = (loc: JobsLocation, table: string) => `${ident(loc.schema)}.${ident(`${loc.prefix}${table}`)}`;
+
+export async function columnsOf(read: Reader, loc: JobsLocation, table: string): Promise<Set<string>> {
+  const rows = await read(
+    `select column_name::text as c from information_schema.columns where table_schema = '${loc.schema}' and table_name = '${loc.prefix}${table}'`,
   );
-  const files = rowsOf<{ id: number; user_id: number; filename: string; mime: string; size: number; created_at: string | Date }>(
-    await db.execute(sql`
+  return new Set(rows.map((r) => String(r.c)));
+}
+
+/** "a, b, null as c" for the wanted columns, so older copies of a table (missing columns) still read. */
+function selectList(wanted: readonly string[], present: Set<string>, alias = ""): string {
+  return wanted.map((c) => (present.has(c) ? `${alias}${ident(c)}` : `null as ${ident(c)}`)).join(", ");
+}
+
+const USER_COLUMNS = [
+  "id", "email", "name", "country", "city", "state", "linkedin_url", "headline", "domain", "years_experience",
+  "highest_degree", "field_of_study", "university", "hours_per_week", "phone", "skills", "languages",
+  "crm_stage", "crm_tags", "crm_note",
+] as const;
+
+export type JobsSiteData = {
+  users: JobsUser[];
+  files: { id: number; user_id: number; filename: string; mime: string; size: number; created_at: string | Date }[];
+  apps: JobsApplication[];
+};
+
+/** The people (staff accounts left out), their newest resume and their applications. SELECTs only. */
+export async function readJobsSite(read: Reader, loc: JobsLocation = JOBS_SITE_TABLES): Promise<JobsSiteData> {
+  const userCols = await columnsOf(read, loc, "users");
+  const staff = userCols.has("is_admin") ? "coalesce(is_admin, false) = false" : "true";
+  const users = (await read(`select ${selectList(USER_COLUMNS, userCols)} from ${tableName(loc, "users")} where ${staff} order by id`)) as unknown as JobsUser[];
+  const files = (await read(`
       select distinct on (user_id) id, user_id, filename, mime, size, created_at
-      from public.xdl_jobs_files
+      from ${tableName(loc, "files")}
       where kind = 'resume'
-      order by user_id, created_at desc, id desc`),
-  );
-  const apps = rowsOf<JobsApplication>(
-    await db.execute(sql`
+      order by user_id, created_at desc, id desc`)) as unknown as JobsSiteData["files"];
+  const apps = (await read(`
       select a.user_id, a.status, a.rate_expectation, a.created_at, j.title
-      from public.xdl_jobs_applications a
-      join public.xdl_jobs_jobs j on j.id = a.job_id`),
-  );
+      from ${tableName(loc, "applications")} a
+      join ${tableName(loc, "jobs")} j on j.id = a.job_id`)) as unknown as JobsApplication[];
   return { users, files, apps };
+}
+
+export type PeoplePlan = { plan: ImportPlan; users: number };
+
+/** Plans the people part of a jobs-site import (no writes): who is new, who gets empty fields filled, who is held. */
+export async function planJobsPeople(db: DB, data: Pick<JobsSiteData, "users" | "apps">, index?: ExistingIndex): Promise<PeoplePlan> {
+  const appsByUser = new Map<number, JobsApplication[]>();
+  for (const a of data.apps) appsByUser.set(Number(a.user_id), [...(appsByUser.get(Number(a.user_id)) ?? []), a]);
+  const drafts = data.users.map((u) => mapJobsUser({ ...u, id: Number(u.id) }, appsByUser.get(Number(u.id)) ?? []));
+  const plan = planImport(drafts, index ?? (await loadIndex(db)));
+  return { plan, users: data.users.length };
 }
 
 /**
@@ -79,11 +123,8 @@ export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolea
         : "The jobs-site tables (public.xdl_jobs_users) aren't in this database. If they're in another one (the old Engine), set JOBS_DATABASE_URL and run npm run import:jobs.",
     };
   }
-  const { users, files, apps } = await readJobsSite(source);
-  const appsByUser = new Map<number, JobsApplication[]>();
-  for (const a of apps) appsByUser.set(Number(a.user_id), [...(appsByUser.get(Number(a.user_id)) ?? []), a]);
-  const drafts = users.map((u) => mapJobsUser({ ...u, id: Number(u.id) }, appsByUser.get(Number(u.id)) ?? []));
-  const plan = planImport(drafts, await loadIndex(db));
+  const { users, files, apps } = await readJobsSite(dbReader(source));
+  const { plan } = await planJobsPeople(db, { users, apps });
   const notes = plan.rows.filter((r) => r.action === "duplicate").map((r) => `Jobs user ${r.row}: ${r.reason}`);
 
   if (opts.dryRun) {

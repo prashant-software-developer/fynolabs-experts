@@ -2,9 +2,11 @@
 
 ## Where it lives
 
-Production uses Expert Hub's **own Neon project** ("expert-hub", `DATABASE_URL`). All of its tables are in the Postgres schema **`hub`**; migrations only create or change objects there (a check in `npm run db:migrate` and in the tests refuses anything else).
+Production uses Expert Hub's **own Neon project** ("expert-hub", `DATABASE_URL`; its main branch is the one real environment). The app's tables are in the Postgres schema **`hub`**; migrations only create or change objects there (a check in `npm run db:migrate` and in the tests refuses anything else).
 
-The old jobs site's tables (`public.xdl_jobs_*`) are in the shared **Engine** project. They are only **read**, by the optional import (`JOBS_DATABASE_URL`, with a database user that can only `SELECT`). Without `JOBS_DATABASE_URL` the import reads them from `DATABASE_URL` (the old shared setup, and local development).
+The same database also holds **`engine_copy`**: an exact replica of the old jobs site's expert tables, written only by `npm run copy:engine` (see below). The app never shows it; it is there so nothing from the jobs site is lost, and so the copy can be re-run.
+
+The old jobs site's own tables (`public.xdl_jobs_*`) stay in the shared **Engine** project, which jobs.fynolabs.si keeps writing to until it moves over. The hub only ever **reads** them: `npm run copy:engine` (every expert record) and the older `npm run import:jobs` (people and CVs).
 
 ## Tables in `hub` (written by this app)
 
@@ -12,7 +14,10 @@ The old jobs site's tables (`public.xdl_jobs_*`) are in the shared **Engine** pr
 |---|---|
 | `experts` | One row per person: name, email (lower case, unique), phone, country, state/region, city, LinkedIn URL, headline, domain, skills, languages, years of experience, highest degree, field of study, university, hours per week, availability, rate expectation (internal), status, CV consent (+ when recorded), pointer to the current CV, internal notes, tags, where they first came from, dates. Plus a search index built from name, skills, headline, domain, field of study and university. |
 | `expert_sources` | Where each person came from (jobs site user id, register key, CRM id). Stops duplicates on re-import. |
-| `expert_files` | CVs (`kind = cv`) and other files from job forms (`kind = attachment`). Uploaded here, through a job form or the portal, or copied by the jobs-site import: the file itself (`data`, up to 10 MB). Jobs-site CVs read from the same database: only a pointer (the bytes stay on the jobs site). |
+| `expert_files` | CVs (`kind = cv`), other files from job forms (`kind = attachment`) and tax forms from the jobs site (`kind = tax`, **money-only**: listed and downloadable only for admins and finance, never in a roster or CV ZIP). Uploaded here, through a job form or the portal, or copied from the jobs site: the file itself (`data`, up to 10 MB; `external_ref = jobs:<id>` for copies). Jobs-site CVs read from the same database: only a pointer (the bytes stay on the jobs site). |
+| `expert_details` | Copied from the jobs site: experience and education (as lists), "no experience yet", address lines and postal code (contact details: masked roles never get them), work authorisation, referral code, who referred them, last sign-in on the jobs site. `updated_by = 'jobs-site import'` while only the copy has written the row: the copy then keeps it in step with the jobs site. |
+| `expert_payout` | **Money-only** (admins and finance): payout method and handle, tax form type and date, as the expert entered them on the jobs site. A separate table, so no list, search or export of experts can include it. |
+| `legacy_map` | What each copied jobs-site row became (users → experts, files → expert_files, jobs → jobs, applications → applications), and the values the copy last wrote to fields the team can change. Makes re-runs idempotent. |
 | `partners` | Companies that send requirements. |
 | `requirements` | What a partner asked for: skills, domains, degree, countries allowed / blocked (US states as `US-CA`), minimum years, slots, deadline, internal rate note, status. |
 | `submissions` | One row per person per requirement: status, match score when shortlisted, when submitted, note for the partner, internal note. |
@@ -24,7 +29,7 @@ The old jobs site's tables (`public.xdl_jobs_*`) are in the shared **Engine** pr
 | `jobs` | Job openings. **Public:** slug, title, company label (default "AI data partner (via FynoLabs)"), summary, description, location, type, fields, skills, countries, minimum years, openings, closing date, posted date. **Internal:** partner, requirement, internal rate note, status/visibility history, who created it. |
 | `job_form_fields` | Each job's application form: position, type, question, help text, required, choices, and which profile field it fills (`maps_to`). |
 | `form_templates` | Reusable forms (the questions only, no answers). |
-| `applications` | One row per person per job: status, every answer (keyed by question), where they came from (utm tags, invite), a keyed hash of the IP address (never the address), the team's internal note. Applying again updates the same row. |
+| `applications` | One row per person per job: status, every answer (keyed by question), where they came from (utm tags, invite, or the jobs site with its application id and status there), a keyed hash of the IP address (never the address), the team's internal note, and (jobs-site applications) the rate they asked for, **money-only** (`rate_expectation_usd`, never in the applicant list or CSV). Applying again updates the same row. |
 | `job_invites` | Who the team invited to a job from its Matches tab, and whether an email went out. |
 | `submit_attempts` | Rate limits for the public form: keyed hashes of IP addresses and emails with a time, kept about a day. |
 | `data_requests` | "Delete my data" requests from the expert portal, for an admin to act on. |
@@ -47,19 +52,29 @@ Public pages (job board, job pages, Google Jobs data, share links) only ever get
 
 Anyone who signs in and isn't team is an expert. Their account is linked to the `experts` row with the same email (created on first sign-in, unless that email was deleted on request). Every portal page, action and download takes the expert id from the signed-in session, never from the request, so experts only ever see or change their own record (tests: `tests/jobs.test.ts`, `tests/portal.test.ts`). They see and edit their own profile fields, CV and consent, their applications with an expert-facing status, and can download their data (JSON) or ask for deletion. They never see internal notes, tags, status, rates, sources, partners or the team's application notes. `/admin` and every admin API answer 403 to experts.
 
-## Read from the jobs site (`public`, read only)
+## The copy from Engine (`npm run copy:engine`)
 
-| Table | Columns read | Why |
+How to run it: [DEPLOY.md, step 3](DEPLOY.md#3-copy-everything-from-engine). Engine is only read (one read-only snapshot, SELECT statements only); everything is written to expert-hub.
+
+### `engine_copy` (the replica)
+
+One table per jobs-site table, named without the `xdl_jobs_` prefix, created from Engine's catalog with the same column names, types, NOT NULLs and primary key: `users`, `applications`, `screenings`, `jobs`, `saved`, `files`, `interviews`, `assessments`, `assessment_attempts`, `notifications`, `projects`, `project_members`, `timesheets`, `earnings`, `payouts`, `commissions`. New columns in Engine are added automatically. Rows are upserted on the key: changed rows are updated, rows that disappear from Engine are **kept** (and counted in the report), nothing is deleted except the rows of people deleted on request.
+
+Left out: on `users`, the login secrets (`password_hash`, `pw_version`, `failed_logins`, `locked_until`, `otp_sent_at`, `reset_sent_at`, `phone_code_hash`, `phone_code_exp`, `phone_code_tries`, `phone_sends_day`, `phone_sends_count`, `phone_sent_at`); on `files`, the bytes (`data`): they are stored once, in `hub.expert_files`, and `engine_copy.files.hub_file_id` says which. Never read at all: `neon_auth.*`, `xdl_jobs_settings`, `xdl_jobs_admin_invites`, `xdl_jobs_bundle*`, `xdl_crm_*` and Engine's non-expert tables.
+
+### Into `hub`
+
+| Jobs site | Hub | Notes |
 |---|---|---|
-| `xdl_jobs_users` | id, email, name, country, city, state, linkedin_url, headline, domain, years_experience, highest_degree, field_of_study, university, hours_per_week, phone, skills, languages, is_admin (to skip staff) | Create / fill in experts. |
-| `xdl_jobs_files` | id, user_id, kind, filename, mime, size, created_at; `data` only when someone downloads that CV or exports a CV ZIP | Link and stream CVs. |
-| `xdl_jobs_applications` | user_id, job_id, status, rate_expectation, created_at | Starting status, rate expectation, applications shown on the profile. |
-| `xdl_jobs_jobs` | id, title | Job titles on the profile. |
-| `xdl_jobs_screenings` | not read in v1 | (Allowed later.) |
+| `users` (not staff: `is_admin`) | `experts` | Found by earlier copy (source id), lower-case email, then LinkedIn URL. **Only empty fields are filled**; team edits are never overwritten. Name, email, phone, country, state (region), city, LinkedIn, headline, domain, skills, languages, years, degree, field of study, university, hours; rate expectation from the newest application (money). Status from the CRM stage (contacted → screening, vetted / shortlisted → bench, placed → placed, not a fit → inactive, do not contact → do not contact) or the furthest application, whichever is further. CRM tags → tags (plus `jobs-site`); CRM note → notes ("Jobs site note: ..."). Added date = jobs-site sign-up. CV consent stays as the import rules say (unknown until they say yes). Same LinkedIn but another email: held for review, not imported. Same email in different capitals: one expert. People deleted on request: skipped. |
+| `users` | `expert_details` | experience, education, no_experience, address_line1/2, postal_code, work_authorized(_at), ref_code → referral code, referred_by → referred-by expert, last_login_at. |
+| `users` | `expert_payout` | payout_method, payout_handle, tax_form_type, tax_form_at. Money-only. |
+| `files` (resume / tax) | `expert_files` (cv / tax) | Bytes copied in batches (25 files or 20 MB at most), skipped when already copied, so a stopped run carries on. The newest resume becomes the current CV unless someone uploaded one in the hub. |
+| `jobs` | `jobs` | Visibility **internal** (never on the public board, no public page), status kept (open / paused / closed), slug kept (`-2`, `-3`... if the hub already uses it), employment type, field, location and regions; requirements and hours appended to the description; pay only in the internal rate note (money). Each gets the old site's application form (why, hours, start, CV, both screenings) so answers show on the Applicants tab. |
+| `applications` + `screenings` | `applications` | One per job and expert. Status: submitted → new, reviewing → reviewing, client interview / selected / assessment → submitted to partner, accepted → hired, rejected, withdrawn. Answers: name, email, why, hours per week, start, CV (the copied file), screening 1 and 2 (question and answer). admin_note → internal note; rate_expectation → money-only. Status and note follow the jobs site only until the team changes them in the hub. |
+| `saved`, `notifications`, `interviews`, `assessments`, `assessment_attempts`, `projects`, `project_members`, `timesheets`, `earnings`, `payouts`, `commissions` | (replica only) | Kept in `engine_copy`; most are empty today. |
 
-Never read: passwords, login data, phone verification codes, address lines, postal codes, payout methods and handles, tax forms, identity checks, earnings, commissions, payouts, referral codes, interview transcripts. Never written: anything in `public`.
-
-The recommended database user for the import (see DEPLOY.md, `expert_hub_reader`) has only `SELECT` on those tables, so the database itself blocks writes.
+The report (`logs/copy-engine-*.txt`) holds counts only: no names, no emails.
 
 ## Roles: who sees what
 
@@ -79,6 +94,8 @@ Set in **Settings → Team & access** (admins), enforced on the server for every
 | Roster export (CSV + CV ZIP) | yes | yes | no | no | no |
 | Placements | all, edit | read | their partners only (hours, tasks, status) | all, create and edit | read |
 | Money (rate expectation, placement rates, earned, revenue, totals) | yes | no | no | yes | no |
+| Payout method and handle, tax forms (from the jobs site) | yes | no | no | yes | no |
+| Address lines (from the jobs site) | yes | yes | yes | yes | no |
 | Placements CSV export | yes | no | no | yes | no |
 | Imports | jobs sync + CSV | CSV (with preview) | no | no | no |
 | Partners: add, edit | yes | no | no | no | no |
@@ -102,7 +119,7 @@ A team member whose access is turned off can still pass Google sign-in but gets 
 
 ## Rules for personal data
 
-1. **Never store** government ID numbers (passport, Aadhaar, PAN, SSN...), dates of birth, bank or payout details, or home addresses. Not in fields, not in notes, not in tags. If someone pastes one, delete it.
+1. **Never store** government ID numbers (passport, Aadhaar, PAN, SSN...), dates of birth or bank account numbers. Not in fields, not in notes, not in tags. If someone pastes one, delete it. The only payout details and addresses in the hub are the ones experts entered on the old jobs site, copied as they are (23 Nov 2026 decision: every expert record moves over): payout method and handle and tax forms are money-only (admins and finance); address lines are hidden from roles with masked contact details. Never type new ones in by hand.
 2. **CVs and details go to a partner only with consent.** Record the expert's answer on their profile (CV consent: yes / no). The app blocks moving a submission to *Submitted* (or later) without consent = yes, and the roster CSV and CV ZIP include only people with consent = yes.
 3. **Rates are internal.** Rate expectations, rate notes and placement money never appear in partner exports, public job posts or messages to other experts.
 4. **Partner names stay internal.** Don't put them in public material.
@@ -114,7 +131,7 @@ A team member whose access is turned off can still pass Google sign-in but gets 
 When someone asks us to remove their data (by email, or with **Delete my data** in the portal, which records a request: the dashboard and their profile then show a notice):
 
 1. An admin opens their profile → **Edit** → *Delete on request* → types `DELETE` → **Delete permanently**.
-   This removes their profile, sources, uploaded CVs, job applications and answers, invites, submissions and their activity history. Placement money rows stay (for accounting) without the person. Only a one-way hash of their email (and their jobs-site / register ids) is kept, so future imports skip them.
+   This removes their profile, sources, uploaded CVs and tax forms, details, payout details, job applications and answers, invites, submissions and their activity history, and their rows in `engine_copy` (the copy of the jobs site) and `legacy_map`. Placement money rows stay (for accounting) without the person. Only a one-way hash of their email (and their jobs-site / register ids) is kept, so future imports and copies skip them.
 2. Remove them from the other places too: the jobs site (jobs.fynolabs.si admin), the admin CRM (fynolabs.si/admin), the Talent register spreadsheet, the ops sheet, local CV folders and any exported CSVs.
 3. Reply to the person confirming it's done (within 30 days of the request).
 

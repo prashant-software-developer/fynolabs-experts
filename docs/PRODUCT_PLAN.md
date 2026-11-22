@@ -1,6 +1,6 @@
 # Expert Hub: product plan
 
-Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built). One platform and one central database of experts, in the app's own Neon project ("expert-hub"; the old jobs site's tables in the shared "Engine" are read once by the import). It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
+Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built). One platform and one central database of experts, in the app's own Neon project ("expert-hub", the one real environment; every expert record in the shared "Engine" is copied in by `npm run copy:engine`, re-run until the jobs site moves over). It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
 
 ## The flow we are building
 
@@ -85,7 +85,7 @@ Generous white space, short labels, and tables over side-by-side columns.
 | 1 | Internal hub: expert database, requirement matching, partner submissions, placements and pay | Built 22 Nov (v1), with roles, saved views and the FynoLabs design system |
 | 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply) | Built 23 Nov: jobs with a form builder (17 field types, templates), public applications merged into the expert record, Matches and invites, job board with Google Jobs data, expert sign-up, onboarding, profile, data export and deletion requests; team app moved to `/admin`. Screening assessments and the longer job pipeline move to Phase 3 |
 | 3 | Admin parity with the Lovable admin (accounts, leads, calendar, campaigns, platforms and referrals, projects, fees and earnings, analytics), plus views, saved views, custom fields and automations | After 2 |
-| 4 | Cut-over: migrate data from the Lovable admin and the jobs site, move the jobs.fynolabs.si domain, retire the old admin | Last |
+| 4 | Cut-over: migrate data from the Lovable admin and the jobs site, move the jobs.fynolabs.si domain, retire the old admin | Started 23 Nov: one environment (expert-hub's main branch); `npm run copy:engine` copies every expert record from Engine (replica in `engine_copy`, everything mapped into `hub`) and is re-run until jobs.fynolabs.si moves over. Lovable admin data, the domain move and retiring the old admin still to do |
 
 ## Decisions needed
 

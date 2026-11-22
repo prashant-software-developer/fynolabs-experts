@@ -52,5 +52,13 @@ export function isDevBypass(): boolean {
 
 export const DEV_USER = { email: "dev@xocket.sh", name: "Dev (local bypass)" } as const;
 
+/** "localhost:3000", "127.0.0.1:3000", "[::1]:3000": the dev sign-in bypass only answers these. */
+export function isLocalHost(host: string | null | undefined): boolean {
+  const h = (host ?? "").trim().toLowerCase();
+  if (!h) return false;
+  const name = h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.replace(/:\d+$/, "");
+  return name === "localhost" || name === "127.0.0.1" || name === "[::1]";
+}
+
 /** Local development only: "Preview as -> Expert (portal)" signs in as this demo expert (seeded, fictional). */
 export const DEV_EXPERT = { email: "demo.expert@example.com", name: "Riya Portaldemo" } as const;

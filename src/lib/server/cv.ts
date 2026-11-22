@@ -20,13 +20,14 @@ export const CV_TYPES: Record<string, string> = {
 
 export type CvFile = { filename: string; mime: string; bytes: Uint8Array };
 
-type FileRow = { id: string; expertId: string; storage: string; externalRef: string | null; filename: string; mime: string };
+type FileRow = { id: string; expertId: string; kind: string; storage: string; externalRef: string | null; filename: string; mime: string };
 
 export async function getFileRow(db: DB, fileId: string): Promise<FileRow | null> {
   const [row] = await db
     .select({
       id: expertFiles.id,
       expertId: expertFiles.expertId,
+      kind: expertFiles.kind,
       storage: expertFiles.storage,
       externalRef: expertFiles.externalRef,
       filename: expertFiles.filename,

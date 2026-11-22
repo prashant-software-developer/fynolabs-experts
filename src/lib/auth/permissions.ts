@@ -262,6 +262,18 @@ export function visibleExpert<T extends { email?: string | null; phone?: string 
   return out;
 }
 
+// ---------- Files ----------
+
+/** Tax forms (copied from the old jobs site) are money: admins and finance. CVs and attachments: CV download rights. */
+export function fileDownloadAction(kind: string): Action {
+  return kind === "tax" ? "money.read" : "experts.cv_download";
+}
+
+/** The files a role may even see listed (tax forms only for money roles). */
+export function visibleFiles<T extends { kind: string }>(role: Role, files: T[]): T[] {
+  return canSeeMoney(role) ? files : files.filter((f) => f.kind !== "tax");
+}
+
 // ---------- Saved views ----------
 
 export function canSeeView(user: { email: string }, view: { ownerEmail: string; shared: boolean }): boolean {

@@ -32,3 +32,11 @@ describe("who may sign in", () => {
     expect(devBypassFor({ NODE_ENV: "development", VERCEL: "1" })).toBe(false);
   });
 });
+
+describe("dev sign-in bypass is localhost-only", () => {
+  it("accepts only this computer's addresses", async () => {
+    const { isLocalHost } = await import("@/lib/auth/allow");
+    for (const h of ["localhost:3000", "127.0.0.1:3000", "[::1]:3000", "LOCALHOST"]) expect(isLocalHost(h), h).toBe(true);
+    for (const h of ["192.168.1.20:3000", "hub.fynolabs.si", "localhost.evil.example", "", null]) expect(isLocalHost(h), String(h)).toBe(false);
+  });
+});

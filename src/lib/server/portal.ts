@@ -3,7 +3,7 @@
 // so an expert can only ever read or change their own record. Tested in tests/portal.test.ts.
 import { and, desc, eq } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { applications, dataRequests, erasures, expertFiles, experts, jobs, type Expert } from "@/db/schema";
+import { applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, experts, jobs, type Expert } from "@/db/schema";
 import { APPLICATION_STATUS_FOR_EXPERT, AVAILABILITY, DOMAINS, isOneOf, type ApplicationStatus } from "@/lib/constants";
 import { answerText, type Answer } from "@/lib/forms/job-fields";
 import { toCountryName } from "@/lib/countries";
@@ -234,11 +234,25 @@ export async function exportOwnData(db: DB, expertId: string) {
     }),
   );
   const { id: _id, cvRef: _cv, onboardingDone: _o, ...rest } = profile;
+  // What they gave the old jobs site (copied into the hub): their own details, payout and tax form included.
+  const [details] = await db.select().from(expertDetails).where(eq(expertDetails.expertId, expertId)).limit(1);
+  const [payout] = await db.select().from(expertPayout).where(eq(expertPayout.expertId, expertId)).limit(1);
+  const fromJobsSite = details || payout
+    ? {
+        experience: details?.experience ?? [],
+        education: details?.education ?? [],
+        address: details ? { line1: details.addressLine1, line2: details.addressLine2, postalCode: details.postalCode } : null,
+        workAuthorized: details?.workAuthorized ?? null,
+        referralCode: details?.referralCode ?? null,
+        payout: payout ? { method: payout.payoutMethod, handle: payout.payoutHandle, taxForm: payout.taxFormType, taxFormAt: payout.taxFormAt } : null,
+      }
+    : null;
   await logActivity(db, { entityType: "expert", entityId: expertId, actor: PORTAL_ACTOR, action: "data_exported" });
   return {
     exportedAt: new Date().toISOString(),
     about: "Your details and applications held by FynoLabs. To ask for anything else we hold, or for deletion, write to hello@fynolabs.si.",
     profile: rest,
+    ...(fromJobsSite ? { fromJobsSite } : {}),
     files,
     applications: withAnswers,
   };

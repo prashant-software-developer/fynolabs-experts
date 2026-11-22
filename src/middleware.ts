@@ -5,7 +5,7 @@ import NextAuth from "next-auth";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { authConfig } from "@/auth.config";
 import { accessFor, isTeamByEnv, type Who } from "@/lib/auth/account";
-import { isDevBypass } from "@/lib/auth/allow";
+import { isDevBypass, isLocalHost } from "@/lib/auth/allow";
 import { DEV_PREVIEW_EXPERT, DEV_PREVIEW_GUEST, DEV_ROLE_COOKIE } from "@/lib/auth/roles";
 
 const { auth } = NextAuth(authConfig);
@@ -33,8 +33,12 @@ const guarded = auth((req) => {
 
 export default function middleware(req: NextRequest, ev: NextFetchEvent) {
   if (isDevBypass()) {
+    // The automatic dev sign-in is for this computer only (npm run dev also listens on 127.0.0.1 only).
+    if (!isLocalHost(req.headers.get("host"))) return new NextResponse("Local development only: open http://localhost:3000 on this computer.", { status: 403 });
     const preview = req.cookies.get(DEV_ROLE_COOKIE)?.value;
-    return decide(req, preview === DEV_PREVIEW_GUEST ? "guest" : preview === DEV_PREVIEW_EXPERT ? "expert" : "team");
+    // The demo expert preview only exists with the demo database (no DATABASE_URL).
+    const expert = preview === DEV_PREVIEW_EXPERT && !process.env.DATABASE_URL;
+    return decide(req, preview === DEV_PREVIEW_GUEST ? "guest" : expert ? "expert" : "team");
   }
   return (guarded as unknown as (r: NextRequest, e: NextFetchEvent) => Promise<Response>)(req, ev);
 }

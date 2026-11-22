@@ -1,6 +1,8 @@
 import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { activity, applications, dataRequests, erasures, expertFiles, expertSources, experts, placements, submissions, type Expert } from "@/db/schema";
+import { activity, applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, expertSources, experts, legacyMap, placements, submissions, type Expert, type ExpertDetails, type ExpertPayout } from "@/db/schema";
+import { canSeeContact, canSeeMoney, type Role } from "@/lib/auth/permissions";
+import { rowsOf } from "@/db/client";
 import { EXPERT_STATUSES } from "@/lib/constants";
 import type { ExpertFilters } from "@/lib/filters";
 import { emailHash } from "@/lib/normalize";
@@ -199,6 +201,34 @@ export async function filesFor(db: DB, expertId: string) {
     .orderBy(desc(expertFiles.createdAt));
 }
 
+/**
+ * Profile details copied from the old jobs site (experience, education, address, work authorisation,
+ * referral, last sign-in). The address lines are contact details: masked roles get null.
+ */
+export async function detailsFor(db: DB, expertId: string, role: Role): Promise<(ExpertDetails & { referredByName: string | null }) | null> {
+  const [row] = await db
+    .select({ d: expertDetails, referredByName: experts.fullName })
+    .from(expertDetails)
+    .leftJoin(experts, eq(experts.id, expertDetails.referredByExpertId))
+    .where(eq(expertDetails.expertId, expertId))
+    .limit(1);
+  if (!row) return null;
+  const d = { ...row.d, referredByName: row.referredByName ?? null };
+  if (!canSeeContact(role)) {
+    d.addressLine1 = null;
+    d.addressLine2 = null;
+    d.postalCode = null;
+  }
+  return d;
+}
+
+/** Money-only: payout method and handle, tax form. null for every role that can't see money. */
+export async function payoutFor(db: DB, expertId: string, role: Role): Promise<ExpertPayout | null> {
+  if (!canSeeMoney(role)) return null;
+  const [row] = await db.select().from(expertPayout).where(eq(expertPayout.expertId, expertId)).limit(1);
+  return row ?? null;
+}
+
 /** The file cv_ref points at ("jobs:file:12" or "upload:<uuid>"), else the newest file. */
 export function currentCv<T extends { id: string; storage: string; externalRef: string | null }>(cvRef: string | null, files: T[]): T | null {
   if (cvRef?.startsWith("upload:")) {
@@ -231,9 +261,38 @@ export async function deleteExpertOnRequest(db: DB, id: string, actor: Actor): P
   if (subIds.length) await db.delete(activity).where(and(eq(activity.entityType, "submission"), inArray(activity.entityId, subIds)));
   const appIds = (await db.select({ id: applications.id }).from(applications).where(eq(applications.expertId, id))).map((r) => r.id);
   if (appIds.length) await db.delete(activity).where(and(eq(activity.entityType, "application"), inArray(activity.entityId, appIds)));
+  await forgetCopiedRecords(db, id, srcs);
   // A "Delete my data" request from the portal is now done (the row keeps no link to the person).
   await db.update(dataRequests).set({ status: "done", handledBy: actorEmail(actor), handledAt: new Date() }).where(and(eq(dataRequests.expertId, id), eq(dataRequests.status, "open")));
   await db.delete(experts).where(eq(experts.id, id));
   await logActivity(db, { entityType: "expert", entityId: id, actor, action: "deleted_on_request", detail: { sources: srcs.map((s) => s.source) } });
   return true;
+}
+
+/**
+ * Part of delete on request: the copy of their jobs-site records (engine_copy, outside hub) and the
+ * links in hub.legacy_map go too. Later copies skip them (hub.erasures has their jobs-site id).
+ */
+async function forgetCopiedRecords(db: DB, expertId: string, srcs: { source: string; externalId: string }[]) {
+  const fileIds = (await db.select({ id: expertFiles.id }).from(expertFiles).where(eq(expertFiles.expertId, expertId))).map((r) => r.id);
+  const appIds = (await db.select({ id: applications.id }).from(applications).where(eq(applications.expertId, expertId))).map((r) => r.id);
+  const hubIds = [expertId, ...fileIds, ...appIds];
+  for (let i = 0; i < hubIds.length; i += 500) await db.delete(legacyMap).where(inArray(legacyMap.hubId, hubIds.slice(i, i + 500)));
+  const userIds = srcs.filter((s) => s.source === "jobs_site" && /^\d+$/.test(s.externalId)).map((s) => s.externalId);
+  if (!userIds.length) return;
+  const [has] = rowsOf<{ ok: boolean }>(await db.execute(sql`select to_regclass('engine_copy.users') is not null as ok`));
+  if (!has?.ok) return;
+  const ids = `{${userIds.join(",")}}`;
+  const tables = rowsOf<{ t: string; c: string }>(
+    await db.execute(sql`select table_name::text as t, column_name::text as c from information_schema.columns
+      where table_schema = 'engine_copy' and column_name in ('user_id', 'referrer_id', 'referred_id', 'application_id')`),
+  );
+  // Rows that hang off their applications first, then everything keyed by their user id, then the user.
+  for (const { t, c } of tables.filter((x) => x.c === "application_id")) {
+    await db.execute(sql.raw(`delete from engine_copy."${t}" where "${c}"::text in (select id::text from engine_copy.applications where user_id::text = any('${ids}'::text[]))`));
+  }
+  for (const { t, c } of tables.filter((x) => x.c !== "application_id")) {
+    await db.execute(sql.raw(`delete from engine_copy."${t}" where "${c}"::text = any('${ids}'::text[])`));
+  }
+  await db.execute(sql.raw(`delete from engine_copy.users where id::text = any('${ids}'::text[])`));
 }

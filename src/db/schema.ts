@@ -11,6 +11,7 @@ import {
   jsonb,
   numeric,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -127,8 +128,10 @@ export const expertSources = hub.table(
 );
 
 /**
- * CV files. storage = 'jobs_db': the bytes stay in the jobs site's table (public.xdl_jobs_files,
- * read only) and external_ref holds that file id. storage = 'upload': the bytes are in `data`.
+ * Files. kind: cv, attachment (other job-form uploads) or tax (tax forms copied from the old jobs
+ * site: money-only, admins and finance). storage = 'jobs_db': the bytes stay in the jobs site's
+ * table (public.xdl_jobs_files, read only) and external_ref holds that file id. storage = 'upload':
+ * the bytes are in `data` (external_ref "jobs:<id>" when copied from the jobs site).
  */
 export const expertFiles = hub.table(
   "expert_files",
@@ -150,7 +153,7 @@ export const expertFiles = hub.table(
   (t) => [
     index("expert_files_expert_idx").on(t.expertId, t.createdAt),
     check("expert_files_storage_check", inList("storage", ["jobs_db", "upload"])),
-    check("expert_files_kind_check", inList("kind", ["cv", "attachment"])),
+    check("expert_files_kind_check", inList("kind", ["cv", "attachment", "tax"])),
   ],
 );
 
@@ -465,7 +468,10 @@ export const applications = hub.table(
       .references(() => experts.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("new"),
     answers: jsonb("answers").$type<Record<string, unknown>>().notNull(),
-    source: jsonb("source").$type<{ utm?: Record<string, string>; ref?: string; invited?: boolean }>(),
+    source: jsonb("source").$type<{ utm?: Record<string, string>; ref?: string; invited?: boolean; jobsSite?: { applicationId: number; status: string } }>(),
+    // Money (admins and finance only): the rate the applicant asked for on the old jobs site.
+    // Never selected for applicant lists; read with applicationMoney().
+    rateExpectationUsd: integer("rate_expectation_usd"),
     ipHash: text("ip_hash"),
     internalNote: text("internal_note"),
     createdAt: ts("created_at").notNull().defaultNow(),
@@ -543,6 +549,70 @@ export const authVerificationTokens = hub.table(
   (t) => [uniqueIndex("auth_verification_tokens_key").on(t.identifier, t.token)],
 );
 
+export type ExperienceItem = { title: string | null; company: string | null; location?: string | null; start?: string | null; end?: string | null; current?: boolean; description?: string | null };
+export type EducationItem = { school: string | null; degree?: string | null; field?: string | null; start_year?: number | null; end_year?: number | null; grade?: string | null };
+
+/**
+ * More profile details, as the old jobs site kept them (copied by npm run copy:engine). Experience
+ * and education are visible to the team; the address lines are contact details (masked roles never
+ * see them). updated_by = 'jobs-site import' while only the copy has written the row: the copy then
+ * keeps it in step with the jobs site; once anyone else writes it, the copy only fills empty fields.
+ */
+export const expertDetails = hub.table("expert_details", {
+  expertId: uuid("expert_id")
+    .primaryKey()
+    .references(() => experts.id, { onDelete: "cascade" }),
+  experience: jsonb("experience").$type<ExperienceItem[]>().notNull().default(sql`'[]'::jsonb`),
+  education: jsonb("education").$type<EducationItem[]>().notNull().default(sql`'[]'::jsonb`),
+  noExperience: boolean("no_experience"),
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  postalCode: text("postal_code"),
+  workAuthorized: boolean("work_authorized"),
+  workAuthorizedAt: ts("work_authorized_at"),
+  referralCode: text("referral_code"),
+  referredByExpertId: uuid("referred_by_expert_id").references(() => experts.id, { onDelete: "set null" }),
+  lastLoginAt: ts("last_login_at"),
+  updatedBy: text("updated_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * Money-only (admins and finance): how an expert asked to be paid and their tax form, as entered on
+ * the old jobs site. Kept out of the experts table so no list, export or search can include it.
+ */
+export const expertPayout = hub.table("expert_payout", {
+  expertId: uuid("expert_id")
+    .primaryKey()
+    .references(() => experts.id, { onDelete: "cascade" }),
+  payoutMethod: text("payout_method"),
+  payoutHandle: text("payout_handle"),
+  taxFormType: text("tax_form_type"),
+  taxFormAt: ts("tax_form_at"),
+  updatedBy: text("updated_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * Which hub row each record copied from the old jobs site (Engine) became: users -> experts,
+ * files -> expert_files, jobs -> jobs, applications -> applications. Makes the copy idempotent.
+ * `written` holds the values the copy last wrote to fields the team can change, so a re-run only
+ * updates a field nobody has changed in the hub since.
+ */
+export const legacyMap = hub.table(
+  "legacy_map",
+  {
+    sourceTable: text("source_table").notNull(),
+    sourceId: text("source_id").notNull(),
+    hubTable: text("hub_table").notNull(),
+    hubId: uuid("hub_id").notNull(),
+    written: jsonb("written").$type<Record<string, unknown>>(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.sourceTable, t.sourceId] }), index("legacy_map_hub_idx").on(t.hubTable, t.hubId)],
+);
+
 export type Expert = typeof experts.$inferSelect;
 export type NewExpert = typeof experts.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
@@ -556,4 +626,6 @@ export type SavedView = typeof savedViews.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type JobFormField = typeof jobFormFields.$inferSelect;
 export type FormTemplate = typeof formTemplates.$inferSelect;
-export type Application = typeof applications.$inferSelect;
+export type Application = Omit<typeof applications.$inferSelect, "rateExpectationUsd">;
+export type ExpertDetails = typeof expertDetails.$inferSelect;
+export type ExpertPayout = typeof expertPayout.$inferSelect;

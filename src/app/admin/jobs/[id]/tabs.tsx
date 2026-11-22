@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, Copy, Download, ExternalLink, FileText, Hash, Mail, MessageCircle, Share2, Trash2 } from "lucide-react";
 import { getDb } from "@/db/client";
 import type { Job } from "@/db/schema";
-import { can, canSeeContact, maskEmail, maskPhone } from "@/lib/auth/permissions";
+import { can, canSeeContact, canSeeMoney, maskEmail, maskPhone } from "@/lib/auth/permissions";
 import type { CurrentUser } from "@/lib/auth/session";
 import { APPLICATION_STATUSES, JOB_VISIBILITY, label } from "@/lib/constants";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
@@ -22,7 +22,7 @@ import {
 import { placeLabel } from "@/lib/match/dictionary";
 import { WEIGHTS } from "@/lib/match/score";
 import { activityFor } from "@/lib/server/activity";
-import { getApplicant, listApplicants, sortedAnswers } from "@/lib/server/applications";
+import { applicationMoney, getApplicant, listApplicants, sortedAnswers } from "@/lib/server/applications";
 import { emailConfigured } from "@/lib/server/email";
 import { jobCandidates, listTemplates, publishProblems } from "@/lib/server/jobs";
 import { listPartners, listRequirements } from "@/lib/server/requirements";
@@ -465,6 +465,8 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
   const here = `${closeHref}${closeHref.includes("?") ? "&" : "?"}app=${a.app.id}`;
   const answers = sortedAnswers(fields, a.app);
   const src = a.app.source;
+  // Money (admins and finance): the rate asked for on the old jobs site. Never loaded for other roles.
+  const money = canSeeMoney(user.role) ? await applicationMoney(await getDb(), a.app.id) : null;
   return (
     <SlideOver
       title={a.expertName}
@@ -509,7 +511,8 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
           items={[
             { label: "Email", value: contact ? a.expertEmail : maskEmail(a.expertEmail) },
             { label: "Phone", value: contact ? a.expertPhone : maskPhone(a.expertPhone) },
-            { label: "Source", value: src?.invited ? "Invited from Matches" : [src?.utm?.source, src?.utm?.medium, src?.utm?.campaign].filter(Boolean).join(" / ") || src?.ref || "Direct" },
+            { label: "Source", value: src?.jobsSite ? `Old jobs site (application ${src.jobsSite.applicationId}, status there: ${src.jobsSite.status.replace(/_/g, " ")})` : src?.invited ? "Invited from Matches" : [src?.utm?.source, src?.utm?.medium, src?.utm?.campaign].filter(Boolean).join(" / ") || src?.ref || "Direct" },
+            ...(money?.rateExpectationUsd != null ? [{ label: "Rate asked (money)", value: `${money.rateExpectationUsd} USD` }] : []),
           ]}
         />
         <div className="space-y-1">

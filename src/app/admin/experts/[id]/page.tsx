@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download, FileText, Link2 } from "lucide-react";
 import { getDb } from "@/db/client";
-import { can, canSeeContact, canSeeMoney, partnerScope, visibleExpert } from "@/lib/auth/permissions";
+import { can, canSeeContact, canSeeMoney, fileDownloadAction, partnerScope, visibleExpert, visibleFiles } from "@/lib/auth/permissions";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
 import { CV_CONSENT, label } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";
@@ -10,7 +10,7 @@ import { bytes, fmtDate, fmtDateTime } from "@/lib/format";
 import { valuesFromExpert } from "@/lib/forms/expert";
 import { formatMoney, computeMoney } from "@/lib/money";
 import { activityFor } from "@/lib/server/activity";
-import { currentCv, filesFor, getExpert, sourcesFor, type ExpertRow } from "@/lib/server/experts";
+import { currentCv, detailsFor, filesFor, getExpert, payoutFor, sourcesFor, type ExpertRow } from "@/lib/server/experts";
 import { jobsApplicationsFor } from "@/lib/server/jobs-sync";
 import { applicationsOf } from "@/lib/server/applications";
 import { openDeletionRequest } from "@/lib/server/portal";
@@ -28,7 +28,7 @@ import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Field, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
-import { PageHeader, Section, Stack } from "@/components/ui/layout";
+import { DefinitionList, PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { addSelectedToRequirement, appendNote, deleteExpert, recordConsent, uploadCv } from "../actions";
@@ -121,16 +121,20 @@ function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
 
 async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
   const db = await getDb();
-  const [files, sources, apps, hubApps, deletion, portal] = await Promise.all([
+  const [allFiles, sources, apps, hubApps, deletion, portal, details, payout] = await Promise.all([
     filesFor(db, e.id),
     sourcesFor(db, e.id),
     jobsApplicationsFor(db, e.id),
     applicationsOf(db, e.id),
     openDeletionRequest(db, e.id),
     db.select({ joined: experts.portalJoinedAt }).from(experts).where(eq(experts.id, e.id)).limit(1),
+    detailsFor(db, e.id, user.role),
+    payoutFor(db, e.id, user.role),
   ]);
+  // Tax forms are money: only admins and finance see them listed.
+  const files = visibleFiles(user.role, allFiles);
   const cv = currentCv(e.cvRef, files.filter((f) => f.kind === "cv"));
-  const canDownload = can(user.role, "experts.cv_download");
+  const canDownloadKind = (kind: string) => can(user.role, fileDownloadAction(kind));
   const joined = portal[0]?.joined ?? null;
   return (
     <Stack>
@@ -154,11 +158,12 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
                     <span className="truncate text-foreground">{f.filename}</span>
                     {cv?.id === f.id ? <StatusBadge value="active" prefix="Current ·" /> : null}
                     {f.kind === "attachment" ? <span className="text-xs text-muted-foreground">attachment</span> : null}
+                    {f.kind === "tax" ? <span className="text-xs text-muted-foreground">tax form (money: admins and finance)</span> : null}
                     <span className="text-xs text-muted-foreground/70">
-                      {bytes(f.size)} · {f.storage === "jobs_db" ? "from jobs site" : f.createdBy === "job-form" ? "from a job application" : f.createdBy === "expert-portal" ? "uploaded by the expert" : "uploaded"} · {fmtDate(f.createdAt)}
+                      {bytes(f.size)} · {f.storage === "jobs_db" || f.externalRef?.startsWith("jobs:") ? "from jobs site" : f.createdBy === "job-form" ? "from a job application" : f.createdBy === "expert-portal" ? "uploaded by the expert" : "uploaded"} · {fmtDate(f.createdAt)}
                     </span>
                   </div>
-                  {canDownload ? (
+                  {canDownloadKind(f.kind) ? (
                     <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
                       <Download className="h-3.5 w-3.5" /> Download
                     </a>
@@ -177,6 +182,20 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
           ) : null}
         </div>
       </Section>
+
+      {details ? <JobsSiteDetails d={details} contact={canSeeContact(user.role)} /> : null}
+
+      {payout ? (
+        <Section title="Payout and tax" description="Money: only admins and finance see this. As the expert entered it on the old jobs site.">
+          <DefinitionList
+            items={[
+              { label: "Payout method", value: payout.payoutMethod },
+              { label: "Payout handle", value: payout.payoutHandle },
+              { label: "Tax form", value: [payout.taxFormType, payout.taxFormAt ? `sent ${fmtDate(payout.taxFormAt)}` : null].filter(Boolean).join(", ") || null },
+            ]}
+          />
+        </Section>
+      ) : null}
 
       <Section title="Notes" description="Internal only. Newest first.">
         <div className="space-y-4">
@@ -265,6 +284,54 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
         ) : null}
       </Section>
     </Stack>
+  );
+}
+
+type Details = NonNullable<Awaited<ReturnType<typeof detailsFor>>>;
+/** Experience and education are JSON typed by people on the old site: show only plain text and numbers. */
+const txt = (v: unknown): string | null => (typeof v === "string" ? v.trim() || null : typeof v === "number" ? String(v) : null);
+
+/** Experience, education and the other details the old jobs site kept (copied by npm run copy:engine). */
+function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
+  const address = [d.addressLine1, d.addressLine2, d.postalCode].filter(Boolean).join(", ");
+  const facts = [
+    { label: "Work authorisation", value: d.workAuthorized == null ? null : `${d.workAuthorized ? "Yes" : "No"}${d.workAuthorizedAt ? ` (${fmtDate(d.workAuthorizedAt)})` : ""}` },
+    { label: "Referral code", value: d.referralCode },
+    { label: "Referred by", value: d.referredByExpertId ? <Link href={`/admin/experts/${d.referredByExpertId}`} className="text-primary hover:underline">{d.referredByName ?? "Another expert"}</Link> : null },
+    { label: "Last signed in (jobs site)", value: d.lastLoginAt ? fmtDateTime(d.lastLoginAt) : null },
+    ...(contact ? [{ label: "Address", value: address || null }] : []),
+  ].filter((x) => x.value != null && x.value !== "");
+  if (!Array.isArray(d.experience) || !Array.isArray(d.education)) return null;
+  if (!d.experience.length && !d.education.length && !facts.length && !d.noExperience) return null;
+  return (
+    <Section title="Experience and education" description="As the expert entered it on the old jobs site.">
+      <div className="space-y-6">
+        {d.experience.length ? (
+          <ul className="space-y-3">
+            {d.experience.map((x, i) => (
+              <li key={i} className="text-sm">
+                <div className="font-medium text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
+                <div className="text-xs text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
+                {txt(x.description) ? <p className="mt-1 whitespace-pre-line text-foreground/80">{txt(x.description)}</p> : null}
+              </li>
+            ))}
+          </ul>
+        ) : d.noExperience ? (
+          <p className="text-sm text-muted-foreground">No work experience yet (said so on the jobs site).</p>
+        ) : null}
+        {d.education.length ? (
+          <ul className="space-y-2">
+            {d.education.map((x, i) => (
+              <li key={i} className="text-sm">
+                <div className="font-medium text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
+                <div className="text-xs text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {facts.length ? <DefinitionList items={facts} /> : null}
+      </div>
+    </Section>
   );
 }
 

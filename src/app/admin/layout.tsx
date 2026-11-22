@@ -12,11 +12,18 @@ export const metadata: Metadata = { title: { default: "Expert Hub", template: "%
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const access: NavAccess = { import: can(user.role, "imports.csv"), team: can(user.role, "team.manage") };
+  // `npm run dev` with DATABASE_URL set: the one real database. Said loudly, in red.
+  const realDbInDev = process.env.NODE_ENV === "development" && !isLocalDb();
   return (
     <div className="min-h-screen bg-background lg:flex">
       <Sidebar access={access} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {user.devBypass ? (
+        {realDbInDev ? (
+          <div role="alert" className="border-b border-danger/30 bg-danger px-6 py-2 text-center text-xs font-medium text-white">
+            Real database (production): every change here is live.
+            {user.devBypass ? ` Signed in automatically as ${user.email} (local development, this computer only). Previewing as ${ROLE_LABELS[user.role]}.` : null}
+          </div>
+        ) : user.devBypass ? (
           <div className="border-b border-warning/20 bg-warning-soft px-6 py-1.5 text-center text-xs text-warning">
             Local development: signed in automatically as {user.email} (no Google keys set). This never happens in production.
             {isLocalDb() ? " Using the local demo database." : null} Previewing as {ROLE_LABELS[user.role]}.
@@ -42,7 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="inline-flex h-5 items-center rounded-full border border-border bg-secondary px-2 text-[11px] font-medium text-foreground/80" title={`Your role: ${ROLE_LABELS[user.role]}`}>
                 {ROLE_LABELS[user.role]}
               </span>
-              {user.devBypass ? <DevRoleSwitcher current={user.role} /> : null}
+              {user.devBypass ? <DevRoleSwitcher current={user.role} realDb={!isLocalDb()} /> : null}
               {!user.devBypass ? (
                 <form
                   action={async () => {

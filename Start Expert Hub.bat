@@ -21,7 +21,14 @@ if not exist node_modules (
   )
 )
 echo.
-echo Starting Expert Hub: admin at http://localhost:3000/admin, job board at http://localhost:3000 (demo data, signed in as dev@xocket.sh).
+node -e "try{process.loadEnvFile('.env.local')}catch{};process.exit((process.env.DATABASE_URL||'').trim()?0:1)"
+if errorlevel 1 (
+  echo Starting Expert Hub with the DEMO database ^(made-up data, signed in as dev@xocket.sh^).
+) else (
+  echo Starting Expert Hub with the REAL database ^(production^): every change is live.
+  echo A red bar in the app says so. To go back to the demo data, remove the DATABASE_URL line from .env.local.
+)
+echo Admin at http://localhost:3000/admin, job board at http://localhost:3000 ^(this computer only^).
 echo Keep this window open while you use the app. Close it to stop.
 start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000/admin"
 call npm run dev

@@ -1,8 +1,8 @@
 // npm run db:migrate: applies drizzle/*.sql to DATABASE_URL. Only ever touches the `hub` schema.
 // Refuses unless DATABASE_URL is set AND CONFIRM_DB=yes, and refuses any migration that reaches
-// outside `hub` (the Engine database is shared with other apps).
+// outside `hub` (the guard in src/lib/migration-guard.ts).
 import { loadEnv, requireConfirm } from "./_env";
-import { checkMigrationsFolder } from "../src/lib/migration-guard";
+import { MigrationGuardError, migrateNeon } from "../src/lib/server/migrate";
 
 loadEnv();
 
@@ -12,23 +12,16 @@ async function main() {
     process.exit(1);
   }
   const url = requireConfirm("Migrations");
-  const problems = checkMigrationsFolder();
-  if (problems.length) {
-    console.error("Refusing: these statements reach outside the hub schema:");
-    for (const p of problems) console.error(`  ${p.file}: ${p.reason}\n    ${p.statement}`);
-    process.exit(1);
-  }
-  const { Pool, neonConfig } = await import("@neondatabase/serverless");
-  const { drizzle } = await import("drizzle-orm/neon-serverless");
-  const { migrate } = await import("drizzle-orm/neon-serverless/migrator");
-  neonConfig.webSocketConstructor = globalThis.WebSocket;
-  const pool = new Pool({ connectionString: url });
   try {
-    await migrate(drizzle({ client: pool }), { migrationsFolder: "drizzle", migrationsSchema: "hub", migrationsTable: "__drizzle_migrations" });
-    console.log("Migrations applied (schema hub).");
-  } finally {
-    await pool.end();
+    await migrateNeon(url);
+  } catch (e) {
+    if (e instanceof MigrationGuardError) {
+      console.error(e.message);
+      process.exit(1);
+    }
+    throw e;
   }
+  console.log("Migrations applied (schema hub).");
 }
 
 main().catch((err) => {

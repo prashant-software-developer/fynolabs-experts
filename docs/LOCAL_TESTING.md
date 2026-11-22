@@ -8,6 +8,17 @@
 
 The app uses its own demo database in `.data/`, filled with fictional people (example.com emails), five demo jobs and a few applications. Nothing touches the real database. To start the demo data over, stop the app and double-click **`Reset demo data.bat`**.
 
+### One environment: the real database
+
+There is one real environment: the Neon project **expert-hub** (its main branch). Once `.env.local` has its `DATABASE_URL` (see [DEPLOY.md](DEPLOY.md), steps 1 and 3), `Start Expert Hub.bat` and `npm run dev` use **that real database**, not the demo one:
+
+- a **red bar** at the top says "Real database (production)": every change is live;
+- the automatic sign-in as dev@xocket.sh still works, but only on this computer (the app listens on 127.0.0.1, and anything else gets "Local development only");
+- **Preview as → Expert (portal)** isn't offered (the demo expert is fictional and would be added to the real data);
+- `Reset demo data.bat` (`npm run db:seed`) refuses to run.
+
+Bring the experts across first with **`Copy experts from Engine.bat`** (it also creates the tables), and run it again whenever you want the jobs site's newest applicants. To go back to the demo data, remove the `DATABASE_URL` line from `.env.local` and start the app again.
+
 **Preview as** (top bar in the admin, yellow bar on the public site) switches between the team roles, **Expert (portal)** (the demo expert, demo.expert@example.com) and **Signed out (guest)**.
 
 Your local settings are in `.env.local`. It's git-ignored, so it's never committed.

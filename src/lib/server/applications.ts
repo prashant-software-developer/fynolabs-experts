@@ -230,8 +230,22 @@ export async function submitApplication(
 
 // ---------- The team's side ----------
 
+/** Every application column except money (rate_expectation_usd: applicationMoney(), admins and finance only). */
+export const applicationColumns = {
+  id: applications.id,
+  jobId: applications.jobId,
+  expertId: applications.expertId,
+  status: applications.status,
+  answers: applications.answers,
+  source: applications.source,
+  ipHash: applications.ipHash,
+  internalNote: applications.internalNote,
+  createdAt: applications.createdAt,
+  updatedAt: applications.updatedAt,
+};
+
 export const applicantColumns = {
-  app: applications,
+  app: applicationColumns,
   expertName: experts.fullName,
   expertEmail: experts.email,
   expertPhone: experts.phone,
@@ -288,6 +302,13 @@ export async function saveApplicationNote(db: DB, actor: Actor, id: string, note
   await db.update(applications).set({ internalNote: note, updatedAt: new Date() }).where(eq(applications.id, id));
   await logActivity(db, { entityType: "application", entityId: id, actor, action: "note_changed", detail: { jobId: row.jobId } });
   return { ok: true as const, changed: true, jobId: row.jobId };
+}
+
+/** Money: the rate the applicant asked for (jobs-site applications). Call only for roles that see money. */
+export async function applicationMoney(db: DB, id: string): Promise<{ rateExpectationUsd: number | null } | null> {
+  if (!isUuid(id)) return null;
+  const [row] = await db.select({ rateExpectationUsd: applications.rateExpectationUsd }).from(applications).where(eq(applications.id, id)).limit(1);
+  return row ?? null;
 }
 
 /** All applications of one expert (the admin profile and the portal). */

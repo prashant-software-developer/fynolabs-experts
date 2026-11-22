@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/db/client";
+import { getDb, isLocalDb } from "@/db/client";
 import { partners, teamMembers } from "@/db/schema";
 import { accountKind } from "./account";
 import { DEV_EXPERT, DEV_USER, isDevBypass } from "./allow";
@@ -48,7 +48,8 @@ async function loadAccount(): Promise<Account | null> {
     const jar = await cookies();
     const preview = jar.get(DEV_ROLE_COOKIE)?.value;
     if (preview === DEV_PREVIEW_GUEST) return null;
-    if (preview === DEV_PREVIEW_EXPERT) return { kind: "expert", email: DEV_EXPERT.email, name: DEV_EXPERT.name, devPreview: true };
+    // The demo expert only exists in the demo database: on the real one an old preview cookie is ignored.
+    if (preview === DEV_PREVIEW_EXPERT && isLocalDb()) return { kind: "expert", email: DEV_EXPERT.email, name: DEV_EXPERT.name, devPreview: true };
     const member = await memberFor(DEV_USER.email);
     const r = resolveRole({ email: DEV_USER.email, member, dev: { cookieRole: preview, partnerIds: await devPartnerScope(member) } });
     if (r.status !== "ok") return null;

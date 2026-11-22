@@ -26,9 +26,10 @@ export async function rosterFor(db: DB, requirementId: string) {
     .innerJoin(experts, eq(experts.id, submissions.expertId))
     .where(eq(submissions.requirementId, requirementId));
   const items: RosterInput[] = [];
-  const fileByExpert = new Map<string, { id: string; filename: string; storage: string; externalRef: string | null; expertId: string; mime: string }>();
+  const fileByExpert = new Map<string, { id: string; filename: string; kind: string; storage: string; externalRef: string | null; expertId: string; mime: string }>();
   for (const r of rows) {
-    const files = await filesFor(db, r.expert.id);
+    // CVs only: never an attachment or a tax form, even as the fallback.
+    const files = (await filesFor(db, r.expert.id)).filter((f) => f.kind === "cv");
     const cv = currentCv(r.expert.cvRef, files);
     if (cv) fileByExpert.set(r.expert.id, cv);
     items.push({
