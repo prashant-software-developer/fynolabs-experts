@@ -6,7 +6,7 @@ import { detectKind, type ImportKind } from "@/lib/import/detect";
 import { planImport, type ImportPlan, type PlanAction } from "@/lib/import/plan";
 import { mapRegisterRow } from "@/lib/import/register";
 import type { DraftRow } from "@/lib/import/types";
-import { logActivity } from "./activity";
+import { logActivity, type Actor } from "./activity";
 import { applyPlan, loadIndex } from "./import-apply";
 
 export const MAX_IMPORT_ROWS = 5000;
@@ -58,7 +58,7 @@ export async function previewCsv(db: DB, text: string, kind: ImportKind | "auto"
   };
 }
 
-export async function applyCsv(db: DB, text: string, kind: ImportKind | "auto", nameMatch: "review" | "merge", actor: string) {
+export async function applyCsv(db: DB, text: string, kind: ImportKind | "auto", nameMatch: "review" | "merge", actor: Actor) {
   const p = await plan(db, text, kind, nameMatch);
   if ("error" in p) return { ok: false as const, message: p.error };
   const res = await applyPlan(db, p.plan, actor);

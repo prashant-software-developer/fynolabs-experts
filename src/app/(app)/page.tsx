@@ -3,6 +3,8 @@ import { getDb } from "@/db/client";
 import { EXPERT_STATUSES, label } from "@/lib/constants";
 import { daysSince, fmtDate } from "@/lib/format";
 import { computeMoney, formatMoney } from "@/lib/money";
+import { can, canSeeMoney, partnerScope } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { dashboardData } from "@/lib/server/dashboard";
 import { ActivityList } from "@/components/activity-list";
 import { StatusBadge } from "@/components/ui/badge";
@@ -14,8 +16,10 @@ import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
+  const user = await requireUser();
   const db = await getDb();
-  const d = await dashboardData(db);
+  const d = await dashboardData(db, { partnerScope: partnerScope(user) });
+  const money = canSeeMoney(user.role);
   const openSlots = d.openReqs.reduce((n, r) => n + Math.max(0, r.slots - r.filled), 0);
   const maxStatus = Math.max(1, ...Object.values(d.byStatus));
   return (
@@ -25,10 +29,14 @@ export default async function DashboardPage() {
         subtitle="Where every expert and every partner request stands today."
         actions={
           <>
-            <ButtonLink href="/experts">Find experts</ButtonLink>
-            <ButtonLink href="/requirements/new" variant="primary">
-              New requirement
+            <ButtonLink href="/experts" variant={can(user.role, "requirements.create") ? "secondary" : "primary"}>
+              Find experts
             </ButtonLink>
+            {can(user.role, "requirements.create") ? (
+              <ButtonLink href="/requirements/new" variant="primary">
+                New requirement
+              </ButtonLink>
+            ) : null}
           </>
         }
       />
@@ -90,7 +98,7 @@ export default async function DashboardPage() {
               </TBody>
             </Table>
           ) : (
-            <EmptyState title="No open requirements" action={<ButtonLink href="/requirements/new">Add one</ButtonLink>} />
+            <EmptyState title="No open requirements" action={can(user.role, "requirements.create") ? <ButtonLink href="/requirements/new" size="sm">Add one</ButtonLink> : undefined} />
           )}
         </Section>
 
@@ -142,8 +150,9 @@ export default async function DashboardPage() {
                 <Th>Project</Th>
                 <Th>Partner</Th>
                 <Th>Since</Th>
-                <Th className="text-right">Earned</Th>
-                <Th className="text-right">Revenue</Th>
+                <Th className="text-right">Hours / tasks</Th>
+                {money ? <Th className="text-right">Earned</Th> : null}
+                {money ? <Th className="text-right">Revenue</Th> : null}
               </THead>
               <TBody>
                 {d.active.map((a) => {
@@ -158,8 +167,9 @@ export default async function DashboardPage() {
                       </Td>
                       <Td>{a.partnerName}</Td>
                       <Td>{fmtDate(a.p.startDate)}</Td>
-                      <Td className="tabular text-right">{formatMoney(m.earned, a.p.currency)}</Td>
-                      <Td className="tabular text-right">{formatMoney(m.revenue, a.p.currency)}</Td>
+                      <Td className="tabular text-right">{a.p.basis === "per_task" ? `${a.p.tasksAccepted ?? 0} tasks` : `${a.p.hoursApproved ?? 0} h`}</Td>
+                      {money ? <Td className="tabular text-right">{formatMoney(m.earned, a.p.currency)}</Td> : null}
+                      {money ? <Td className="tabular text-right">{formatMoney(m.revenue, a.p.currency)}</Td> : null}
                     </Tr>
                   );
                 })}

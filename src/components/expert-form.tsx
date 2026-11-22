@@ -10,7 +10,8 @@ import { Notice } from "./ui/feedback";
 
 const opts = (list: readonly string[]) => list.map((v) => ({ value: v, label: label(v) }));
 
-export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: ExpertFormValues; cancelHref: string }) {
+/** `showRate`: only roles that may see money get the rate expectation field (the server keeps it otherwise). */
+export function ExpertForm({ id, initial, cancelHref, showRate = true }: { id?: string; initial: ExpertFormValues; cancelHref: string; showRate?: boolean }) {
   const [state, dispatch, pending] = useActionState<ExpertFormState, FormData>(saveExpert, {});
   const [, startTransition] = useTransition();
   const v = state.values ?? initial;
@@ -130,9 +131,11 @@ export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: 
           <Field label="Hours per week" error={err.hoursPerWeek} htmlFor="hoursPerWeek">
             <Input id="hoursPerWeek" name="hoursPerWeek" inputMode="numeric" defaultValue={v.hoursPerWeek} />
           </Field>
-          <Field label="Rate expectation (USD/hour, internal)" error={err.rateExpectationUsd} htmlFor="rateExpectationUsd" hint="Never shown to partners or in public posts.">
-            <Input id="rateExpectationUsd" name="rateExpectationUsd" inputMode="numeric" defaultValue={v.rateExpectationUsd} />
-          </Field>
+          {showRate ? (
+            <Field label="Rate expectation (USD/hour, internal)" error={err.rateExpectationUsd} htmlFor="rateExpectationUsd" hint="Never shown to partners or in public posts.">
+              <Input id="rateExpectationUsd" name="rateExpectationUsd" inputMode="numeric" defaultValue={v.rateExpectationUsd} />
+            </Field>
+          ) : null}
         </FieldRow>
         <Field label="Tags" htmlFor="tags" hint="Comma-separated, e.g. ai-training, us-bench.">
           <Input id="tags" name="tags" defaultValue={v.tags} />

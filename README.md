@@ -2,19 +2,20 @@
 
 One place for every expert we work with (engineers, scientists, domain experts), so that when a partner sends a requirement such as *"3 Scientific Coding Experts – Mathematics"*, the team can find the right people, shortlist them and submit them in minutes, then track what happened and what it earned.
 
-Internal tool for the core team. Sign-in is Google, limited to `@xocket.sh` accounts (plus any addresses listed in `ALLOWED_EMAILS`).
+Internal tool for the core team. Sign-in is Google, limited to `@xocket.sh` accounts (plus any addresses listed in `ALLOWED_EMAILS`). What each person can see and do depends on their **role** (admin, recruiter, pod lead, finance, viewer), checked on the server for every page, action and download. See [Roles and access](#roles-and-access).
 
 ## What it does
 
 | Page | What you do there |
 |---|---|
 | **Dashboard** `/` | Experts by status, open requirements and their free slots, people waiting on a partner's answer, active placements, recent changes. |
-| **Experts** `/experts` | Search everyone (name, skills, headline, university, email). Filter by domain, skills, country, status, availability, CV consent, source, years. Sort columns. Tick people and **Add to requirement**. **Export CSV** of what you see. Click a name for a quick view; open the full profile to edit, upload a CV, record CV consent, add notes, see sources, submissions, placements and the change history. |
+| **Experts** `/experts` | Search everyone (name, skills, headline, university, email). Filter by domain, skills, country, status, availability, CV consent, source, years. Sort columns, pick columns, 25 / 50 / 100 per page. **Table or Board** (one column per status; change a status from the card). **Saved views** as tabs (filters, sort, columns and layout; personal or shared with the team), and every view is a link. Tick people and **Add to requirement**. **Export CSV** of what you see. Click a name for a quick view; open the full profile to edit, upload a CV, change CV consent, add notes, see sources, submissions, placements and the change history. |
 | **Requirements** `/requirements` | **New requirement**: paste what the partner sent, press *Read requirement*, check the fields, save. The requirement page then shows the **best matches** with a score and the reasons, and one-click **Shortlist**. |
 | **Submissions** `/submissions` | Everyone put forward, across partners. Change status (each change is logged). You **can't mark someone Submitted without their CV consent**: the app says why. |
 | **Placements** `/placements` | Who is working where, hours or tasks, what the expert earned and what the partner paid, with totals per partner and per month. Start one from an approved submission. |
 | **Partners** `/partners` | The companies that send requirements. |
 | **Import** `/import` | Pull people in from the jobs site, or from a spreadsheet (Talent register, old admin CRM export) with a preview before anything changes. |
+| **Team & access** `/settings/team` | Admins only: add team members, set their role (and a pod lead's partners), turn access off and on. Every change is logged. |
 
 ## Run it on your computer (3 commands)
 
@@ -30,8 +31,29 @@ That's it. Without any settings the app:
 
 - uses a **built-in demo database** (PGlite, a real Postgres that runs inside Node) stored in `.data/`, created and filled with **made-up demo data** the first time;
 - **signs you in automatically** as `dev@xocket.sh` (a yellow bar says so). This only happens with `npm run dev` and no Google keys. It can't happen on the live site.
+- makes you an **admin** (set `DEV_ROLE=recruiter`, `pod_lead`, `finance` or `viewer` in `.env.local` to start as another role). A **Preview as** menu in the top bar switches roles on the fly, so you can check what each role sees. Both exist only in local development, never in a production build.
 
 To start the demo data over: stop the app, run `npm run db:seed -- --reset`, start it again.
+
+## Roles and access
+
+Everyone signs in with Google as before; the role decides what they can see and do. It is worked out on every request:
+
+1. Email in **`ADMIN_EMAILS`** → admin (this is how the first admin gets in; these people can't be demoted from the app).
+2. Otherwise their row in **Settings → Team & access** (`hub.team_members`) → that role. A member whose access is turned off gets a "your access is turned off" page and nothing else.
+3. Otherwise **`DEFAULT_ROLE`** (default `viewer`) for `@ALLOWED_DOMAIN` accounts, with a bar saying "You have view-only access. Ask an admin to change your role." Outside addresses from `ALLOWED_EMAILS` get viewer until an admin gives them a role.
+
+| Role | Can |
+|---|---|
+| **Admin** | Everything, plus Team & access, imports (jobs-site sync and CSV), delete on request, partners, settings. |
+| **Recruiter** | Add and edit experts, notes, CV upload (no delete), requirements, matching, shortlist, submissions, roster export, CSV import with preview (not the jobs-site sync). **No money.** |
+| **Pod lead** | Reads experts and requirements. Submissions and placements **only for the partners in their scope**; may change submission status and a placement's hours, tasks and status. **No money.** |
+| **Finance** | Reads experts, requirements and submissions. Placements in full, money included; creates and edits placements; placements CSV export. No imports, no team page. |
+| **Viewer** | Read only. Money hidden, expert email and phone masked (LinkedIn visible), no exports. |
+
+"Money" means an expert's rate expectation, placement rates, earned, revenue, margin and the totals. Hidden fields are removed on the server before the page is built, not just hidden in the browser.
+
+The rules live in one file, `src/lib/auth/permissions.ts` (`can(role, action)`, the field helpers and the masking), with tests in `tests/permissions.test.ts`. Every server action and API route goes through the guard in `src/lib/auth/guard.ts` / `api.ts`, and the activity log records each change's actor email and role. Admins can't demote or turn off themselves, and the last admin can't be removed.
 
 ## How matching works
 
@@ -65,7 +87,8 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 - Never store government ID numbers, dates of birth or bank details.
 - A CV (or someone's details) goes to a partner **only if they said yes**. The roster export and the CV ZIP include only people with CV consent = yes.
 - Rates are internal. They never appear in exports to partners.
-- Someone asks to be removed: profile → Edit → *Delete on request*.
+- Someone asks to be removed: profile → Edit → *Delete on request* (admins only).
+- Viewers see masked email and phone; only admins and finance see money.
 
 ## Commands
 
@@ -87,7 +110,7 @@ Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.exam
 - **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
 - **Postgres** through **Drizzle ORM**. Production: Neon (`@neondatabase/serverless`, HTTP driver). Local and tests: PGlite.
 - All of this app's tables live in their own Postgres schema, **`hub`**, because production shares the "Engine" database with other apps. The jobs site's tables in `public` are only ever read.
-- **Auth.js v5** (next-auth) with Google. Every page, action and download checks the signed-in user.
+- **Auth.js v5** (next-auth) with Google. Every page, action and download checks the signed-in user and their role (`src/lib/auth/`).
 - **Vitest** for tests.
 
 ```
@@ -96,7 +119,8 @@ src/components/     forms, tables, small UI pieces (components/ui)
 src/db/             schema.ts (hub tables), client.ts, local/ (PGlite, demo data, jobs-site stub)
 src/lib/match/      dictionary, paste reader, scorer
 src/lib/import/     register / CRM / jobs-site mapping and the import planner
-src/lib/server/     database work (experts, requirements, submissions, placements, CVs, imports)
+src/lib/auth/       sign-in rules, roles, permissions (can / masking), the guard
+src/lib/server/     database work (experts, requirements, submissions, placements, CVs, imports, team, saved views)
 drizzle/            SQL migrations (hub schema only)
 scripts/            migrate, seed, import-jobs
 tests/              unit tests + PGlite integration test
@@ -108,8 +132,8 @@ docs/               DEPLOY.md, DATA.md
 1. Monthly hours / tasks per placement (so "per month" totals use real work months, not start months), and payout tracking.
 2. Merge two expert records into one (today: fix by hand, delete the extra one).
 3. Email templates for consent requests and "you've been submitted" notes, sent from the hub.
-4. Saved searches and a "notify me" when new people match an open requirement.
+4. A "notify me" when new people match an open requirement (saved views exist; alerts don't yet).
 5. Import straight from `.xlsx` and from partner portals' exports; a nightly jobs-site sync.
 6. Uploaded CVs in object storage (S3/R2/Vercel Blob) instead of the database, once there are many.
-7. Roles (read-only access for partners' coordinators, finance-only view of pay).
+7. Read-only access for partners' coordinators (outside the team; roles for the team exist).
 8. Smarter matching: synonyms learned from accepted submissions, CV text search.

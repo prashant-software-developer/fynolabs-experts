@@ -13,7 +13,7 @@ export function JobsSyncPanel({ available }: { available: boolean }) {
   const [result, setResult] = useState<JobsSyncResult | null>(null);
   const [pending, start] = useTransition();
   if (!available) {
-    return <EmptyState title="Jobs-site tables not found" description="This database has no public.xdl_jobs_users table. In production it reads the jobs site's tables in the shared Engine database." />;
+    return <EmptyState padded={false} title="Jobs-site tables not found" description="This database has no public.xdl_jobs_users table. In production it reads the jobs site's tables in the shared Engine database." />;
   }
   return (
     <div className="space-y-4">

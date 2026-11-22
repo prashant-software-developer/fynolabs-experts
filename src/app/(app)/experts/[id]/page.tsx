@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, FileText, Upload } from "lucide-react";
+import { Download, FileText, Link2 } from "lucide-react";
 import { getDb } from "@/db/client";
-import { label } from "@/lib/constants";
+import { can, canSeeContact, canSeeMoney, partnerScope, visibleExpert } from "@/lib/auth/permissions";
+import { requireUser, type CurrentUser } from "@/lib/auth/session";
+import { CV_CONSENT, label } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";
 import { bytes, fmtDate, fmtDateTime } from "@/lib/format";
 import { valuesFromExpert } from "@/lib/forms/expert";
 import { formatMoney, computeMoney } from "@/lib/money";
 import { activityFor } from "@/lib/server/activity";
-import { currentCv, filesFor, getExpert, sourcesFor } from "@/lib/server/experts";
+import { currentCv, filesFor, getExpert, sourcesFor, type ExpertRow } from "@/lib/server/experts";
 import { jobsApplicationsFor } from "@/lib/server/jobs-sync";
 import { listPlacements } from "@/lib/server/placements";
 import { listRequirements } from "@/lib/server/requirements";
@@ -18,8 +20,9 @@ import { ExpertForm } from "@/components/expert-form";
 import { ExpertSummary } from "@/components/expert-summary";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { SubmitButton } from "@/components/ui/client";
+import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
+import { FileDrop } from "@/components/ui/file-drop";
 import { Field, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
@@ -29,73 +32,101 @@ import { addSelectedToRequirement, appendNote, deleteExpert, recordConsent, uplo
 export default async function ExpertPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
   const { id } = await params;
   const sp = await searchParams;
+  const user = await requireUser();
   const db = await getDb();
-  const e = await getExpert(db, id);
-  if (!e) notFound();
-  const tab = ["edit", "work", "activity"].includes(one(sp.tab)) ? one(sp.tab) : "profile";
-  const [subs, plcs] = await Promise.all([listSubmissions(db, { expertId: id }), listPlacements(db, { expertId: id })]);
+  const raw = await getExpert(db, id);
+  if (!raw) notFound();
+  const e = visibleExpert(user.role, raw);
+  const canEdit = can(user.role, "experts.edit");
+  // One way in to editing: the Edit button. ?tab=edit is the edit form (no separate tab).
+  const editing = one(sp.tab) === "edit" && canEdit;
+  const tab = ["work", "activity"].includes(one(sp.tab)) ? one(sp.tab) : "profile";
+  const scope = partnerScope(user);
+  const [subs, plcs] = await Promise.all([listSubmissions(db, { expertId: id, partnerScope: scope }), listPlacements(db, { expertId: id, partnerScope: scope })]);
   const base = `/experts/${id}`;
 
   return (
     <>
       <PageHeader
         title={e.fullName}
-        back={{ href: "/experts", label: "Experts" }}
+        back={editing ? { href: base, label: "Back to profile" } : { href: "/experts", label: "Experts" }}
+        subtitle={editing ? "Editing profile" : undefined}
         actions={
-          <>
+          editing ? (
+            <ButtonLink href={base}>Cancel</ButtonLink>
+          ) : canEdit ? (
             <ButtonLink href={`${base}?tab=edit`}>Edit</ButtonLink>
-          </>
+          ) : null
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      <Tabs
-        tabs={[
-          { href: base, label: "Profile", active: tab === "profile" },
-          { href: `${base}?tab=work`, label: "Submissions & placements", active: tab === "work", count: subs.length + plcs.length },
-          { href: `${base}?tab=activity`, label: "Activity", active: tab === "activity" },
-          { href: `${base}?tab=edit`, label: "Edit", active: tab === "edit" },
-        ]}
-      />
-      {tab === "profile" ? <ProfileTab id={id} /> : null}
-      {tab === "work" ? <WorkTab id={id} subs={subs} plcs={plcs} /> : null}
-      {tab === "activity" ? <ActivityTab id={id} /> : null}
-      {tab === "edit" ? <EditTab id={id} /> : null}
+      {editing ? (
+        <EditView id={id} e={raw} user={user} />
+      ) : (
+        <>
+          <Tabs
+            tabs={[
+              { href: base, label: "Profile", active: tab === "profile" },
+              { href: `${base}?tab=work`, label: "Submissions & placements", active: tab === "work", count: subs.length + plcs.length },
+              { href: `${base}?tab=activity`, label: "Activity", active: tab === "activity" },
+            ]}
+          />
+          {tab === "profile" ? <ProfileTab e={e} user={user} /> : null}
+          {tab === "work" ? <WorkTab id={id} subs={subs} plcs={plcs} user={user} /> : null}
+          {tab === "activity" ? <ActivityTab id={id} /> : null}
+        </>
+      )}
     </>
   );
 }
 
-async function ProfileTab({ id }: { id: string }) {
+function consentLine(e: ExpertRow): string {
+  const when = e.cvConsentAt ? ` on ${fmtDate(e.cvConsentAt)}` : "";
+  if (e.cvConsent === "yes") return `Yes, recorded${when}. Their CV may go to partners.`;
+  if (e.cvConsent === "no") return `No, recorded${when}. Never shared with partners.`;
+  return "Not asked yet. Not shared with partners until the expert says yes.";
+}
+
+/** "CV consent: Yes" plus a small "Change to..." menu (roles that may edit). */
+function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
+  return (
+    <form action={recordConsent} className="flex items-center gap-2">
+      <input type="hidden" name="id" value={e.id} />
+      <span className="text-[13px] text-muted-foreground">CV consent:</span>
+      <StatusBadge value={e.cvConsent} />
+      {canEdit ? (
+        <>
+          <AutoSubmitSelect name="consent" defaultValue="" className="control h-8 w-auto text-[13px]" aria-label="Change CV consent">
+            <option value="" disabled>
+              Change to...
+            </option>
+            {CV_CONSENT.filter((v) => v !== e.cvConsent).map((v) => (
+              <option key={v} value={v}>
+                {label(v)}
+              </option>
+            ))}
+          </AutoSubmitSelect>
+          <noscript>
+            <button className="text-sm">Save</button>
+          </noscript>
+        </>
+      ) : null}
+    </form>
+  );
+}
+
+async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
   const db = await getDb();
-  const e = (await getExpert(db, id))!;
-  const [files, sources, apps] = await Promise.all([filesFor(db, id), sourcesFor(db, id), jobsApplicationsFor(db, id)]);
+  const [files, sources, apps] = await Promise.all([filesFor(db, e.id), sourcesFor(db, e.id), jobsApplicationsFor(db, e.id)]);
   const cv = currentCv(e.cvRef, files);
+  const canDownload = can(user.role, "experts.cv_download");
   return (
     <Stack>
       <Section>
-        <ExpertSummary e={e} />
+        <ExpertSummary e={e} money={canSeeMoney(user.role)} contact={canSeeContact(user.role)} />
       </Section>
 
-      <Section
-        title="CV"
-        description={e.cvConsent === "yes" ? `Consent to share recorded${e.cvConsentAt ? ` on ${fmtDate(e.cvConsentAt)}` : ""}.` : "Not shared with partners until the expert says yes."}
-        actions={
-          <form action={recordConsent} className="flex items-center gap-2">
-            <input type="hidden" name="id" value={id} />
-            <span className="text-[13px] text-muted-foreground">Consent to share CV:</span>
-            <StatusBadge value={e.cvConsent} />
-            {e.cvConsent !== "yes" ? (
-              <SubmitButton size="sm" variant="secondary" name="consent" value="yes">
-                Record yes
-              </SubmitButton>
-            ) : null}
-            {e.cvConsent !== "no" ? (
-              <SubmitButton size="sm" variant="ghost" name="consent" value="no">
-                Record no
-              </SubmitButton>
-            ) : null}
-          </form>
-        }
-      >
+      <Section title="CV" description={consentLine(e)} actions={<ConsentControl e={e} canEdit={can(user.role, "experts.edit")} />}>
         <div className="space-y-4">
           {files.length ? (
             <ul className="divide-y divide-border rounded-md border border-border">
@@ -109,39 +140,41 @@ async function ProfileTab({ id }: { id: string }) {
                       {bytes(f.size)} · {f.storage === "jobs_db" ? "from jobs site" : "uploaded"} · {fmtDate(f.createdAt)}
                     </span>
                   </div>
-                  <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </a>
+                  {canDownload ? (
+                    <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyState title="No CV yet" description="Upload one below, or run the jobs-site sync if they applied there." />
+            <EmptyState padded={false} icon={FileText} title="No CV yet" description={can(user.role, "experts.cv_upload") ? "Upload one below, or run the jobs-site sync if they applied there." : "Nobody has uploaded one."} />
           )}
-          <form action={uploadCv} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="id" value={id} />
-            <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.rtf" required className="file-control" />
-            <SubmitButton size="sm" variant="secondary" pendingText="Uploading...">
-              <Upload className="h-3.5 w-3.5" /> Upload CV
-            </SubmitButton>
-            <span className="text-xs text-muted-foreground/70">PDF or Word, up to 10 MB. Becomes the current CV.</span>
-          </form>
+          {can(user.role, "experts.cv_upload") ? (
+            <form action={uploadCv}>
+              <input type="hidden" name="id" value={e.id} />
+              <FileDrop name="file" accept=".pdf,.doc,.docx,.txt,.rtf" label="Upload CV" hint="PDF or Word, up to 10 MB. Click or drop a file; it becomes the current CV." submitLabel="Upload" />
+            </form>
+          ) : null}
         </div>
       </Section>
 
       <Section title="Notes" description="Internal only. Newest first.">
         <div className="space-y-4">
-          <form action={appendNote} className="space-y-2">
-            <input type="hidden" name="id" value={id} />
-            <Textarea name="note" rows={2} placeholder="Add a note (call summary, next step...)" aria-label="New note" />
-            <div className="flex items-center gap-4">
-              <SubmitButton size="sm" variant="secondary">
-                Add note
-              </SubmitButton>
-              <Checkbox name="contacted" value="yes" label="We contacted them today" />
-            </div>
-          </form>
-          {e.notes ? <pre className="prose-box">{e.notes}</pre> : null}
+          {can(user.role, "experts.notes") ? (
+            <form action={appendNote} className="space-y-2">
+              <input type="hidden" name="id" value={e.id} />
+              <Textarea name="note" rows={2} placeholder="Add a note (call summary, next step...)" aria-label="New note" />
+              <div className="flex items-center gap-4">
+                <SubmitButton size="sm" variant="secondary">
+                  Add note
+                </SubmitButton>
+                <Checkbox name="contacted" value="yes" label="We contacted them today" />
+              </div>
+            </form>
+          ) : null}
+          {e.notes ? <pre className="prose-box">{e.notes}</pre> : !can(user.role, "experts.notes") ? <EmptyState padded={false} title="No notes" /> : null}
           <p className="text-xs text-muted-foreground/70">
             Last contacted: {fmtDate(e.lastContactedAt)} · Added {fmtDate(e.createdAt)} · Updated {fmtDateTime(e.updatedAt)}
           </p>
@@ -167,7 +200,7 @@ async function ProfileTab({ id }: { id: string }) {
             </TBody>
           </Table>
         ) : (
-          <EmptyState title={`Added by hand (${label(e.primarySource)})`} description="No import has matched this person yet." />
+          <EmptyState icon={Link2} title={`Added by hand (${label(e.primarySource)})`} description="No import has matched this person yet." />
         )}
         {apps.length ? (
           <div className="border-t border-border px-5 py-4">
@@ -188,13 +221,27 @@ async function ProfileTab({ id }: { id: string }) {
   );
 }
 
-async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnType<typeof listSubmissions>>; plcs: Awaited<ReturnType<typeof listPlacements>> }) {
+async function WorkTab({
+  id,
+  subs,
+  plcs,
+  user,
+}: {
+  id: string;
+  subs: Awaited<ReturnType<typeof listSubmissions>>;
+  plcs: Awaited<ReturnType<typeof listPlacements>>;
+  user: CurrentUser;
+}) {
   const db = await getDb();
-  const reqs = await listRequirements(db, { status: "active" });
+  const shortlist = can(user.role, "matching.shortlist");
+  const reqs = shortlist ? await listRequirements(db, { status: "active" }) : [];
   const onReqs = new Set(subs.map((s) => s.sub.requirementId));
   const options = reqs.filter((r) => !onReqs.has(r.req.id));
+  const money = canSeeMoney(user.role);
+  const scoped = user.role === "pod_lead";
   return (
     <Stack>
+      {scoped ? <Notice tone="info">Showing submissions and placements for your partners only.</Notice> : null}
       <Section
         title="Submissions"
         flush
@@ -244,7 +291,17 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
           <EmptyState title="Not on any requirement yet" />
         )}
       </Section>
-      <Section title="Placements" flush actions={<ButtonLink href={`/placements/new?expert=${id}`} size="sm">New placement</ButtonLink>}>
+      <Section
+        title="Placements"
+        flush
+        actions={
+          can(user.role, "placements.create") ? (
+            <ButtonLink href={`/placements/new?expert=${id}`} size="sm">
+              New placement
+            </ButtonLink>
+          ) : null
+        }
+      >
         {plcs.length ? (
           <Table>
             <THead>
@@ -252,7 +309,8 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
               <Th>Partner</Th>
               <Th>Status</Th>
               <Th>Start</Th>
-              <Th className="text-right">Earned by expert</Th>
+              <Th className="text-right">Hours / tasks</Th>
+              {money ? <Th className="text-right">Earned by expert</Th> : null}
             </THead>
             <TBody>
               {plcs.map((p) => (
@@ -267,7 +325,8 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
                     <StatusBadge value={p.p.status} />
                   </Td>
                   <Td>{fmtDate(p.p.startDate)}</Td>
-                  <Td className="tabular text-right">{formatMoney(computeMoney(p.p).earned, p.p.currency)}</Td>
+                  <Td className="tabular text-right">{p.p.basis === "per_task" ? `${p.p.tasksAccepted ?? 0} tasks` : `${p.p.hoursApproved ?? 0} h`}</Td>
+                  {money ? <Td className="tabular text-right">{formatMoney(computeMoney(p.p).earned, p.p.currency)}</Td> : null}
                 </Tr>
               ))}
             </TBody>
@@ -290,28 +349,30 @@ async function ActivityTab({ id }: { id: string }) {
   );
 }
 
-async function EditTab({ id }: { id: string }) {
-  const db = await getDb();
-  const e = (await getExpert(db, id))!;
+function EditView({ id, e, user }: { id: string; e: ExpertRow; user: CurrentUser }) {
+  const money = canSeeMoney(user.role);
+  const initial = valuesFromExpert(money ? e : { ...e, rateExpectationUsd: null });
   return (
     <Stack>
       <Section>
-        <ExpertForm id={id} initial={valuesFromExpert(e)} cancelHref={`/experts/${id}`} />
+        <ExpertForm id={id} initial={initial} cancelHref={`/experts/${id}`} showRate={money} />
       </Section>
-      <Section title="Delete on request" description="Use when someone asks us to remove their data.">
-        <form action={deleteExpert} className="space-y-3">
-          <input type="hidden" name="id" value={id} />
-          <Notice tone="warning">
-            Deletes the profile, sources, uploaded CVs, submissions and their activity history. Placement money rows stay, without the person. Only a one-way hash of the email is kept so imports don't add them back. Also remove them from the jobs site and the admin CRM.
-          </Notice>
-          <Field label='Type "DELETE" to confirm' htmlFor="confirm">
-            <Input id="confirm" name="confirm" autoComplete="off" className="max-w-xs" />
-          </Field>
-          <Button type="submit" variant="danger" size="sm">
-            Delete permanently
-          </Button>
-        </form>
-      </Section>
+      {can(user.role, "experts.delete") ? (
+        <Section title="Delete on request" description="Use when someone asks us to remove their data.">
+          <form action={deleteExpert} className="space-y-3">
+            <input type="hidden" name="id" value={id} />
+            <Notice tone="warning">
+              Deletes the profile, sources, uploaded CVs, submissions and their activity history. Placement money rows stay, without the person. Only a one-way hash of the email is kept so imports don&apos;t add them back. Also remove them from the jobs site and the admin CRM.
+            </Notice>
+            <Field label='Type "DELETE" to confirm' htmlFor="confirm">
+              <Input id="confirm" name="confirm" autoComplete="off" className="max-w-xs" />
+            </Field>
+            <Button type="submit" variant="danger" size="sm">
+              Delete permanently
+            </Button>
+          </form>
+        </Section>
+      ) : null}
     </Stack>
   );
 }

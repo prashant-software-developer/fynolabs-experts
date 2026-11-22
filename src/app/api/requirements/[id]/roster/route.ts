@@ -3,7 +3,7 @@ import { zipSync } from "fflate";
 import { getDb } from "@/db/client";
 import { safeFilename } from "@/lib/csv";
 import { rosterCsv } from "@/lib/roster";
-import { apiUser } from "@/lib/auth/api";
+import { apiGuard } from "@/lib/auth/api";
 import { logActivity } from "@/lib/server/activity";
 import { readCv } from "@/lib/server/cv";
 import { isUuid } from "@/lib/server/experts";
@@ -18,7 +18,7 @@ export const maxDuration = 60;
  * Only experts with CV consent = yes are included; the requirement page lists who was left out.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await apiUser();
+  const user = await apiGuard("roster.export");
   if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   await logActivity(db, {
     entityType: "requirement",
     entityId: id,
-    actor: user.email,
+    actor: user,
     action: "roster_exported",
     detail: { format, included: plan.included.length, skipped: plan.skipped.length },
   });

@@ -1,7 +1,10 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { activity } from "@/db/schema";
+import { can, roleLabel } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { jobsTablesExist } from "@/lib/server/jobs-sync";
+import { NoAccess } from "@/components/ui/feedback";
 import { ActivityList } from "@/components/activity-list";
 import { CsvImportPanel, JobsSyncPanel } from "@/components/import-panels";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
@@ -9,6 +12,18 @@ import { PageHeader, Section, Stack } from "@/components/ui/layout";
 export const metadata = { title: "Import" };
 
 export default async function ImportPage() {
+  const user = await requireUser();
+  if (!can(user.role, "imports.csv")) {
+    return (
+      <>
+        <PageHeader title="Import" />
+        <Section flush>
+          <NoAccess what="Import" role={roleLabel(user.role)} />
+        </Section>
+      </>
+    );
+  }
+  const jobs = can(user.role, "imports.jobs");
   const db = await getDb();
   const [available, history] = await Promise.all([
     jobsTablesExist(db),
@@ -22,8 +37,14 @@ export default async function ImportPage() {
           title="Jobs site (jobs.fynolabs.si)"
           description="Reads applicants and their latest CV from the jobs site's tables (read only). New people are added; for people already here, only empty fields are filled, so edits made in the hub are never overwritten. CVs stay on the jobs site and are streamed when you download them."
         >
-          <JobsSyncPanel available={available} />
-          <p className="mt-4 text-xs text-muted-foreground/70">Same as running <code>npm run import:jobs</code>.</p>
+          {jobs ? (
+            <>
+              <JobsSyncPanel available={available} />
+              <p className="mt-4 text-xs text-muted-foreground/70">Same as running <code>npm run import:jobs</code>.</p>
+            </>
+          ) : (
+            <p className="text-[13px] text-muted-foreground">Admins run the jobs-site sync. Ask one if new applicants are missing.</p>
+          )}
         </Section>
         <Section
           title="Spreadsheet (CSV)"

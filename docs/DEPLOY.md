@@ -74,12 +74,17 @@ If you add a custom domain later (e.g. `hub.xocket.sh`), add it to both lists.
 | `AUTH_GOOGLE_SECRET` | Client secret from step 3 |
 | `ALLOWED_DOMAIN` | `xocket.sh` |
 | `ALLOWED_EMAILS` | optional, comma-separated exact addresses allowed in addition |
+| `ADMIN_EMAILS` | `prashant@xocket.sh` (always admin; add more comma-separated) |
+| `DEFAULT_ROLE` | `viewer` (role for team-domain people not yet on Settings → Team & access) |
+
+Never set `DEV_ROLE` on Vercel (it's ignored there anyway).
 
 3. **Settings → Functions → Region**: pick the region closest to the Neon database (Neon shows it, e.g. AWS eu-central-1 → Vercel `fra1`).
 4. Deploy. Open the site:
    - sign in with an `@xocket.sh` account → you get in;
    - try a personal Gmail → "That account can't use Expert Hub";
-   - open `/import`, preview the jobs-site sync, run it, check `/experts`.
+   - open `/import`, preview the jobs-site sync, run it, check `/experts`;
+   - open **Settings → Team & access** and give each team member their role (everyone else stays a viewer).
 
 ## 5. Switch to the real database
 

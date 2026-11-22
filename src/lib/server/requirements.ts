@@ -4,7 +4,7 @@ import { experts, partners, requirements, submissions, type Requirement } from "
 import { normalizeSkill } from "@/lib/match/dictionary";
 import { rankCandidates, type MatchExpert, type MatchRequirement } from "@/lib/match/score";
 import { requirementStatusAfter } from "@/lib/workflow";
-import { logActivity } from "./activity";
+import { logActivity, type Actor } from "./activity";
 import { isUuid } from "./experts";
 
 export async function getRequirement(db: DB, id: string) {
@@ -92,7 +92,7 @@ export async function candidatesFor(db: DB, r: Requirement, opts: { limit?: numb
 }
 
 /** Moves the requirement between open / filling / filled based on its submissions. */
-export async function refreshRequirementStatus(db: DB, requirementId: string, actor: string) {
+export async function refreshRequirementStatus(db: DB, requirementId: string, actor: Actor) {
   const [r] = await db.select({ status: requirements.status, slots: requirements.slots }).from(requirements).where(eq(requirements.id, requirementId));
   if (!r) return;
   const statuses = (await db.select({ s: submissions.status }).from(submissions).where(eq(submissions.requirementId, requirementId))).map((x) => x.s);
@@ -107,7 +107,7 @@ export async function listPartners(db: DB) {
   return db.select().from(partners).orderBy(asc(partners.name));
 }
 
-export async function findOrCreatePartner(db: DB, name: string, actor: string): Promise<string> {
+export async function findOrCreatePartner(db: DB, name: string, actor: Actor): Promise<string> {
   const clean = name.trim().slice(0, 120);
   const [existing] = await db.select({ id: partners.id }).from(partners).where(sql`lower(${partners.name}) = ${clean.toLowerCase()}`).limit(1);
   if (existing) return existing.id;

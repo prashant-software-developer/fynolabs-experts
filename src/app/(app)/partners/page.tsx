@@ -2,6 +2,8 @@ import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { partners, placements, requirements } from "@/db/schema";
+import { can } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { PARTNER_KINDS, label } from "@/lib/constants";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { SubmitButton } from "@/components/ui/client";
@@ -40,6 +42,8 @@ function PartnerFields({ p }: { p?: PartnerRow }) {
 
 export default async function PartnersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
+  const user = await requireUser();
+  const manage = can(user.role, "partners.manage");
   const db = await getDb();
   const rows = (await db
     .select({
@@ -54,10 +58,10 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
     })
     .from(partners)
     .orderBy(partners.name)) as PartnerRow[];
-  const editing = rows.find((r) => r.id === one(sp.edit));
+  const editing = manage ? rows.find((r) => r.id === one(sp.edit)) : undefined;
   return (
     <>
-      <PageHeader title="Partners" subtitle="Companies that send us requirements." />
+      <PageHeader title="Partners" subtitle={manage ? "Companies that send us requirements." : "Companies that send us requirements. Admins add and edit them."} />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Stack>
         <Section flush>
@@ -93,24 +97,28 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                       </Link>
                     </Td>
                     <Td className="text-right">
-                      <Link href={hrefWith("/partners", sp, { edit: p.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
-                        Edit
-                      </Link>
+                      {manage ? (
+                        <Link href={hrefWith("/partners", sp, { edit: p.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
+                          Edit
+                        </Link>
+                      ) : null}
                     </Td>
                   </Tr>
                 ))}
               </TBody>
             </Table>
           ) : (
-            <EmptyState size="page" title="No partners yet" description="Add one below, or type a new partner's name when you create a requirement." />
+            <EmptyState size="page" title="No partners yet" description={manage ? "Add one below, or type a new partner's name when you create a requirement." : "An admin adds partners."} />
           )}
         </Section>
-        <Section title="Add partner">
-          <form action={savePartner} className="space-y-4">
-            <PartnerFields />
-            <SubmitButton>Add partner</SubmitButton>
-          </form>
-        </Section>
+        {manage ? (
+          <Section title="Add partner">
+            <form action={savePartner} className="space-y-4">
+              <PartnerFields />
+              <SubmitButton>Add partner</SubmitButton>
+            </form>
+          </Section>
+        ) : null}
       </Stack>
       {editing ? (
         <SlideOver title={`Edit ${editing.name}`} closeHref="/partners">

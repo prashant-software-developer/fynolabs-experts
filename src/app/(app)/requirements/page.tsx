@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import { getDb } from "@/db/client";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { fmtDate } from "@/lib/format";
+import { can } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { listPartners, listRequirements } from "@/lib/server/requirements";
 import { Chips, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -26,6 +28,8 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
   const sp = await searchParams;
   const view = VIEWS.some((v) => v.key === one(sp.view)) ? one(sp.view) : "active";
   const partnerId = one(sp.partner);
+  const user = await requireUser();
+  const canCreate = can(user.role, "requirements.create");
   const db = await getDb();
   const [rows, partners] = await Promise.all([listRequirements(db, { status: view === "all" ? undefined : view, partnerId }), listPartners(db)]);
   return (
@@ -34,9 +38,11 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
         title="Requirements"
         subtitle="What partners asked for, and how full each one is."
         actions={
-          <ButtonLink href="/requirements/new" variant="primary">
-            <Plus className="h-4 w-4" /> New requirement
-          </ButtonLink>
+          canCreate ? (
+            <ButtonLink href="/requirements/new" variant="primary">
+              <Plus className="h-4 w-4" /> New requirement
+            </ButtonLink>
+          ) : null
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
@@ -91,9 +97,11 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
             title={view === "active" ? "No open requirements" : "Nothing here"}
             description="When a partner sends a new need, paste it in and the hub finds matching experts."
             action={
-              <ButtonLink href="/requirements/new" variant="primary">
-                New requirement
-              </ButtonLink>
+              canCreate ? (
+                <ButtonLink href="/requirements/new" variant="primary">
+                  New requirement
+                </ButtonLink>
+              ) : undefined
             }
           />
         )}

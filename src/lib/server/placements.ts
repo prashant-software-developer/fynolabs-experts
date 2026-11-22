@@ -1,8 +1,8 @@
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { experts, partners, placements, requirements, submissions } from "@/db/schema";
+import { experts, partners, placements, requirements, submissions, type Placement } from "@/db/schema";
 import { computeMoney } from "@/lib/money";
-import { logActivity } from "./activity";
+import { actorEmail, logActivity, type Actor } from "./activity";
 import { isUuid } from "./experts";
 import { moveSubmission } from "./submissions";
 
@@ -25,8 +25,10 @@ export type PlacementInput = {
   notes: string | null;
 };
 
-export async function listPlacements(db: DB, f: { status?: string; partnerId?: string; expertId?: string } = {}) {
+export async function listPlacements(db: DB, f: { status?: string; partnerId?: string; expertId?: string; partnerScope?: string[] | null } = {}) {
   const conds: SQL[] = [];
+  // Pod leads: only their partners (an empty scope shows nothing).
+  if (f.partnerScope) conds.push(f.partnerScope.length ? inArray(placements.partnerId, f.partnerScope) : sql`false`);
   if (f.status) conds.push(eq(placements.status, f.status));
   if (f.partnerId && isUuid(f.partnerId)) conds.push(eq(placements.partnerId, f.partnerId));
   if (f.expertId && isUuid(f.expertId)) conds.push(eq(placements.expertId, f.expertId));
@@ -70,11 +72,11 @@ function withMoney(input: PlacementInput) {
   return { ...input, earnedByExpert: m.earned, revenue: m.revenue };
 }
 
-export async function createPlacement(db: DB, input: PlacementInput, actor: string): Promise<string> {
+export async function createPlacement(db: DB, input: PlacementInput, actor: Actor): Promise<string> {
   const now = new Date();
   const [row] = await db
     .insert(placements)
-    .values({ ...withMoney(input), createdBy: actor, createdAt: now, updatedAt: now })
+    .values({ ...withMoney(input), createdBy: actorEmail(actor), createdAt: now, updatedAt: now })
     .returning({ id: placements.id });
   await logActivity(db, { entityType: "placement", entityId: row.id, actor, action: "created", detail: { submissionId: input.submissionId, expertId: input.expertId } });
   if (input.submissionId) {
@@ -92,7 +94,7 @@ export async function createPlacement(db: DB, input: PlacementInput, actor: stri
   return row.id;
 }
 
-export async function updatePlacement(db: DB, id: string, input: PlacementInput, actor: string) {
+export async function updatePlacement(db: DB, id: string, input: PlacementInput, actor: Actor) {
   const before = await getPlacement(db, id);
   if (!before) return false;
   const next = withMoney(input);
@@ -108,4 +110,48 @@ export async function updatePlacement(db: DB, id: string, input: PlacementInput,
     if (sub?.status === "active") await moveSubmission(db, { id: before.p.submissionId, to: "ended", actor });
   }
   return true;
+}
+
+/**
+ * A stored total counts as typed in only if it isn't simply units x rate (the form shows the same).
+ * Used so a progress update (new hours or tasks) recomputes earned / revenue instead of freezing them.
+ */
+export function typedTotal(stored: number | null, units: number | null, rate: number | null): number | null {
+  if (stored == null) return null;
+  if (units != null && rate != null && Math.abs(units * rate - stored) < 0.005) return null;
+  return stored;
+}
+
+export function placementInputOf(p: Placement): PlacementInput {
+  const units = p.basis === "per_task" ? p.tasksAccepted : p.hoursApproved;
+  return {
+    expertId: p.expertId,
+    partnerId: p.partnerId,
+    submissionId: p.submissionId,
+    projectName: p.projectName,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    basis: p.basis === "per_task" ? "per_task" : "hourly",
+    rateToExpert: p.rateToExpert,
+    rateFromPartner: p.rateFromPartner,
+    currency: p.currency,
+    hoursApproved: p.hoursApproved,
+    tasksAccepted: p.tasksAccepted,
+    earnedByExpert: typedTotal(p.earnedByExpert, units, p.rateToExpert),
+    revenue: typedTotal(p.revenue, units, p.rateFromPartner),
+    status: p.status === "paused" ? "paused" : p.status === "ended" ? "ended" : "active",
+    notes: p.notes,
+  };
+}
+
+/** Pod leads (and finance, admins): hours approved, tasks accepted and status only. Money follows. */
+export async function updatePlacementProgress(
+  db: DB,
+  id: string,
+  patch: { hoursApproved: number | null; tasksAccepted: number | null; status: "active" | "paused" | "ended" },
+  actor: Actor,
+): Promise<boolean> {
+  const row = await getPlacement(db, id);
+  if (!row) return false;
+  return updatePlacement(db, id, { ...placementInputOf(row.p), ...patch }, actor);
 }

@@ -3,7 +3,8 @@ import { getDb } from "@/db/client";
 import { label } from "@/lib/constants";
 import { toCsv } from "@/lib/csv";
 import { parseExpertFilters } from "@/lib/filters";
-import { apiUser } from "@/lib/auth/api";
+import { apiGuard } from "@/lib/auth/api";
+import { canSeeMoney } from "@/lib/auth/permissions";
 import { logActivity } from "@/lib/server/activity";
 import { listExperts } from "@/lib/server/experts";
 
@@ -39,15 +40,19 @@ const HEADERS = [
 
 /** The current filtered list as CSV (internal use: includes contact details). */
 export async function GET(req: NextRequest) {
-  const user = await apiUser();
+  const user = await apiGuard("experts.export");
   if (user instanceof NextResponse) return user;
+  const money = canSeeMoney(user.role);
   const sp = Object.fromEntries(req.nextUrl.searchParams.entries());
   const f = { ...parseExpertFilters(sp), page: 1 };
   const db = await getDb();
   const { rows, total } = await listExperts(db, f, { limit: MAX_ROWS, offset: 0 });
+  // The rate expectation column only goes to roles that may see money.
+  const RATE = HEADERS.indexOf("Rate expectation USD (internal)");
+  const keep = <T,>(cells: T[]) => (money ? cells : cells.filter((_, i) => i !== RATE));
   const csv = toCsv(
-    HEADERS,
-    rows.map((e) => [
+    keep(HEADERS),
+    rows.map((e) => keep([
       e.fullName,
       e.email,
       e.phone,
@@ -72,9 +77,9 @@ export async function GET(req: NextRequest) {
       e.tags.join(", "),
       e.createdAt.toISOString().slice(0, 10),
       e.updatedAt.toISOString().slice(0, 10),
-    ]),
+    ])),
   );
-  await logActivity(db, { entityType: "import", entityId: "experts_export", actor: user.email, action: "experts_exported", detail: { rows: rows.length, total, filters: Object.keys(sp) } });
+  await logActivity(db, { entityType: "import", entityId: "experts_export", actor: user, action: "experts_exported", detail: { rows: rows.length, total, filters: Object.keys(sp) } });
   const stamp = new Date().toISOString().slice(0, 10);
   return new NextResponse(csv, {
     headers: {

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ExternalLink, Mail, MapPin } from "lucide-react";
+import { ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import type { ExpertRow } from "@/lib/server/experts";
 import { label } from "@/lib/constants";
 import { place } from "@/lib/format";
@@ -7,7 +6,11 @@ import { Chips, StatusBadge } from "./ui/badge";
 import { DefinitionList } from "./ui/layout";
 
 /** The quick view used in the slide-over panel and at the top of the profile. */
-export function ExpertSummary({ e, compact }: { e: ExpertRow; compact?: boolean }) {
+/**
+ * `e` must already be the role's visible copy (visibleExpert): money removed, contact masked.
+ * `money` shows the internal rate row; `contact` turns the email into a mail link.
+ */
+export function ExpertSummary({ e, compact, money = false, contact = true }: { e: ExpertRow; compact?: boolean; money?: boolean; contact?: boolean }) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -24,10 +27,23 @@ export function ExpertSummary({ e, compact }: { e: ExpertRow; compact?: boolean 
             {place(e)}
           </span>
           {e.email ? (
-            <a href={`mailto:${e.email}`} className="inline-flex items-center gap-1 hover:text-foreground">
-              <Mail className="h-3.5 w-3.5" />
-              {e.email}
-            </a>
+            contact ? (
+              <a href={`mailto:${e.email}`} className="inline-flex items-center gap-1 hover:text-foreground">
+                <Mail className="h-3.5 w-3.5" />
+                {e.email}
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-1" title="Masked for your role">
+                <Mail className="h-3.5 w-3.5" />
+                {e.email}
+              </span>
+            )
+          ) : null}
+          {e.phone ? (
+            <span className="tabular inline-flex items-center gap-1" title={contact ? undefined : "Masked for your role"}>
+              <Phone className="h-3.5 w-3.5" />
+              {e.phone}
+            </span>
           ) : null}
           {e.linkedinUrl ? (
             <a href={e.linkedinUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 hover:text-foreground">
@@ -49,16 +65,11 @@ export function ExpertSummary({ e, compact }: { e: ExpertRow; compact?: boolean 
           { label: "University", value: e.university },
           { label: "Hours / week", value: e.hoursPerWeek ?? null },
           { label: "Languages", value: e.languages.length ? e.languages.join(", ") : null },
-          ...(compact ? [] : [{ label: "Rate expectation (internal)", value: e.rateExpectationUsd != null ? `$${e.rateExpectationUsd}/h` : null }]),
+          ...(compact || !money ? [] : [{ label: "Rate expectation (internal)", value: e.rateExpectationUsd != null ? `$${e.rateExpectationUsd}/h` : null }]),
           { label: "Source", value: label(e.primarySource) },
           { label: "Tags", value: e.tags.length ? <Chips items={e.tags} /> : null },
         ]}
       />
-      {compact ? (
-        <Link href={`/experts/${e.id}`} className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
-          Open full profile
-        </Link>
-      ) : null}
     </div>
   );
 }

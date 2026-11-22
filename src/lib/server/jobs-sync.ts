@@ -13,7 +13,7 @@ import { rowsOf } from "@/db/client";
 import { experts } from "@/db/schema";
 import { mapJobsUser, type JobsApplication, type JobsUser } from "@/lib/import/jobs";
 import { planImport } from "@/lib/import/plan";
-import { logActivity } from "./activity";
+import { logActivity, type Actor } from "./activity";
 import { linkJobsCv } from "./cv";
 import { applyPlan, loadIndex } from "./import-apply";
 
@@ -62,7 +62,7 @@ async function readJobsSite(db: DB) {
   return { users, files, apps };
 }
 
-export async function syncJobsSite(db: DB, actor: string, opts: { dryRun?: boolean } = {}): Promise<JobsSyncResult> {
+export async function syncJobsSite(db: DB, actor: Actor, opts: { dryRun?: boolean } = {}): Promise<JobsSyncResult> {
   if (!(await jobsTablesExist(db))) {
     return { ok: false, message: "The jobs-site tables (public.xdl_jobs_users) aren't in this database." };
   }

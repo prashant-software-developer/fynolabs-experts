@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Lock, XCircle, type LucideIcon } from "lucide-react";
 import { cn } from "./cn";
 
 type Tone = "info" | "success" | "warning" | "error";
@@ -40,14 +40,53 @@ function EmptyIllustration() {
   );
 }
 
+/** The same drawing, small enough to sit in a line of text. */
+function MiniMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 overflow-visible" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" className="stroke-border" strokeDasharray="1.5 2.5" />
+      <circle cx="12" cy="12" r="5" className="stroke-border" />
+      <circle cx="12" cy="12" r="2" className="fill-primary" />
+    </svg>
+  );
+}
+
 /**
  * One empty state in two sizes, as on the website:
- * "page" for a main list page (any filter or search on it), "section" for everything inside a page.
+ * "page" (the large drawing) for a main list page and any filter or search on it;
+ * "section" (one line with an icon) for everything inside a page. `padded={false}` when the
+ * surrounding section already has padding.
  */
-export function EmptyState({ title, description, action, size = "section" }: { title: string; description?: ReactNode; action?: ReactNode; size?: "page" | "section" }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  size = "section",
+  icon: Icon,
+  padded = true,
+}: {
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  size?: "page" | "section";
+  icon?: LucideIcon;
+  padded?: boolean;
+}) {
+  if (size === "section") {
+    return (
+      <div className={cn("flex w-full flex-wrap items-center gap-x-3 gap-y-2", padded && "px-5 py-4")}>
+        {Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden /> : <MiniMark />}
+        <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">{title}</span>
+          {description ? <span> · {description}</span> : null}
+        </p>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+    );
+  }
   return (
-    <div className={cn("flex w-full flex-col items-center justify-center text-center", size === "page" ? "gap-5 px-6 py-16" : "gap-3 px-6 py-8")}>
-      <div className={size === "page" ? "h-32 w-32" : "h-16 w-16"}>
+    <div className="flex w-full flex-col items-center justify-center gap-5 px-6 py-16 text-center">
+      <div className="h-32 w-32">
         <EmptyIllustration />
       </div>
       <div className="space-y-1">
@@ -55,6 +94,21 @@ export function EmptyState({ title, description, action, size = "section" }: { t
         {description ? <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">{description}</p> : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}
+    </div>
+  );
+}
+
+/** A page this role can't open: same layout as an empty page, with the reason. */
+export function NoAccess({ what, role }: { what: string; role: string }) {
+  return (
+    <div className="flex w-full flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
+        <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">{what} isn&apos;t available to your role</p>
+        <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">You&apos;re signed in as {role}. Ask an admin if you need access.</p>
+      </div>
     </div>
   );
 }

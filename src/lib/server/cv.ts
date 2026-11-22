@@ -7,7 +7,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { rowsOf } from "@/db/client";
 import { expertFiles, experts } from "@/db/schema";
-import { logActivity } from "./activity";
+import { actorEmail, logActivity, type Actor } from "./activity";
 
 export const MAX_CV_BYTES = 10 * 1024 * 1024;
 export const CV_TYPES: Record<string, string> = {
@@ -65,7 +65,7 @@ export function checkCvUpload(file: { name: string; type: string; size: number }
   return null;
 }
 
-export async function saveUploadedCv(db: DB, expertId: string, file: CvFile, actor: string): Promise<string> {
+export async function saveUploadedCv(db: DB, expertId: string, file: CvFile, actor: Actor): Promise<string> {
   const b64 = Buffer.from(file.bytes).toString("base64");
   const [row] = await db
     .insert(expertFiles)
@@ -77,7 +77,7 @@ export async function saveUploadedCv(db: DB, expertId: string, file: CvFile, act
       size: file.bytes.byteLength,
       storage: "upload",
       data: sql`decode(${b64}, 'base64')`,
-      createdBy: actor,
+      createdBy: actorEmail(actor),
     })
     .returning({ id: expertFiles.id });
   await db.update(experts).set({ cvRef: `upload:${row.id}`, updatedAt: new Date() }).where(eq(experts.id, expertId));

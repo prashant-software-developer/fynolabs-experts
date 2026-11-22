@@ -4,7 +4,7 @@ import type { DB } from "@/db/client";
 import { erasures, expertSources, experts } from "@/db/schema";
 import { buildIndex, type ExistingExpert, type ImportPlan, type PlanRow } from "@/lib/import/plan";
 import type { ExpertDraft } from "@/lib/import/types";
-import { logActivity } from "./activity";
+import { logActivity, type Actor } from "./activity";
 
 export async function loadIndex(db: DB) {
   const [rows, srcs, erased] = await Promise.all([
@@ -60,7 +60,7 @@ export type ApplyResult = {
   expertByRow: Map<number, string>;
 };
 
-export async function applyPlan(db: DB, plan: ImportPlan, actor: string): Promise<ApplyResult> {
+export async function applyPlan(db: DB, plan: ImportPlan, actor: Actor): Promise<ApplyResult> {
   const result: ApplyResult = { created: 0, updated: 0, unchanged: 0, skipped: 0, duplicates: 0, expertByRow: new Map() };
   const now = new Date();
   const touchedSources: { source: string; externalId: string }[] = [];

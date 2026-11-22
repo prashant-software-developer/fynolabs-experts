@@ -1,9 +1,12 @@
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { experts, partners, placements, requirements, submissions } from "@/db/schema";
 import { recentActivity } from "./activity";
 
-export async function dashboardData(db: DB) {
+/** `partnerScope` (pod leads): waiting submissions and active placements for those partners only. */
+export async function dashboardData(db: DB, opts: { partnerScope?: string[] | null } = {}) {
+  const scope = opts.partnerScope;
+  const scoped = (col: typeof requirements.partnerId | typeof placements.partnerId) => (scope ? (scope.length ? inArray(col, scope) : sql`false`) : undefined);
   const [byStatus, openReqs, waiting, active, activity, [{ n: total }]] = await Promise.all([
     db.select({ status: experts.status, n: count() }).from(experts).groupBy(experts.status),
     db
@@ -37,7 +40,7 @@ export async function dashboardData(db: DB) {
       .innerJoin(experts, eq(experts.id, submissions.expertId))
       .innerJoin(requirements, eq(requirements.id, submissions.requirementId))
       .innerJoin(partners, eq(partners.id, requirements.partnerId))
-      .where(inArray(submissions.status, ["submitted", "partner_review"]))
+      .where(and(inArray(submissions.status, ["submitted", "partner_review"]), scoped(requirements.partnerId)))
       .orderBy(sql`${submissions.submittedAt} asc nulls last`)
       .limit(20),
     db
@@ -45,7 +48,7 @@ export async function dashboardData(db: DB) {
       .from(placements)
       .leftJoin(experts, eq(experts.id, placements.expertId))
       .innerJoin(partners, eq(partners.id, placements.partnerId))
-      .where(eq(placements.status, "active"))
+      .where(and(eq(placements.status, "active"), scoped(placements.partnerId)))
       .orderBy(desc(placements.startDate))
       .limit(20),
     recentActivity(db, 15),

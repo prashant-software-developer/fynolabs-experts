@@ -2,6 +2,7 @@
 // "Engine" database with other apps without touching their tables.
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   customType,
   date,
@@ -279,6 +280,8 @@ export const activity = hub.table(
     entityType: text("entity_type").notNull(),
     entityId: text("entity_id").notNull(),
     actorEmail: text("actor_email").notNull(),
+    // The actor's role at the time (admin, recruiter, ...). Null on rows from before roles existed.
+    actorRole: text("actor_role"),
     action: text("action").notNull(),
     detail: jsonb("detail").$type<Record<string, unknown>>(),
     createdAt: ts("created_at").notNull().defaultNow(),
@@ -306,6 +309,54 @@ export const erasures = hub.table(
   (t) => [index("erasures_email_idx").on(t.emailSha256), index("erasures_source_idx").on(t.source, t.externalId)],
 );
 
+/**
+ * The core team and their roles. Sign-in itself is still Google + ALLOWED_DOMAIN / ALLOWED_EMAILS;
+ * this table only decides what a signed-in person may do. ADMIN_EMAILS always wins (bootstrap).
+ */
+export const teamMembers = hub.table(
+  "team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    name: text("name"),
+    role: text("role").notNull().default("viewer"),
+    active: boolean("active").notNull().default(true),
+    // Pod leads only see submissions and placements for these partners.
+    partnerIds: uuid("partner_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    createdBy: text("created_by"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("team_members_email_key").on(t.email),
+    check("team_members_email_lower", sql`${t.email} = lower(${t.email})`),
+    check("team_members_role_check", inList("role", ["admin", "recruiter", "pod_lead", "finance", "viewer"])),
+  ],
+);
+
+/** Saved list views (filters, sort, columns, layout). Personal, or shared with the whole team. */
+export const savedViews = hub.table(
+  "saved_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerEmail: text("owner_email").notNull(),
+    name: text("name").notNull(),
+    collection: text("collection").notNull().default("experts"),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull(),
+    shared: boolean("shared").notNull().default(false),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("saved_views_owner_idx").on(t.collection, t.ownerEmail),
+    index("saved_views_shared_idx").on(t.collection, t.shared),
+    check("saved_views_collection_check", inList("collection", ["experts"])),
+  ],
+);
+
 export type Expert = typeof experts.$inferSelect;
 export type NewExpert = typeof experts.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
@@ -314,3 +365,5 @@ export type Submission = typeof submissions.$inferSelect;
 export type Placement = typeof placements.$inferSelect;
 export type ExpertFile = Omit<typeof expertFiles.$inferSelect, "data">;
 export type Activity = typeof activity.$inferSelect;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type SavedView = typeof savedViews.$inferSelect;

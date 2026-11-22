@@ -35,18 +35,20 @@ export function SubmitButton({
   );
 }
 
-/** Ticks or unticks every `name="ids"` checkbox in the same form. */
-export function SelectAll({ label = "Select all" }: { label?: string }) {
+/** Ticks or unticks every `name="ids"` checkbox of the same form (including ones linked with form="..."). */
+export function SelectAll({ label = "Select all", form }: { label?: string; form?: string }) {
   return (
     <input
       type="checkbox"
+      form={form}
       aria-label={label}
       className="h-4 w-4 rounded-sm border-input align-middle"
       onChange={(e) => {
-        const form = e.currentTarget.form;
-        if (!form) return;
-        form.querySelectorAll<HTMLInputElement>('input[type="checkbox"][name="ids"]').forEach((c) => {
-          c.checked = e.currentTarget.checked;
+        const f = e.currentTarget.form;
+        if (!f) return;
+        const checked = e.currentTarget.checked;
+        Array.from(f.elements).forEach((el) => {
+          if (el instanceof HTMLInputElement && el.type === "checkbox" && el.name === "ids") el.checked = checked;
         });
       }}
     />

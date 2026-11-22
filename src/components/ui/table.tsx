@@ -3,10 +3,22 @@ import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "./cn";
 
-/** Compact list table: letter-spaced header, a thin line between rows, no zebra stripes. */
-export function Table({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Compact list table: letter-spaced header, a thin line between rows, no zebra stripes.
+ * `sticky`: the table scrolls inside its own box and the header row stays in view.
+ */
+export function Table({ children, className, sticky, dense }: { children: ReactNode; className?: string; sticky?: boolean; dense?: boolean }) {
   return (
-    <div className={cn("overflow-x-auto", className)}>
+    <div
+      className={cn(
+        sticky
+          ? "max-h-[calc(100vh-15rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-card [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]"
+          : "overflow-x-auto",
+        // dense: tighter cells (the first and last keep their wider edge padding).
+        dense && "[&_td]:px-2 [&_th]:px-2",
+        className,
+      )}
+    >
       <table className="w-full border-collapse text-left text-sm">{children}</table>
     </div>
   );

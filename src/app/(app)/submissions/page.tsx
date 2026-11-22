@@ -3,6 +3,8 @@ import { getDb } from "@/db/client";
 import { SUBMISSION_STATUSES, label } from "@/lib/constants";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { daysSince, fmtDate } from "@/lib/format";
+import { can, partnerScope } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { listPartners, listRequirements } from "@/lib/server/requirements";
 import { listSubmissions } from "@/lib/server/submissions";
 import { SubmissionStatusForm } from "@/components/submission-status-form";
@@ -20,17 +22,22 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
   const status = one(sp.status);
   const partnerId = one(sp.partner);
   const requirementId = one(sp.requirement);
+  const user = await requireUser();
+  const scope = partnerScope(user);
   const db = await getDb();
-  const [rows, partners, reqs] = await Promise.all([
-    listSubmissions(db, { status, partnerId, requirementId }),
+  const [rows, allPartners, allReqs] = await Promise.all([
+    listSubmissions(db, { status, partnerId, requirementId, partnerScope: scope }),
     listPartners(db),
     listRequirements(db, {}),
   ]);
+  // Pod leads only pick from their own partners.
+  const partners = scope ? allPartners.filter((p) => scope.includes(p.id)) : allPartners;
+  const reqs = scope ? allReqs.filter((r) => scope.includes(r.req.partnerId)) : allReqs;
   const returnTo = hrefWith("/submissions", sp, { ok: null, error: null });
   const filtered = Boolean(status || partnerId || requirementId);
   return (
     <>
-      <PageHeader title="Submissions" subtitle="Everyone put forward to a partner, across all requirements." />
+      <PageHeader title="Submissions" subtitle={scope ? "Everyone put forward to your partners." : "Everyone put forward to a partner, across all requirements."} />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Section flush>
         <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
@@ -84,8 +91,15 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                     </Td>
                     <Td>{s.partnerName}</Td>
                     <Td className="tabular">{s.sub.score ?? "–"}</Td>
-                    <Td className="min-w-96">
-                      <SubmissionStatusForm id={s.sub.id} status={s.sub.status} cvConsent={s.cvConsent} expertStatus={s.expertStatus} expertName={s.expertName} partnerNote={s.sub.partnerNote} returnTo={returnTo} />
+                    <Td className={can(user.role, "submissions.update", { partnerId: s.partnerId, partnerIds: user.partnerIds }) ? "min-w-96" : undefined}>
+                      {can(user.role, "submissions.update", { partnerId: s.partnerId, partnerIds: user.partnerIds }) ? (
+                        <SubmissionStatusForm id={s.sub.id} status={s.sub.status} cvConsent={s.cvConsent} expertStatus={s.expertStatus} expertName={s.expertName} partnerNote={s.sub.partnerNote} returnTo={returnTo} />
+                      ) : (
+                        <div className="space-y-0.5">
+                          <StatusBadge value={s.sub.status} />
+                          {s.sub.partnerNote ? <div className="text-xs text-muted-foreground">{s.sub.partnerNote}</div> : null}
+                        </div>
+                      )}
                     </Td>
                     <Td className="whitespace-nowrap">
                       {fmtDate(s.sub.submittedAt)}
@@ -97,7 +111,11 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
             </TBody>
           </Table>
         ) : (
-          <EmptyState size="page" title={filtered ? "No submissions match" : "No submissions yet"} description="Shortlist experts from a requirement's Matches tab." />
+          <EmptyState
+            size="page"
+            title={filtered ? "No submissions match" : scope && !scope.length ? "No partners assigned to you yet" : "No submissions yet"}
+            description={scope && !scope.length ? "Ask an admin to add your partners in Team & access." : "Shortlist experts from a requirement's Matches tab."}
+          />
         )}
       </Section>
     </>

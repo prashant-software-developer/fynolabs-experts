@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Activity } from "@/db/schema";
+import { roleLabel } from "@/lib/auth/permissions";
 import { label } from "@/lib/constants";
 import { ago, fmtDateTime } from "@/lib/format";
 import { EmptyState } from "./ui/feedback";
@@ -20,6 +21,12 @@ const VERBS: Record<string, string> = {
   csv_import: "imported a CSV",
   roster_exported: "exported a roster",
   demo_data_loaded: "loaded demo data",
+  experts_exported: "exported experts",
+  placements_exported: "exported placements",
+  role_changed: "changed role",
+  scope_changed: "changed partner scope",
+  deactivated: "turned access off",
+  reactivated: "turned access back on",
 };
 
 function hrefFor(a: Activity): string | null {
@@ -35,6 +42,8 @@ function hrefFor(a: Activity): string | null {
       return `/placements/${a.entityId}`;
     case "partner":
       return `/partners`;
+    case "team_member":
+      return `/settings/team`;
     default:
       return a.entityType === "import" ? "/import" : null;
   }
@@ -54,7 +63,7 @@ function describe(a: Activity): string {
 }
 
 export function ActivityList({ items, showEntity = true }: { items: Activity[]; showEntity?: boolean }) {
-  if (!items.length) return <EmptyState title="Nothing yet" description="Every change made here will be listed." />;
+  if (!items.length) return <EmptyState padded={false} title="Nothing yet" description="Every change made here will be listed." />;
   return (
     <ul className="divide-y divide-border">
       {items.map((a) => {
@@ -70,7 +79,10 @@ export function ActivityList({ items, showEntity = true }: { items: Activity[]; 
               ) : (
                 <span className="text-foreground">{text}</span>
               )}
-              <span className="ml-2 text-xs text-muted-foreground/70">{a.actorEmail}</span>
+              <span className="ml-2 text-xs text-muted-foreground/70">
+                {a.actorEmail}
+                {a.actorRole ? ` · ${roleLabel(a.actorRole)}` : ""}
+              </span>
             </div>
             <time className="shrink-0 text-xs text-muted-foreground/70" title={fmtDateTime(a.createdAt)}>
               {ago(a.createdAt)}

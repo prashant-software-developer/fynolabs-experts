@@ -1,9 +1,10 @@
 import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { activity, erasures, expertFiles, expertSources, experts, placements, submissions, type Expert } from "@/db/schema";
+import { EXPERT_STATUSES } from "@/lib/constants";
 import type { ExpertFilters } from "@/lib/filters";
 import { emailHash } from "@/lib/normalize";
-import { logActivity } from "./activity";
+import { actorEmail, logActivity, type Actor } from "./activity";
 
 /** Columns for lists (everything except the search vector). */
 export const expertListColumns = {
@@ -47,12 +48,13 @@ export function toTsQuery(q: string): string | null {
   return words.length ? words.map((w) => `${w}:*`).join(" & ") : null;
 }
 
-export function expertConditions(f: ExpertFilters): SQL[] {
+/** `contact: false` (roles that see masked contact details): search can't match email or phone. */
+export function expertConditions(f: ExpertFilters, opts: { contact?: boolean } = {}): SQL[] {
   const conds: SQL[] = [];
   if (f.q) {
     const tsq = toTsQuery(f.q);
     const like = `%${escapeLike(f.q)}%`;
-    const parts: SQL[] = [ilike(experts.email, like), ilike(experts.linkedinUrl, like), ilike(experts.phone, like)];
+    const parts: SQL[] = opts.contact === false ? [ilike(experts.linkedinUrl, like)] : [ilike(experts.email, like), ilike(experts.linkedinUrl, like), ilike(experts.phone, like)];
     if (tsq) parts.unshift(sql`${experts.search} @@ to_tsquery('simple', ${tsq})`);
     conds.push(or(...parts)!);
   }
@@ -100,13 +102,39 @@ function orderFor(f: ExpertFilters): SQL[] {
   }
 }
 
-export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number }) {
-  const where = and(...expertConditions(f));
+export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number; contact?: boolean }) {
+  const where = and(...expertConditions(f, { contact: opts.contact }));
   const [rows, [{ n }]] = await Promise.all([
     db.select(expertListColumns).from(experts).where(where).orderBy(...orderFor(f)).limit(opts.limit).offset(opts.offset),
     db.select({ n: count() }).from(experts).where(where),
   ]);
   return { rows: rows as ExpertRow[], total: Number(n) };
+}
+
+/** Board layout: one column per status (the filters still apply), newest first, `perColumn` cards each. */
+export async function expertBoard(db: DB, f: ExpertFilters, opts: { perColumn: number; contact?: boolean }) {
+  const statuses = f.status ? [f.status] : [...EXPERT_STATUSES];
+  const base = and(...expertConditions({ ...f, status: "" }, { contact: opts.contact }));
+  const counts = await db
+    .select({ status: experts.status, n: count() })
+    .from(experts)
+    .where(and(base, inArray(experts.status, statuses)))
+    .groupBy(experts.status);
+  const byStatus = new Map(counts.map((c) => [c.status, Number(c.n)]));
+  const columns = await Promise.all(
+    statuses.map(async (status) => {
+      const rows = byStatus.get(status)
+        ? ((await db
+            .select(expertListColumns)
+            .from(experts)
+            .where(and(base, eq(experts.status, status)))
+            .orderBy(...orderFor(f))
+            .limit(opts.perColumn)) as ExpertRow[])
+        : [];
+      return { status, total: byStatus.get(status) ?? 0, rows };
+    }),
+  );
+  return columns;
 }
 
 export async function getExpert(db: DB, id: string): Promise<ExpertRow | null> {
@@ -189,13 +217,13 @@ export function currentCv<T extends { id: string; storage: string; externalRef: 
  * placement money rows without the person, deletes their activity rows and remembers only a hash
  * of the email so imports don't bring them back.
  */
-export async function deleteExpertOnRequest(db: DB, id: string, actor: string): Promise<boolean> {
+export async function deleteExpertOnRequest(db: DB, id: string, actor: Actor): Promise<boolean> {
   const e = await getExpert(db, id);
   if (!e) return false;
   const srcs = await sourcesFor(db, id);
   const rows: { emailSha256: string | null; source: string | null; externalId: string | null; actorEmail: string }[] = [];
-  if (e.email) rows.push({ emailSha256: emailHash(e.email), source: null, externalId: null, actorEmail: actor });
-  for (const s of srcs) rows.push({ emailSha256: null, source: s.source, externalId: s.externalId, actorEmail: actor });
+  if (e.email) rows.push({ emailSha256: emailHash(e.email), source: null, externalId: null, actorEmail: actorEmail(actor) });
+  for (const s of srcs) rows.push({ emailSha256: null, source: s.source, externalId: s.externalId, actorEmail: actorEmail(actor) });
   if (rows.length) await db.insert(erasures).values(rows);
   await db.update(placements).set({ notes: null, updatedAt: new Date() }).where(eq(placements.expertId, id));
   await db.delete(activity).where(and(eq(activity.entityType, "expert"), eq(activity.entityId, id)));

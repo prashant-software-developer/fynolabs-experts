@@ -23,6 +23,8 @@ Your local settings are in `.env.local`. It's git-ignored, so it's never committ
 | Submissions `/submissions` | Filter by partner and status |
 | Placements `/placements` | Create one from an approved submission; check the totals |
 | Import `/import` | Upload a small CSV in the Talent register format and look at the preview before applying |
+| Roles | Top bar → **Preview as**: pick Viewer (contact details masked, no money, no exports), Recruiter, Pod lead, Finance; then back to Admin. **Settings → Team & access**: add someone, change a role |
+| Saved views | On Experts, filter, pick columns, switch to Board, then **Save view**; open it from the tabs, change a filter, **Update view** |
 | Phone width | Shrink the browser window: the menu button opens the same navigation |
 
 Write down anything that looks off (a screenshot and the page name is enough) and send it to Claude.

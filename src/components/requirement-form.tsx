@@ -16,12 +16,15 @@ export function RequirementForm({
   partners,
   withPaste,
   cancelHref,
+  allowNewPartner = true,
 }: {
   id?: string;
   initial: RequirementFormValues;
   partners: { id: string; name: string }[];
   withPaste?: boolean;
   cancelHref: string;
+  /** Typing a new partner is partner management (admins); others pick from the list. */
+  allowNewPartner?: boolean;
 }) {
   const [state, dispatch, pending] = useActionState<RequirementFormState, FormData>(saveRequirement, {});
   const [, startTransition] = useTransition();
@@ -97,17 +100,17 @@ export function RequirementForm({
         <fieldset className="space-y-4">
           <legend className="eyebrow mb-3 text-muted-foreground">Requirement</legend>
           <FieldRow>
-            <Field label="Partner" error={err.partnerId} htmlFor="partnerId">
+            <Field label="Partner" error={err.partnerId} htmlFor="partnerId" hint={allowNewPartner ? undefined : "Partner not listed? Ask an admin to add it."}>
               <Select
                 id="partnerId"
                 name="partnerId"
-                value={v.partnerId}
+                value={v.partnerId === "new" && !allowNewPartner ? "" : v.partnerId}
                 onChange={(e) => set("partnerId", e.target.value)}
-                options={[...partners.map((p) => ({ value: p.id, label: p.name })), { value: "new", label: "+ New partner..." }]}
+                options={[...partners.map((p) => ({ value: p.id, label: p.name })), ...(allowNewPartner ? [{ value: "new", label: "+ New partner..." }] : [])]}
                 placeholder="Choose..."
               />
             </Field>
-            {v.partnerId === "new" || (!v.partnerId && !partners.length) ? (
+            {allowNewPartner && (v.partnerId === "new" || (!v.partnerId && !partners.length)) ? (
               <Field label="New partner name" htmlFor="newPartner" hint="Internal name. Never shown publicly.">
                 <Input id="newPartner" name="newPartner" value={v.newPartner} onChange={(e) => set("newPartner", e.target.value)} />
               </Field>
@@ -117,7 +120,7 @@ export function RequirementForm({
               </Field>
             )}
           </FieldRow>
-          {v.partnerId === "new" || (!v.partnerId && !partners.length) ? (
+          {allowNewPartner && (v.partnerId === "new" || (!v.partnerId && !partners.length)) ? (
             <Field label="Partner reference" htmlFor="externalRef2" hint='e.g. "SOW 103650"'>
               <Input id="externalRef2" name="externalRef" value={v.externalRef} onChange={(e) => set("externalRef", e.target.value)} />
             </Field>

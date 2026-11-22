@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { Download } from "lucide-react";
 import { getDb } from "@/db/client";
+import { can, canSeeMoney, partnerScope } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { PLACEMENT_STATUSES, label } from "@/lib/constants";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { fmtDate } from "@/lib/format";
@@ -7,7 +10,7 @@ import { computeMoney, formatMoney, summarize } from "@/lib/money";
 import { listPlacements } from "@/lib/server/placements";
 import { listPartners } from "@/lib/server/requirements";
 import { StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
 import { Select } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid, Stack } from "@/components/ui/layout";
@@ -21,24 +24,50 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
   const tab = ["partners", "months"].includes(one(sp.tab)) ? one(sp.tab) : "list";
   const status = one(sp.status);
   const partnerId = one(sp.partner);
+  const user = await requireUser();
+  const money = canSeeMoney(user.role);
+  const scope = partnerScope(user);
   const db = await getDb();
-  const [rows, partners] = await Promise.all([listPlacements(db, { status: status || undefined, partnerId }), listPartners(db)]);
+  const [rows, allPartners] = await Promise.all([listPlacements(db, { status: status || undefined, partnerId, partnerScope: scope }), listPartners(db)]);
+  const partners = scope ? allPartners.filter((p) => scope.includes(p.id)) : allPartners;
   const summary = summarize(rows.map((r) => ({ ...r.p, partnerName: r.partnerName })));
   const usd = summary.total.find((t) => t.currency === "USD") ?? summary.total[0];
   const cur = usd?.currency ?? "USD";
   const activeCount = rows.filter((r) => r.p.status === "active").length;
+  const hours = summary.total.reduce((n, t) => n + t.hours, 0);
+  const tasks = summary.total.reduce((n, t) => n + t.tasks, 0);
+  const exportQs = new URLSearchParams({ ...(status ? { status } : {}), ...(partnerId ? { partner: partnerId } : {}) }).toString();
 
   return (
     <>
-      <PageHeader title="Placements" subtitle="Who is working where, and what it earns. Internal only." />
+      <PageHeader
+        title="Placements"
+        subtitle={money ? "Who is working where, and what it earns. Internal only." : scope ? "Who is working where for your partners: hours and tasks." : "Who is working where: hours and tasks."}
+        actions={
+          can(user.role, "placements.export") ? (
+            <ButtonLink href={`/api/placements/export${exportQs ? `?${exportQs}` : ""}`}>
+              <Download className="h-4 w-4" /> Export CSV
+            </ButtonLink>
+          ) : null
+        }
+      />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Stack>
-        <StatGrid>
-          <Stat label="Active placements" value={activeCount} />
-          <Stat label="Earned by experts" value={formatMoney(usd?.earned ?? 0, cur)} hint={summary.total.length > 1 ? "Other currencies in the tables" : undefined} />
-          <Stat label="Revenue" value={formatMoney(usd?.revenue ?? 0, cur)} />
-          <Stat label="Margin" value={formatMoney(usd?.margin ?? 0, cur)} />
-        </StatGrid>
+        {money ? (
+          <StatGrid>
+            <Stat label="Active placements" value={activeCount} />
+            <Stat label="Earned by experts" value={formatMoney(usd?.earned ?? 0, cur)} hint={summary.total.length > 1 ? "Other currencies in the tables" : undefined} />
+            <Stat label="Revenue" value={formatMoney(usd?.revenue ?? 0, cur)} />
+            <Stat label="Margin" value={formatMoney(usd?.margin ?? 0, cur)} />
+          </StatGrid>
+        ) : (
+          <StatGrid>
+            <Stat label="Active placements" value={activeCount} />
+            <Stat label="All placements" value={rows.length} />
+            <Stat label="Hours approved" value={Math.round(hours * 100) / 100} />
+            <Stat label="Tasks accepted" value={tasks} />
+          </StatGrid>
+        )}
         <div>
           <Tabs
             tabs={[
@@ -55,10 +84,14 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
               <Button type="submit" variant="secondary" size="sm">
                 Filter
               </Button>
-              <span className="ml-auto text-xs text-muted-foreground">New placements start from an approved submission (Requirement → Submissions).</span>
+              {can(user.role, "placements.create") ? <span className="ml-auto text-xs text-muted-foreground">New placements start from an approved submission (Requirement → Submissions).</span> : null}
             </form>
             {!rows.length ? (
-              <EmptyState size="page" title="No placements" description="When a partner approves someone, open the requirement's Submissions tab and choose Create placement." />
+              <EmptyState
+                size="page"
+                title={scope && !scope.length ? "No partners assigned to you yet" : "No placements"}
+                description={scope && !scope.length ? "Ask an admin to add your partners in Team & access." : "When a partner approves someone, open the requirement's Submissions tab and choose Create placement."}
+              />
             ) : tab === "list" ? (
               <Table>
                 <THead>
@@ -68,9 +101,9 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
                   <Th>Status</Th>
                   <Th>Start</Th>
                   <Th className="text-right">Hours / tasks</Th>
-                  <Th className="text-right">Earned by expert</Th>
-                  <Th className="text-right">Revenue</Th>
-                  <Th className="text-right">Margin</Th>
+                  {money ? <Th className="text-right">Earned by expert</Th> : null}
+                  {money ? <Th className="text-right">Revenue</Th> : null}
+                  {money ? <Th className="text-right">Margin</Th> : null}
                 </THead>
                 <TBody>
                   {rows.map((r) => {
@@ -97,18 +130,18 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
                         </Td>
                         <Td className="whitespace-nowrap">{fmtDate(r.p.startDate)}</Td>
                         <Td className="tabular text-right">{r.p.basis === "per_task" ? `${r.p.tasksAccepted ?? 0} tasks` : `${r.p.hoursApproved ?? 0} h`}</Td>
-                        <Td className="tabular text-right">{formatMoney(m.earned, r.p.currency)}</Td>
-                        <Td className="tabular text-right">{formatMoney(m.revenue, r.p.currency)}</Td>
-                        <Td className="tabular text-right">{formatMoney(m.margin, r.p.currency)}</Td>
+                        {money ? <Td className="tabular text-right">{formatMoney(m.earned, r.p.currency)}</Td> : null}
+                        {money ? <Td className="tabular text-right">{formatMoney(m.revenue, r.p.currency)}</Td> : null}
+                        {money ? <Td className="tabular text-right">{formatMoney(m.margin, r.p.currency)}</Td> : null}
                       </Tr>
                     );
                   })}
                 </TBody>
               </Table>
             ) : tab === "partners" ? (
-              <TotalsTable rows={summary.byPartner.map((t) => ({ key: `${t.partner}|${t.currency}`, label: t.partner, ...t }))} first="Partner" />
+              <TotalsTable money={money} rows={summary.byPartner.map((t) => ({ key: `${t.partner}|${t.currency}`, label: t.partner, ...t }))} first="Partner" />
             ) : (
-              <TotalsTable rows={summary.byMonth.map((t) => ({ key: `${t.month}|${t.currency}`, label: t.month, ...t }))} first="Start month" />
+              <TotalsTable money={money} rows={summary.byMonth.map((t) => ({ key: `${t.month}|${t.currency}`, label: t.month, ...t }))} first="Start month" />
             )}
           </Section>
         </div>
@@ -117,7 +150,7 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
   );
 }
 
-function TotalsTable({ rows, first }: { rows: { key: string; label: string; currency: string; count: number; hours: number; tasks: number; earned: number; revenue: number; margin: number }[]; first: string }) {
+function TotalsTable({ rows, first, money }: { rows: { key: string; label: string; currency: string; count: number; hours: number; tasks: number; earned: number; revenue: number; margin: number }[]; first: string; money: boolean }) {
   return (
     <Table>
       <THead>
@@ -125,22 +158,22 @@ function TotalsTable({ rows, first }: { rows: { key: string; label: string; curr
         <Th className="text-right">Placements</Th>
         <Th className="text-right">Hours</Th>
         <Th className="text-right">Tasks</Th>
-        <Th className="text-right">Earned by experts</Th>
-        <Th className="text-right">Revenue</Th>
-        <Th className="text-right">Margin</Th>
+        {money ? <Th className="text-right">Earned by experts</Th> : null}
+        {money ? <Th className="text-right">Revenue</Th> : null}
+        {money ? <Th className="text-right">Margin</Th> : null}
       </THead>
       <TBody>
         {rows.map((r) => (
           <Tr key={r.key}>
             <Td className="font-medium text-foreground">
-              {r.label} <span className="text-xs font-normal text-muted-foreground/70">{r.currency}</span>
+              {r.label} {money ? <span className="text-xs font-normal text-muted-foreground/70">{r.currency}</span> : null}
             </Td>
             <Td className="tabular text-right">{r.count}</Td>
             <Td className="tabular text-right">{r.hours}</Td>
             <Td className="tabular text-right">{r.tasks}</Td>
-            <Td className="tabular text-right">{formatMoney(r.earned, r.currency)}</Td>
-            <Td className="tabular text-right">{formatMoney(r.revenue, r.currency)}</Td>
-            <Td className="tabular text-right">{formatMoney(r.margin, r.currency)}</Td>
+            {money ? <Td className="tabular text-right">{formatMoney(r.earned, r.currency)}</Td> : null}
+            {money ? <Td className="tabular text-right">{formatMoney(r.revenue, r.currency)}</Td> : null}
+            {money ? <Td className="tabular text-right">{formatMoney(r.margin, r.currency)}</Td> : null}
           </Tr>
         ))}
       </TBody>

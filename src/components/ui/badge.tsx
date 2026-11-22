@@ -76,17 +76,20 @@ export function StatusBadge({ value, prefix }: { value: string | null | undefine
   );
 }
 
-export function Chips({ items, max = 6, tone = "outline" }: { items: string[]; max?: number; tone?: Tone }) {
+/** Skills and tags. `oneLine`: never wraps; the rest is "+n" and the full list is in the tooltip. */
+export function Chips({ items, max = 6, tone = "outline", oneLine }: { items: string[]; max?: number; tone?: Tone; oneLine?: boolean }) {
   if (!items.length) return <span className="text-muted-foreground/70">–</span>;
   const shown = items.slice(0, max);
   return (
-    <span className="inline-flex flex-wrap gap-1">
-      {shown.map((s) => (
-        <Badge key={s} tone={tone === "neutral" ? "outline" : tone} className="font-normal">
-          {s}
+    <span className={cn("gap-1", oneLine ? "flex w-full max-w-full flex-nowrap items-center overflow-hidden" : "inline-flex flex-wrap")} title={items.length > max || oneLine ? items.join(", ") : undefined}>
+      {shown.map((s, i) => (
+        // One line (a block-level row, so the % below resolves): the first chip keeps its width up to
+        // 60% of the cell, the next ones take what is left and end in "...".
+        <Badge key={s} tone={tone === "neutral" ? "outline" : tone} className={cn("font-normal", oneLine && (i === 0 ? "max-w-[60%] shrink-0" : "min-w-0 shrink"))}>
+          {oneLine ? <span className="min-w-0 truncate">{s}</span> : s}
         </Badge>
       ))}
-      {items.length > max ? <span className="self-center text-xs text-muted-foreground">+{items.length - max}</span> : null}
+      {items.length > max ? <span className="shrink-0 self-center text-xs text-muted-foreground">+{items.length - max}</span> : null}
     </span>
   );
 }

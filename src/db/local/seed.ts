@@ -2,7 +2,7 @@
 // emails use example.com / example.org (reserved for examples), phones use the fictional 555-01xx range.
 import { count, sql } from "drizzle-orm";
 import { rowsOf, type DB } from "../client";
-import { activity, experts, partners, placements, requirements, submissions } from "../schema";
+import { activity, experts, partners, placements, requirements, savedViews, submissions, teamMembers } from "../schema";
 
 const FIRST = ["Asha", "Marco", "Lena", "Omar", "Mei", "Tomás", "Priya", "Jonas", "Amara", "Kenji", "Sofia", "Ravi", "Elena", "Kwame", "Hana", "Lucas", "Nadia", "Arjun", "Ines", "Felix", "Zara", "Diego", "Yuki", "Noah", "Leila", "Mateo", "Ada", "Ibrahim", "Clara", "Sanjay", "Freya", "Tariq", "Maya", "Viktor", "Rosa", "Dev"];
 const LAST = ["Example", "Sample", "Demo", "Testwell", "Mockford", "Placeholder", "Fixture", "Stubbs", "Prototype", "Specimen", "Dummyson", "Mockridge"];
@@ -206,6 +206,18 @@ export async function seedIfEmpty(db: DB) {
     status: "active",
     createdBy: actor,
   });
+
+  // A demo team (fictional addresses, so nobody can sign in as them) and two shared views.
+  await db.insert(teamMembers).values([
+    { email: "rhea.recruiter@example.com", name: "Rhea Demo", role: "recruiter", createdBy: actor },
+    { email: "pavel.podlead@example.com", name: "Pavel Sample", role: "pod_lead", partnerIds: [acme.id], createdBy: actor },
+    { email: "farah.finance@example.com", name: "Farah Fixture", role: "finance", createdBy: actor },
+    { email: "victor.viewer@example.com", name: "Victor Mock", role: "viewer", active: false, createdBy: actor },
+  ]);
+  await db.insert(savedViews).values([
+    { ownerEmail: actor, name: "Maths bench", shared: true, config: { filters: { domain: "Mathematics", status: "bench" }, sort: null, columns: ["skills", "country", "years", "availability", "consent", "updated"], layout: "table" } },
+    { ownerEmail: actor, name: "Software board", shared: true, config: { filters: { domain: "Software" }, sort: null, columns: ["domain", "skills", "country", "years", "status", "availability", "consent", "updated"], layout: "board" } },
+  ]);
 
   await db.insert(activity).values({ entityType: "import", entityId: "seed", actorEmail: actor, action: "demo_data_loaded", detail: { experts: people.length } });
   return true;

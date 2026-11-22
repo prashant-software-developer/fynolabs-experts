@@ -9,6 +9,8 @@ import { placeLabel } from "@/lib/match/dictionary";
 import { WEIGHTS, type Reason } from "@/lib/match/score";
 import { filledCount } from "@/lib/workflow";
 import { activityFor } from "@/lib/server/activity";
+import { can } from "@/lib/auth/permissions";
+import { requireUser, type CurrentUser } from "@/lib/auth/session";
 import { candidatesFor, getRequirement, listPartners } from "@/lib/server/requirements";
 import { rosterFor } from "@/lib/server/roster";
 import { listSubmissions } from "@/lib/server/submissions";
@@ -63,12 +65,16 @@ function ScoreBar({ score }: { score: number }) {
 export default async function RequirementPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> }) {
   const { id } = await params;
   const sp = await searchParams;
+  const user = await requireUser();
   const db = await getDb();
   const found = await getRequirement(db, id);
   if (!found) notFound();
   const { req, partner } = found;
-  const tab = ["submissions", "details", "edit"].includes(one(sp.tab)) ? one(sp.tab) : "matches";
-  const subs = await listSubmissions(db, { requirementId: id });
+  const canEdit = can(user.role, "requirements.edit");
+  const tab = ["submissions", "details", ...(canEdit ? ["edit"] : [])].includes(one(sp.tab)) ? one(sp.tab) : "matches";
+  // Pod leads see the submissions of their own partners only.
+  const seesSubs = can(user.role, "submissions.read", { partnerId: req.partnerId, partnerIds: user.partnerIds });
+  const subs = seesSubs ? await listSubmissions(db, { requirementId: id }) : [];
   const filled = filledCount(subs.map((s) => s.sub.status));
   const base = `/requirements/${id}`;
 
@@ -89,6 +95,7 @@ export default async function RequirementPage({ params, searchParams }: { params
           </>
         }
         actions={
+          canEdit ? (
           <form action={setRequirementStatus} className="flex items-center gap-2">
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="returnTo" value={`${base}${tab === "matches" ? "" : `?tab=${tab}`}`} />
@@ -106,6 +113,7 @@ export default async function RequirementPage({ params, searchParams }: { params
               <button className="text-sm">Save</button>
             </noscript>
           </form>
+          ) : null
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
@@ -114,18 +122,19 @@ export default async function RequirementPage({ params, searchParams }: { params
           { href: base, label: "Matches", active: tab === "matches" },
           { href: `${base}?tab=submissions`, label: "Submissions", active: tab === "submissions", count: subs.length },
           { href: `${base}?tab=details`, label: "Details", active: tab === "details" },
-          { href: `${base}?tab=edit`, label: "Edit", active: tab === "edit" },
+          ...(canEdit ? [{ href: `${base}?tab=edit`, label: "Edit", active: tab === "edit" }] : []),
         ]}
       />
-      {tab === "matches" ? <MatchesTab id={id} /> : null}
-      {tab === "submissions" ? <SubmissionsTab id={id} subs={subs} /> : null}
-      {tab === "details" ? <DetailsTab id={id} /> : null}
-      {tab === "edit" ? <EditTab id={id} /> : null}
+      {tab === "matches" ? <MatchesTab id={id} user={user} /> : null}
+      {tab === "submissions" ? <SubmissionsTab id={id} subs={subs} user={user} partnerId={req.partnerId} visible={seesSubs} /> : null}
+      {tab === "details" ? <DetailsTab id={id} user={user} /> : null}
+      {tab === "edit" && canEdit ? <EditTab id={id} user={user} /> : null}
     </>
   );
 }
 
-async function MatchesTab({ id }: { id: string }) {
+async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
+  const canShortlist = can(user.role, "matching.shortlist");
   const db = await getDb();
   const { req } = (await getRequirement(db, id))!;
   const { ranked, excluded, excludedTotal, pool } = await candidatesFor(db, req);
@@ -138,17 +147,21 @@ async function MatchesTab({ id }: { id: string }) {
         {ranked.length ? (
           <form action={shortlist}>
             <input type="hidden" name="requirementId" value={id} />
-            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-              <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
-                Shortlist ticked
-              </SubmitButton>
-              <span className="text-xs text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
-            </div>
+            {canShortlist ? (
+              <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
+                  Shortlist ticked
+                </SubmitButton>
+                <span className="text-xs text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
+              </div>
+            ) : null}
             <Table>
               <THead>
-                <Th className="w-8">
-                  <SelectAll />
-                </Th>
+                {canShortlist ? (
+                  <Th className="w-8">
+                    <SelectAll />
+                  </Th>
+                ) : null}
                 <Th>Expert</Th>
                 <Th>Score</Th>
                 <Th>Why</Th>
@@ -157,9 +170,11 @@ async function MatchesTab({ id }: { id: string }) {
               <TBody>
                 {ranked.map((m) => (
                   <Tr key={m.expertId}>
-                    <Td>
-                      <input type="checkbox" name="ids" value={m.expertId} aria-label={`Select ${m.expert.fullName}`} className="h-4 w-4 rounded-sm align-middle" />
-                    </Td>
+                    {canShortlist ? (
+                      <Td>
+                        <input type="checkbox" name="ids" value={m.expertId} aria-label={`Select ${m.expert.fullName}`} className="h-4 w-4 rounded-sm align-middle" />
+                      </Td>
+                    ) : null}
                     <Td className="min-w-48">
                       <Link href={`/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {m.expert.fullName}
@@ -175,9 +190,11 @@ async function MatchesTab({ id }: { id: string }) {
                       <ReasonChips reasons={m.reasons} />
                     </Td>
                     <Td className="text-right">
-                      <button name="one" value={m.expertId} className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-primary/[0.07]">
-                        Shortlist
-                      </button>
+                      {canShortlist ? (
+                        <button name="one" value={m.expertId} className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-primary/[0.07]">
+                          Shortlist
+                        </button>
+                      ) : null}
                     </Td>
                   </Tr>
                 ))}
@@ -207,9 +224,31 @@ async function MatchesTab({ id }: { id: string }) {
   );
 }
 
-async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnType<typeof listSubmissions>> }) {
+async function SubmissionsTab({
+  id,
+  subs,
+  user,
+  partnerId,
+  visible,
+}: {
+  id: string;
+  subs: Awaited<ReturnType<typeof listSubmissions>>;
+  user: CurrentUser;
+  partnerId: string;
+  visible: boolean;
+}) {
+  if (!visible) {
+    return (
+      <Section flush>
+        <EmptyState title="Outside your pods" description="Submissions for this partner are only visible to its pod leads, recruiters and admins." />
+      </Section>
+    );
+  }
   const db = await getDb();
-  const { plan } = await rosterFor(db, id);
+  const canRoster = can(user.role, "roster.export");
+  const { plan } = canRoster ? await rosterFor(db, id) : { plan: null };
+  const canMove = can(user.role, "submissions.update", { partnerId, partnerIds: user.partnerIds });
+  const canPlace = can(user.role, "placements.create");
   const returnTo = `/requirements/${id}?tab=submissions`;
   return (
     <Stack>
@@ -237,12 +276,19 @@ async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnTy
                   <Td>
                     <StatusBadge value={s.cvConsent} />
                   </Td>
-                  <Td className="min-w-96">
-                    <SubmissionStatusForm id={s.sub.id} status={s.sub.status} cvConsent={s.cvConsent} expertStatus={s.expertStatus} expertName={s.expertName} partnerNote={s.sub.partnerNote} returnTo={returnTo} />
+                  <Td className={canMove ? "min-w-96" : undefined}>
+                    {canMove ? (
+                      <SubmissionStatusForm id={s.sub.id} status={s.sub.status} cvConsent={s.cvConsent} expertStatus={s.expertStatus} expertName={s.expertName} partnerNote={s.sub.partnerNote} returnTo={returnTo} />
+                    ) : (
+                      <div className="space-y-0.5">
+                        <StatusBadge value={s.sub.status} />
+                        {s.sub.partnerNote ? <div className="text-xs text-muted-foreground">{s.sub.partnerNote}</div> : null}
+                      </div>
+                    )}
                   </Td>
                   <Td className="whitespace-nowrap">{fmtDate(s.sub.submittedAt)}</Td>
                   <Td className="whitespace-nowrap text-right">
-                    {s.sub.status === "approved" ? (
+                    {s.sub.status === "approved" && canPlace ? (
                       <ButtonLink href={`/placements/new?submission=${s.sub.id}`} size="sm" variant="primary">
                         Create placement
                       </ButtonLink>
@@ -253,10 +299,11 @@ async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnTy
             </TBody>
           </Table>
         ) : (
-          <EmptyState title="Nobody shortlisted yet" description="Pick people on the Matches tab, or from the Experts list." action={<ButtonLink href={`/requirements/${id}`}>See matches</ButtonLink>} />
+          <EmptyState title="Nobody shortlisted yet" description="Pick people on the Matches tab, or from the Experts list." action={<ButtonLink href={`/requirements/${id}`} size="sm">See matches</ButtonLink>} />
         )}
       </Section>
 
+      {plan ? (
       <Section
         title="Export roster for the partner"
         description="CSV columns: Name, Email, Country, City, Phone, Years of professional experience, LinkedIn profile URL, Résumé filename, Notes. Only people with CV consent = yes are included."
@@ -295,11 +342,12 @@ async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnTy
           ) : null}
         </div>
       </Section>
+      ) : null}
     </Stack>
   );
 }
 
-async function DetailsTab({ id }: { id: string }) {
+async function DetailsTab({ id, user }: { id: string; user: CurrentUser }) {
   const db = await getDb();
   const { req, partner } = (await getRequirement(db, id))!;
   const activity = await activityFor(db, "requirement", id, 50);
@@ -319,7 +367,7 @@ async function DetailsTab({ id }: { id: string }) {
             { label: "Allowed countries", value: req.countriesAllowed.map(placeLabel).join(", ") || "Anywhere" },
             { label: "Blocked", value: req.countriesBlocked.map(placeLabel).join(", ") || "None" },
             { label: "Deadline", value: fmtDate(req.deadline) },
-            { label: "Rate note (internal)", value: req.rateNote },
+            ...(can(user.role, "requirements.rate_note") ? [{ label: "Rate note (internal)", value: req.rateNote }] : []),
             { label: "Created", value: `${fmtDate(req.createdAt)}${req.createdBy ? ` by ${req.createdBy}` : ""}` },
           ]}
         />
@@ -332,7 +380,7 @@ async function DetailsTab({ id }: { id: string }) {
   );
 }
 
-async function EditTab({ id }: { id: string }) {
+async function EditTab({ id, user }: { id: string; user: CurrentUser }) {
   const db = await getDb();
   const { req } = (await getRequirement(db, id))!;
   const partners = await listPartners(db);
@@ -340,6 +388,7 @@ async function EditTab({ id }: { id: string }) {
     <Section>
       <RequirementForm
         id={id}
+        allowNewPartner={can(user.role, "partners.manage")}
         cancelHref={`/requirements/${id}?tab=details`}
         partners={partners.map((p) => ({ id: p.id, name: p.name }))}
         initial={{
