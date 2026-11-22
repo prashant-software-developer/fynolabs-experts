@@ -5,13 +5,14 @@ import { cn } from "./cn";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
+// Same recipe as the website's shadcn button: 4px radius, medium weight, blue only for the main action.
 const base =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white hover:bg-accent-hover shadow-sm",
-  secondary: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+  secondary: "border border-input bg-background text-foreground hover:bg-secondary/70",
+  ghost: "text-foreground/75 hover:bg-accent hover:text-accent-foreground",
+  danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
 };
 const sizes: Record<Size, string> = { sm: "h-8 px-3 text-[13px]", md: "h-9 px-4 text-sm" };
 

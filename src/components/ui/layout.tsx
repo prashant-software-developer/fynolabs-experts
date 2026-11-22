@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "./cn";
 
+/** Page title (light, as on the website admin) with the page's actions on the right. */
 export function PageHeader({
   title,
   subtitle,
@@ -19,22 +20,23 @@ export function PageHeader({
   return (
     <header className="mb-8 space-y-3">
       {back ? (
-        <Link href={back.href} className="inline-flex items-center gap-1 text-[13px] text-slate-500 hover:text-slate-900">
-          <ArrowLeft className="h-3.5 w-3.5" /> {back.label}
+        <Link href={back.href} className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> {back.label}
         </Link>
       ) : null}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-          {subtitle ? <p className="text-sm text-slate-500">{subtitle}</p> : null}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-title text-foreground">{title}</h1>
+          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {meta ? <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">{meta}</div> : null}
+      {meta ? <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/75">{meta}</div> : null}
     </header>
   );
 }
 
+/** A bordered block with an optional title bar. `flush` removes the inner padding (tables, lists). */
 export function Section({
   title,
   description,
@@ -51,12 +53,12 @@ export function Section({
   flush?: boolean;
 }) {
   return (
-    <section className={cn("rounded-xl border border-slate-200 bg-white", className)}>
+    <section className={cn("rounded-md border border-border bg-card", className)}>
       {title || actions ? (
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
-          <div className="space-y-0.5">
-            {title ? <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2> : null}
-            {description ? <p className="text-[13px] text-slate-500">{description}</p> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="min-w-0 space-y-0.5">
+            {title ? <h2 className="text-[15px] font-medium text-foreground">{title}</h2> : null}
+            {description ? <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p> : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
@@ -70,28 +72,37 @@ export function Stack({ children, className }: { children: ReactNode; className?
   return <div className={cn("space-y-6", className)}>{children}</div>;
 }
 
+/** A number tile: small letter-spaced label, large light figure (website AdminStat). */
 export function Stat({ label, value, hint, href }: { label: string; value: ReactNode; hint?: ReactNode; href?: string }) {
   const body = (
-    <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 transition-colors hover:border-slate-300">
-      <div className="text-[13px] text-slate-500">{label}</div>
-      <div className="tabular mt-1 text-2xl font-semibold text-slate-900">{value}</div>
-      {hint ? <div className="mt-0.5 text-xs text-slate-500">{hint}</div> : null}
-    </div>
+    <>
+      <div className="eyebrow text-muted-foreground">{label}</div>
+      <div className="tabular mt-2 truncate text-stat text-foreground">{value}</div>
+      {hint ? <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div> : null}
+    </>
   );
-  return href ? <Link href={href}>{body}</Link> : body;
+  const box = "block min-w-0 border-r border-b border-border bg-card px-5 py-5";
+  return href ? (
+    <Link href={href} className={cn(box, "row-hover focus-visible:relative")}>
+      {body}
+    </Link>
+  ) : (
+    <div className={box}>{body}</div>
+  );
 }
 
+/** Tiles share their borders, like the website's stat grid. */
 export function StatGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{children}</div>;
+  return <div className="grid grid-cols-2 overflow-hidden rounded-md border-t border-l border-border md:grid-cols-4">{children}</div>;
 }
 
 export function DefinitionList({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((i) => (
         <div key={i.label} className="min-w-0">
-          <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{i.label}</dt>
-          <dd className="mt-1 break-words text-sm text-slate-800">{i.value ?? <span className="text-slate-400">–</span>}</dd>
+          <dt className="eyebrow text-muted-foreground">{i.label}</dt>
+          <dd className="mt-1 text-sm break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
         </div>
       ))}
     </dl>

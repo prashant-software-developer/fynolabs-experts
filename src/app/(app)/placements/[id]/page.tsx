@@ -37,13 +37,13 @@ export default async function PlacementPage({ params, searchParams }: { params: 
         meta={
           <>
             {p.expertId ? (
-              <Link href={`/experts/${p.expertId}`} className="font-medium text-slate-800 hover:text-accent">
+              <Link href={`/experts/${p.expertId}`} className="font-medium text-foreground hover:text-primary">
                 {row.expertName}
               </Link>
             ) : (
-              <span className="text-slate-400">Deleted expert</span>
+              <span className="text-muted-foreground/70">Deleted expert</span>
             )}
-            <span className="text-slate-500">· {row.partnerName}</span>
+            <span className="text-muted-foreground">· {row.partnerName}</span>
             <StatusBadge value={p.status} />
           </>
         }

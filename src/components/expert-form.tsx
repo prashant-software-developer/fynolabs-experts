@@ -49,7 +49,7 @@ export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: 
       ) : null}
 
       <fieldset className="space-y-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">Who</legend>
+        <legend className="eyebrow mb-3 text-muted-foreground">Who</legend>
         <FieldRow>
           <Field label="Full name" error={err.fullName} htmlFor="fullName">
             <Input id="fullName" name="fullName" defaultValue={v.fullName} required autoComplete="off" />
@@ -80,7 +80,7 @@ export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: 
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">Expertise</legend>
+        <legend className="eyebrow mb-3 text-muted-foreground">Expertise</legend>
         <Field label="Headline" htmlFor="headline" hint='One line, e.g. "PhD mathematician, numerical analysis".'>
           <Input id="headline" name="headline" defaultValue={v.headline} />
         </Field>
@@ -114,7 +114,7 @@ export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: 
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">Status and availability</legend>
+        <legend className="eyebrow mb-3 text-muted-foreground">Status and availability</legend>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Status" htmlFor="status">
             <Select id="status" name="status" defaultValue={v.status} options={opts(EXPERT_STATUSES)} />
@@ -142,11 +142,11 @@ export function ExpertForm({ id, initial, cancelHref }: { id?: string; initial: 
         </Field>
       </fieldset>
 
-      <div className="flex items-center gap-3 border-t border-slate-100 pt-6">
+      <div className="flex items-center gap-3 border-t border-border pt-6">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving..." : id ? "Save changes" : "Add expert"}
         </Button>
-        <Link href={cancelHref} className="text-sm text-slate-500 hover:text-slate-900">
+        <Link href={cancelHref} className="text-sm text-muted-foreground hover:text-foreground">
           Cancel
         </Link>
       </div>

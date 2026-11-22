@@ -84,7 +84,7 @@ Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.exam
 
 ## How it's built
 
-- **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components, `lucide-react` icons. Light mode, accent `#205FF3`, Inter (bundled, SIL Open Font License).
+- **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
 - **Postgres** through **Drizzle ORM**. Production: Neon (`@neondatabase/serverless`, HTTP driver). Local and tests: PGlite.
 - All of this app's tables live in their own Postgres schema, **`hub`**, because production shares the "Engine" database with other apps. The jobs site's tables in `public` are only ever read.
 - **Auth.js v5** (next-auth) with Google. Every page, action and download checks the signed-in user.

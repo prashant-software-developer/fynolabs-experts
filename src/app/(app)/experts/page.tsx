@@ -60,7 +60,9 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
         <form method="get" className="space-y-4">
           <div className="flex gap-2">
             <Input name="q" defaultValue={f.q} placeholder="Search name, skills, headline, university, email..." className="flex-1" aria-label="Search" />
-            <Button type="submit">Search</Button>
+            <Button type="submit" variant="secondary">
+              Search
+            </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Select name="domain" defaultValue={f.domain} options={[...new Set([...DOMAINS, ...values.domains])]} placeholder="Any domain" aria-label="Domain" />
@@ -77,7 +79,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
                 Apply
               </Button>
               {filtered ? (
-                <Link href="/experts" className="text-sm text-slate-500 hover:text-slate-900">
+                <Link href="/experts" className="text-sm text-muted-foreground hover:text-foreground">
                   Clear
                 </Link>
               ) : null}
@@ -107,14 +109,14 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
         ) : (
           <form action={addSelectedToRequirement}>
             <input type="hidden" name="returnTo" value={here} />
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
-              <span className="text-[13px] text-slate-500">Selected:</span>
+            <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+              <span className="text-[13px] text-muted-foreground">Selected:</span>
               <Select
                 name="requirementId"
                 defaultValue=""
                 options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))}
                 placeholder={reqs.length ? "Add to requirement..." : "No open requirements"}
-                className="w-auto max-w-sm"
+                className="w-auto max-w-full sm:max-w-sm"
                 aria-label="Requirement"
               />
               <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
@@ -132,38 +134,42 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
                 <SortTh label="Country" sortKey="country" current={f.sort} dir={f.dir} hrefFor={(s, d) => hrefWith("/experts", sp, { sort: s, dir: d, page: null, view: null, ok: null })} />
                 <SortTh label="Years" sortKey="years" current={f.sort} dir={f.dir} hrefFor={(s, d) => hrefWith("/experts", sp, { sort: s, dir: d, page: null, view: null, ok: null })} />
                 <SortTh label="Status" sortKey="status" current={f.sort} dir={f.dir} hrefFor={(s, d) => hrefWith("/experts", sp, { sort: s, dir: d, page: null, view: null, ok: null })} />
-                <Th>Availability</Th>
                 <Th>CV consent</Th>
-                <SortTh label="Updated" sortKey="updated" current={f.sort} dir={f.dir} hrefFor={(s, d) => hrefWith("/experts", sp, { sort: s, dir: d, page: null, view: null, ok: null })} />
+                {/* As on the website's CRM tables, the least-needed column waits for wide screens (the list is newest first anyway). */}
+                <SortTh label="Updated" sortKey="updated" current={f.sort} dir={f.dir} className="hidden 2xl:table-cell" hrefFor={(s, d) => hrefWith("/experts", sp, { sort: s, dir: d, page: null, view: null, ok: null })} />
               </THead>
               <TBody>
                 {rows.map((e) => (
                   <Tr key={e.id}>
                     <Td>
-                      <input type="checkbox" name="ids" value={e.id} aria-label={`Select ${e.fullName}`} className="h-4 w-4 rounded border-slate-300 accent-[#205ff3]" />
+                      <input type="checkbox" name="ids" value={e.id} aria-label={`Select ${e.fullName}`} className="h-4 w-4 rounded-sm align-middle" />
                     </Td>
-                    <Td className="min-w-52">
-                      <Link href={hrefWith("/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="font-medium text-slate-900 hover:text-accent">
-                        {e.fullName}
-                      </Link>
-                      {e.headline ? <div className="line-clamp-1 text-xs text-slate-500">{e.headline}</div> : null}
+                    <Td>
+                      <div className="w-44 2xl:w-56">
+                        <Link href={hrefWith("/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate font-medium text-foreground hover:text-primary">
+                          {e.fullName}
+                        </Link>
+                        {e.headline ? <div className="truncate text-xs text-muted-foreground">{e.headline}</div> : null}
+                      </div>
                     </Td>
                     <Td>{e.domain ?? "–"}</Td>
-                    <Td className="min-w-48">
-                      <Chips items={e.skills} max={4} />
+                    <Td>
+                      <div className="w-44 2xl:w-56">
+                        <Chips items={e.skills} max={3} />
+                      </div>
                     </Td>
-                    <Td className="whitespace-nowrap">{e.country ?? "–"}</Td>
+                    <Td>{e.country ?? "–"}</Td>
                     <Td className="tabular">{e.yearsExperience ?? "–"}</Td>
                     <Td>
-                      <StatusBadge value={e.status} />
-                    </Td>
-                    <Td>
-                      <StatusBadge value={e.availability} />
+                      <div className="flex flex-col items-start gap-1">
+                        <StatusBadge value={e.status} />
+                        <StatusBadge value={e.availability} />
+                      </div>
                     </Td>
                     <Td>
                       <StatusBadge value={e.cvConsent} />
                     </Td>
-                    <Td className="whitespace-nowrap text-xs text-slate-500">{ago(e.updatedAt)}</Td>
+                    <Td className="hidden whitespace-nowrap text-xs text-muted-foreground 2xl:table-cell">{ago(e.updatedAt)}</Td>
                   </Tr>
                 ))}
               </TBody>

@@ -95,7 +95,7 @@ export function RequirementForm({
         {state.message ? <Notice tone="error">{state.message}</Notice> : null}
 
         <fieldset className="space-y-4">
-          <legend className="mb-2 text-sm font-semibold text-slate-900">Requirement</legend>
+          <legend className="eyebrow mb-3 text-muted-foreground">Requirement</legend>
           <FieldRow>
             <Field label="Partner" error={err.partnerId} htmlFor="partnerId">
               <Select
@@ -139,7 +139,7 @@ export function RequirementForm({
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className="mb-2 text-sm font-semibold text-slate-900">Who fits</legend>
+          <legend className="eyebrow mb-3 text-muted-foreground">Who fits</legend>
           <Field label="Must-have skills" htmlFor="mustSkills" hint="Comma-separated. Biggest part of the match score.">
             <Input id="mustSkills" name="mustSkills" value={v.mustSkills} onChange={(e) => set("mustSkills", e.target.value)} />
           </Field>
@@ -147,7 +147,7 @@ export function RequirementForm({
             <Input id="niceSkills" name="niceSkills" value={v.niceSkills} onChange={(e) => set("niceSkills", e.target.value)} />
           </Field>
           <div className="space-y-1.5">
-            <div className="text-[13px] font-medium text-slate-700">Domains</div>
+            <div className="text-[13px] font-medium text-foreground/80">Domains</div>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {DOMAINS.map((d) => (
                 <Checkbox key={d} name="domains" value={d} checked={v.domains.includes(d)} onChange={() => toggle("domains", d)} label={d} />
@@ -155,7 +155,7 @@ export function RequirementForm({
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="text-[13px] font-medium text-slate-700">Degree (any of)</div>
+            <div className="text-[13px] font-medium text-foreground/80">Degree (any of)</div>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {DEGREE_LEVELS.map((d) => (
                 <Checkbox key={d} name="degrees" value={d} checked={v.degrees.includes(d)} onChange={() => toggle("degrees", d)} label={label(d)} />
@@ -173,7 +173,7 @@ export function RequirementForm({
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className="mb-2 text-sm font-semibold text-slate-900">Internal</legend>
+          <legend className="eyebrow mb-3 text-muted-foreground">Internal</legend>
           <FieldRow>
             <Field label="Rate note (internal)" htmlFor="rateNote" hint="Never exported or shown to experts.">
               <Input id="rateNote" name="rateNote" value={v.rateNote} onChange={(e) => set("rateNote", e.target.value)} />
@@ -187,11 +187,11 @@ export function RequirementForm({
           </Field>
         </fieldset>
 
-        <div className="flex items-center gap-3 border-t border-slate-100 pt-6">
+        <div className="flex items-center gap-3 border-t border-border pt-6">
           <Button type="submit" disabled={pending}>
             {pending ? "Saving..." : id ? "Save changes" : "Save and find matches"}
           </Button>
-          <Link href={cancelHref} className="text-sm text-slate-500 hover:text-slate-900">
+          <Link href={cancelHref} className="text-sm text-muted-foreground hover:text-foreground">
             Cancel
           </Link>
         </div>

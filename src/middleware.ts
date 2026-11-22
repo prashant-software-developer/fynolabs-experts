@@ -24,5 +24,5 @@ export const config = {
   // Node.js middleware (stable since Next.js 15.5): same runtime as the rest of the app.
   runtime: "nodejs",
   // Everything except sign-in itself, Auth.js callbacks and static files.
-  matcher: ["/((?!api/auth|signin|_next/static|_next/image|favicon.ico|icon.svg|robots.txt).*)"],
+  matcher: ["/((?!api/auth|signin|_next/static|_next/image|favicon.ico|icon.svg|brand/|robots.txt).*)"],
 };

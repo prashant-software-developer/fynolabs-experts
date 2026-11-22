@@ -46,11 +46,11 @@ export default async function DashboardPage() {
               const n = d.byStatus[s] ?? 0;
               return (
                 <Link key={s} href={`/experts?status=${s}`} className="group flex items-center gap-3 text-sm">
-                  <span className="w-32 shrink-0 text-slate-600 group-hover:text-slate-900">{label(s)}</span>
-                  <div className="h-2 flex-1 rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-accent/80" style={{ width: `${(n / maxStatus) * 100}%` }} />
+                  <span className="w-32 shrink-0 text-foreground/70 group-hover:text-foreground">{label(s)}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                    <div className="h-1.5 rounded-full bg-foreground/75 transition-colors group-hover:bg-foreground" style={{ width: `${(n / maxStatus) * 100}%` }} />
                   </div>
-                  <span className="tabular w-10 text-right text-slate-700">{n}</span>
+                  <span className="tabular w-10 text-right text-foreground/80">{n}</span>
                 </Link>
               );
             })}
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
                 {d.openReqs.map((r) => (
                   <Tr key={r.id}>
                     <Td>
-                      <Link href={`/requirements/${r.id}`} className="font-medium text-slate-900 hover:text-accent">
+                      <Link href={`/requirements/${r.id}`} className="font-medium text-foreground hover:text-primary">
                         {r.title}
                       </Link>
                     </Td>
@@ -110,12 +110,12 @@ export default async function DashboardPage() {
                   return (
                     <Tr key={w.id}>
                       <Td>
-                        <Link href={`/experts/${w.expertId}`} className="font-medium text-slate-900 hover:text-accent">
+                        <Link href={`/experts/${w.expertId}`} className="font-medium text-foreground hover:text-primary">
                           {w.expertName}
                         </Link>
                       </Td>
                       <Td>
-                        <Link href={`/requirements/${w.reqId}?tab=submissions`} className="hover:text-accent">
+                        <Link href={`/requirements/${w.reqId}?tab=submissions`} className="hover:text-primary">
                           {w.reqTitle}
                         </Link>
                       </Td>
@@ -123,7 +123,7 @@ export default async function DashboardPage() {
                       <Td>
                         <StatusBadge value={w.status} />
                       </Td>
-                      <Td className={days != null && days >= 5 ? "text-amber-700" : ""}>{days == null ? "–" : `${days} d`}</Td>
+                      <Td className={days != null && days >= 5 ? "text-warning" : ""}>{days == null ? "–" : `${days} d`}</Td>
                     </Tr>
                   );
                 })}
@@ -150,9 +150,9 @@ export default async function DashboardPage() {
                   const m = computeMoney(a.p);
                   return (
                     <Tr key={a.p.id}>
-                      <Td>{a.expertName ?? <span className="text-slate-400">Deleted expert</span>}</Td>
+                      <Td>{a.expertName ?? <span className="text-muted-foreground/70">Deleted expert</span>}</Td>
                       <Td>
-                        <Link href={`/placements/${a.p.id}`} className="hover:text-accent">
+                        <Link href={`/placements/${a.p.id}`} className="hover:text-primary">
                           {a.p.projectName}
                         </Link>
                       </Td>

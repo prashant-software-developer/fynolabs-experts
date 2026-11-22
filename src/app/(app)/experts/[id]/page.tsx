@@ -81,7 +81,7 @@ async function ProfileTab({ id }: { id: string }) {
         actions={
           <form action={recordConsent} className="flex items-center gap-2">
             <input type="hidden" name="id" value={id} />
-            <span className="text-[13px] text-slate-500">Consent to share CV:</span>
+            <span className="text-[13px] text-muted-foreground">Consent to share CV:</span>
             <StatusBadge value={e.cvConsent} />
             {e.cvConsent !== "yes" ? (
               <SubmitButton size="sm" variant="secondary" name="consent" value="yes">
@@ -98,18 +98,18 @@ async function ProfileTab({ id }: { id: string }) {
       >
         <div className="space-y-4">
           {files.length ? (
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+            <ul className="divide-y divide-border rounded-md border border-border">
               {files.map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                   <div className="flex min-w-0 items-center gap-2">
-                    <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                    <span className="truncate text-slate-800">{f.filename}</span>
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                    <span className="truncate text-foreground">{f.filename}</span>
                     {cv?.id === f.id ? <StatusBadge value="active" prefix="Current ·" /> : null}
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground/70">
                       {bytes(f.size)} · {f.storage === "jobs_db" ? "from jobs site" : "uploaded"} · {fmtDate(f.createdAt)}
                     </span>
                   </div>
-                  <a href={`/api/files/${f.id}`} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
+                  <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
                     <Download className="h-3.5 w-3.5" /> Download
                   </a>
                 </li>
@@ -120,11 +120,11 @@ async function ProfileTab({ id }: { id: string }) {
           )}
           <form action={uploadCv} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="id" value={id} />
-            <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.rtf" required className="text-sm text-slate-600 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-slate-700 hover:file:bg-slate-50" />
+            <input type="file" name="file" accept=".pdf,.doc,.docx,.txt,.rtf" required className="file-control" />
             <SubmitButton size="sm" variant="secondary" pendingText="Uploading...">
               <Upload className="h-3.5 w-3.5" /> Upload CV
             </SubmitButton>
-            <span className="text-xs text-slate-400">PDF or Word, up to 10 MB. Becomes the current CV.</span>
+            <span className="text-xs text-muted-foreground/70">PDF or Word, up to 10 MB. Becomes the current CV.</span>
           </form>
         </div>
       </Section>
@@ -141,8 +141,8 @@ async function ProfileTab({ id }: { id: string }) {
               <Checkbox name="contacted" value="yes" label="We contacted them today" />
             </div>
           </form>
-          {e.notes ? <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-700">{e.notes}</pre> : null}
-          <p className="text-xs text-slate-400">
+          {e.notes ? <pre className="prose-box">{e.notes}</pre> : null}
+          <p className="text-xs text-muted-foreground/70">
             Last contacted: {fmtDate(e.lastContactedAt)} · Added {fmtDate(e.createdAt)} · Updated {fmtDateTime(e.updatedAt)}
           </p>
         </div>
@@ -170,14 +170,14 @@ async function ProfileTab({ id }: { id: string }) {
           <EmptyState title={`Added by hand (${label(e.primarySource)})`} description="No import has matched this person yet." />
         )}
         {apps.length ? (
-          <div className="border-t border-slate-100 px-5 py-4">
-            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Jobs-site applications (live, read only)</div>
+          <div className="border-t border-border px-5 py-4">
+            <div className="eyebrow mb-2 text-muted-foreground">Jobs-site applications (live, read only)</div>
             <ul className="space-y-1 text-sm">
               {apps.map((a) => (
                 <li key={a.id} className="flex items-center gap-2">
-                  <span className="text-slate-800">{a.title}</span>
-                  <span className="text-xs text-slate-500">{a.status.replace(/_/g, " ")}</span>
-                  <span className="text-xs text-slate-400">{fmtDate(a.created_at)}</span>
+                  <span className="text-foreground">{a.title}</span>
+                  <span className="text-xs text-muted-foreground">{a.status.replace(/_/g, " ")}</span>
+                  <span className="text-xs text-muted-foreground/70">{fmtDate(a.created_at)}</span>
                 </li>
               ))}
             </ul>
@@ -225,7 +225,7 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
               {subs.map((s) => (
                 <Tr key={s.sub.id}>
                   <Td>
-                    <Link href={`/requirements/${s.sub.requirementId}?tab=submissions`} className="font-medium text-slate-900 hover:text-accent">
+                    <Link href={`/requirements/${s.sub.requirementId}?tab=submissions`} className="font-medium text-foreground hover:text-primary">
                       {s.reqTitle}
                     </Link>
                   </Td>
@@ -235,7 +235,7 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
                   </Td>
                   <Td className="tabular">{s.sub.score ?? "–"}</Td>
                   <Td>{fmtDate(s.sub.submittedAt)}</Td>
-                  <Td className="max-w-xs text-xs text-slate-500">{s.sub.partnerNote ?? "–"}</Td>
+                  <Td className="max-w-xs text-xs text-muted-foreground">{s.sub.partnerNote ?? "–"}</Td>
                 </Tr>
               ))}
             </TBody>
@@ -258,7 +258,7 @@ async function WorkTab({ id, subs, plcs }: { id: string; subs: Awaited<ReturnTyp
               {plcs.map((p) => (
                 <Tr key={p.p.id}>
                   <Td>
-                    <Link href={`/placements/${p.p.id}`} className="font-medium text-slate-900 hover:text-accent">
+                    <Link href={`/placements/${p.p.id}`} className="font-medium text-foreground hover:text-primary">
                       {p.p.projectName}
                     </Link>
                   </Td>

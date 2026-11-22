@@ -17,13 +17,16 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const { domain } = authSettings();
   const error = sp.error;
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm space-y-8">
-        <div className="space-y-2 text-center">
+        <div className="space-y-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="" className="mx-auto h-10 w-10" />
-          <h1 className="text-xl font-semibold text-slate-900">Expert Hub</h1>
-          <p className="text-sm text-slate-500">Sign in with your @{domain} Google account.</p>
+          <img src="/brand/fynolabs-mark.svg" alt="" width={40} height={40} className="mx-auto h-10 w-10" />
+          <div className="space-y-2">
+            <p className="eyebrow text-primary">FynoLabs</p>
+            <h1 className="text-title text-foreground">Expert Hub</h1>
+            <p className="text-sm text-muted-foreground">Sign in with your @{domain} Google account.</p>
+          </div>
         </div>
         {error ? (
           <Notice tone="error">
@@ -38,7 +41,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             await signIn("google", { redirectTo: back });
           }}
         >
-          <button className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50">
+          <button className="flex h-11 w-full items-center justify-center gap-3 rounded-md border border-input bg-background text-sm font-medium text-foreground transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
               <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z" />
               <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z" />
@@ -48,7 +51,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             Continue with Google
           </button>
         </form>
-        <p className="text-center text-xs text-slate-400">Internal tool. Access is limited to the core team.</p>
+        <p className="text-center text-xs text-muted-foreground">Internal tool. Access is limited to the core team.</p>
       </div>
     </main>
   );

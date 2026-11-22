@@ -73,27 +73,27 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
               <TBody>
                 {rows.map((p) => (
                   <Tr key={p.id}>
-                    <Td className="font-medium text-slate-900">
+                    <Td className="font-medium text-foreground">
                       {p.name}
                       {p.website ? (
-                        <a href={p.website} target="_blank" rel="noreferrer noopener" className="ml-2 text-xs font-normal text-slate-400 hover:text-accent">
+                        <a href={p.website} target="_blank" rel="noreferrer noopener" className="ml-2 text-xs font-normal text-muted-foreground/70 hover:text-primary">
                           {p.website.replace(/^https?:\/\//, "")}
                         </a>
                       ) : null}
                     </Td>
                     <Td>{label(p.kind)}</Td>
                     <Td className="tabular">
-                      <Link href={`/requirements?partner=${p.id}`} className="hover:text-accent">
+                      <Link href={`/requirements?partner=${p.id}`} className="hover:text-primary">
                         {p.openReqs}
                       </Link>
                     </Td>
                     <Td className="tabular">
-                      <Link href={`/placements?partner=${p.id}`} className="hover:text-accent">
+                      <Link href={`/placements?partner=${p.id}`} className="hover:text-primary">
                         {p.activePlacements}
                       </Link>
                     </Td>
                     <Td className="text-right">
-                      <Link href={hrefWith("/partners", sp, { edit: p.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-accent hover:underline">
+                      <Link href={hrefWith("/partners", sp, { edit: p.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
                         Edit
                       </Link>
                     </Td>

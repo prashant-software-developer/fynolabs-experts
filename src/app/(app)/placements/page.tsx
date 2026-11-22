@@ -48,14 +48,14 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
             ]}
           />
           <Section flush>
-            <form method="get" className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
               {tab !== "list" ? <input type="hidden" name="tab" value={tab} /> : null}
               <Select name="status" defaultValue={status} options={PLACEMENT_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Any status" className="w-auto" aria-label="Status" />
               <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
               <Button type="submit" variant="secondary" size="sm">
                 Filter
               </Button>
-              <span className="ml-auto text-xs text-slate-500">New placements start from an approved submission (Requirement → Submissions).</span>
+              <span className="ml-auto text-xs text-muted-foreground">New placements start from an approved submission (Requirement → Submissions).</span>
             </form>
             {!rows.length ? (
               <EmptyState size="page" title="No placements" description="When a partner approves someone, open the requirement's Submissions tab and choose Create placement." />
@@ -79,15 +79,15 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
                       <Tr key={r.p.id}>
                         <Td>
                           {r.p.expertId ? (
-                            <Link href={`/experts/${r.p.expertId}`} className="font-medium text-slate-900 hover:text-accent">
+                            <Link href={`/experts/${r.p.expertId}`} className="font-medium text-foreground hover:text-primary">
                               {r.expertName}
                             </Link>
                           ) : (
-                            <span className="text-slate-400">Deleted expert</span>
+                            <span className="text-muted-foreground/70">Deleted expert</span>
                           )}
                         </Td>
                         <Td>
-                          <Link href={`/placements/${r.p.id}`} className="text-slate-800 hover:text-accent">
+                          <Link href={`/placements/${r.p.id}`} className="text-foreground hover:text-primary">
                             {r.p.projectName}
                           </Link>
                         </Td>
@@ -132,8 +132,8 @@ function TotalsTable({ rows, first }: { rows: { key: string; label: string; curr
       <TBody>
         {rows.map((r) => (
           <Tr key={r.key}>
-            <Td className="font-medium text-slate-900">
-              {r.label} <span className="text-xs font-normal text-slate-400">{r.currency}</span>
+            <Td className="font-medium text-foreground">
+              {r.label} <span className="text-xs font-normal text-muted-foreground/70">{r.currency}</span>
             </Td>
             <Td className="tabular text-right">{r.count}</Td>
             <Td className="tabular text-right">{r.hours}</Td>

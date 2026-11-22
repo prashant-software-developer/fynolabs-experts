@@ -41,8 +41,8 @@ export function PlacementForm({ id, initial, partners, expertLabel, cancelHref }
       <input type="hidden" name="submissionId" value={v.submissionId} />
       {state.message ? <Notice tone="error">{state.message}</Notice> : null}
       <fieldset className="space-y-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">Placement</legend>
-        {expertLabel ? <p className="text-sm text-slate-600">Expert: <span className="font-medium text-slate-900">{expertLabel}</span></p> : null}
+        <legend className="eyebrow mb-3 text-muted-foreground">Placement</legend>
+        {expertLabel ? <p className="text-sm text-foreground/70">Expert: <span className="font-medium text-foreground">{expertLabel}</span></p> : null}
         <FieldRow>
           <Field label="Project" error={err.projectName} htmlFor="projectName" hint="Internal name (field or task type).">
             <Input id="projectName" name="projectName" value={v.projectName} onChange={(e) => set("projectName", e.target.value)} />
@@ -64,7 +64,7 @@ export function PlacementForm({ id, initial, partners, expertLabel, cancelHref }
         </div>
       </fieldset>
       <fieldset className="space-y-4">
-        <legend className="mb-2 text-sm font-semibold text-slate-900">Pay (internal)</legend>
+        <legend className="eyebrow mb-3 text-muted-foreground">Pay (internal)</legend>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Basis" htmlFor="basis">
             <Select id="basis" name="basis" value={v.basis} onChange={(e) => set("basis", e.target.value)} options={PLACEMENT_BASIS.map((s) => ({ value: s, label: label(s) }))} />
@@ -95,18 +95,18 @@ export function PlacementForm({ id, initial, partners, expertLabel, cancelHref }
             <Input id="revenue" name="revenue" inputMode="decimal" value={v.revenue} onChange={(e) => set("revenue", e.target.value)} placeholder={m.revenue != null ? String(m.revenue) : ""} />
           </Field>
         </FieldRow>
-        <p className="tabular text-sm text-slate-600">
+        <p className="tabular text-sm text-foreground/70">
           Expert earns <b>{formatMoney(m.earned, v.currency || "USD")}</b> · revenue <b>{formatMoney(m.revenue, v.currency || "USD")}</b> · margin <b>{formatMoney(m.margin, v.currency || "USD")}</b>
         </p>
         <Field label="Notes (internal)" htmlFor="notes">
           <Textarea id="notes" name="notes" rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} />
         </Field>
       </fieldset>
-      <div className="flex items-center gap-3 border-t border-slate-100 pt-6">
+      <div className="flex items-center gap-3 border-t border-border pt-6">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving..." : id ? "Save changes" : "Create placement"}
         </Button>
-        <Link href={cancelHref} className="text-sm text-slate-500 hover:text-slate-900">
+        <Link href={cancelHref} className="text-sm text-muted-foreground hover:text-foreground">
           Cancel
         </Link>
       </div>

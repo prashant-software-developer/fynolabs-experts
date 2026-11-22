@@ -23,7 +23,7 @@ export default async function ImportPage() {
           description="Reads applicants and their latest CV from the jobs site's tables (read only). New people are added; for people already here, only empty fields are filled, so edits made in the hub are never overwritten. CVs stay on the jobs site and are streamed when you download them."
         >
           <JobsSyncPanel available={available} />
-          <p className="mt-4 text-xs text-slate-400">Same as running <code>npm run import:jobs</code>.</p>
+          <p className="mt-4 text-xs text-muted-foreground/70">Same as running <code>npm run import:jobs</code>.</p>
         </Section>
         <Section
           title="Spreadsheet (CSV)"

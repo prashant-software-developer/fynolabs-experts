@@ -26,10 +26,10 @@ import { Tabs } from "@/components/ui/tabs";
 import { setRequirementStatus, shortlist } from "../actions";
 
 const TONE: Record<Reason["tone"], string> = {
-  good: "bg-emerald-50 text-emerald-700",
-  ok: "bg-slate-100 text-slate-600",
-  bad: "bg-amber-50 text-amber-800",
-  block: "bg-red-50 text-red-700",
+  good: "bg-success-soft text-success",
+  ok: "bg-secondary text-foreground/70",
+  bad: "bg-warning-soft text-warning",
+  block: "bg-danger-soft text-danger",
 };
 
 function ReasonChips({ reasons }: { reasons: Reason[] }) {
@@ -40,7 +40,7 @@ function ReasonChips({ reasons }: { reasons: Reason[] }) {
       {sorted
         .filter((r) => !(r.tone === "ok" && r.points === r.max && r.factor !== "skills"))
         .map((r, i) => (
-          <span key={i} className={cn("rounded px-1.5 py-0.5 text-[11px] leading-4", TONE[r.tone])} title={r.max ? `${r.points} of ${r.max} points` : undefined}>
+          <span key={i} className={cn("rounded-md px-1.5 py-0.5 text-[11px] leading-4", TONE[r.tone])} title={r.max ? `${r.points} of ${r.max} points` : undefined}>
             {r.text}
             {r.max ? <span className="ml-1 opacity-60">{r.points}/{r.max}</span> : null}
           </span>
@@ -52,9 +52,9 @@ function ReasonChips({ reasons }: { reasons: Reason[] }) {
 function ScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="tabular w-7 text-right font-semibold text-slate-900">{score}</span>
-      <div className="h-1.5 w-16 rounded-full bg-slate-100">
-        <div className={cn("h-1.5 rounded-full", score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-accent" : "bg-amber-400")} style={{ width: `${score}%` }} />
+      <span className="tabular w-7 text-right font-medium text-foreground">{score}</span>
+      <div className="h-1 w-16 overflow-hidden rounded-full bg-secondary">
+        <div className={cn("h-1 rounded-full", score >= 75 ? "bg-success" : score >= 50 ? "bg-foreground/60" : "bg-warning")} style={{ width: `${score}%` }} />
       </div>
     </div>
   );
@@ -79,23 +79,23 @@ export default async function RequirementPage({ params, searchParams }: { params
         back={{ href: "/requirements", label: "Requirements" }}
         meta={
           <>
-            <span className="font-medium text-slate-800">{partner.name}</span>
-            {req.externalRef ? <span className="text-slate-500">· {req.externalRef}</span> : null}
+            <span className="font-medium text-foreground">{partner.name}</span>
+            {req.externalRef ? <span className="text-muted-foreground">· {req.externalRef}</span> : null}
             <StatusBadge value={req.status} />
-            <Badge tone={filled >= req.slots ? "green" : "neutral"}>
+            <Badge tone={filled >= req.slots ? "success" : "neutral"}>
               {filled} of {req.slots} filled
             </Badge>
-            {req.deadline ? <span className="text-slate-500">Deadline {fmtDate(req.deadline)}</span> : null}
+            {req.deadline ? <span className="text-muted-foreground">Deadline {fmtDate(req.deadline)}</span> : null}
           </>
         }
         actions={
           <form action={setRequirementStatus} className="flex items-center gap-2">
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="returnTo" value={`${base}${tab === "matches" ? "" : `?tab=${tab}`}`} />
-            <label className="text-[13px] text-slate-500" htmlFor="req-status">
+            <label className="text-[13px] text-muted-foreground" htmlFor="req-status">
               Status
             </label>
-            <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control h-8 w-auto py-1 text-[13px]">
+            <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control h-8 w-auto text-[13px]">
               {REQUIREMENT_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {label(s)}
@@ -138,11 +138,11 @@ async function MatchesTab({ id }: { id: string }) {
         {ranked.length ? (
           <form action={shortlist}>
             <input type="hidden" name="requirementId" value={id} />
-            <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
               <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
                 Shortlist ticked
               </SubmitButton>
-              <span className="text-xs text-slate-500">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
+              <span className="text-xs text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
             </div>
             <Table>
               <THead>
@@ -158,13 +158,13 @@ async function MatchesTab({ id }: { id: string }) {
                 {ranked.map((m) => (
                   <Tr key={m.expertId}>
                     <Td>
-                      <input type="checkbox" name="ids" value={m.expertId} aria-label={`Select ${m.expert.fullName}`} className="h-4 w-4 accent-[#205ff3]" />
+                      <input type="checkbox" name="ids" value={m.expertId} aria-label={`Select ${m.expert.fullName}`} className="h-4 w-4 rounded-sm align-middle" />
                     </Td>
                     <Td className="min-w-48">
-                      <Link href={`/experts/${m.expertId}`} className="font-medium text-slate-900 hover:text-accent">
+                      <Link href={`/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {m.expert.fullName}
                       </Link>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         {[m.expert.domain, m.expert.country].filter(Boolean).join(" · ") || "–"}
                       </div>
                     </Td>
@@ -175,7 +175,7 @@ async function MatchesTab({ id }: { id: string }) {
                       <ReasonChips reasons={m.reasons} />
                     </Td>
                     <Td className="text-right">
-                      <button name="one" value={m.expertId} className="rounded-md px-2 py-1 text-[13px] font-medium text-accent hover:bg-accent-soft">
+                      <button name="one" value={m.expertId} className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-primary/[0.07]">
                         Shortlist
                       </button>
                     </Td>
@@ -189,15 +189,15 @@ async function MatchesTab({ id }: { id: string }) {
         )}
       </Section>
       {excludedTotal ? (
-        <details className="rounded-xl border border-slate-200 bg-white">
-          <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-700">Left out ({excludedTotal}): location rules</summary>
-          <ul className="divide-y divide-slate-100 border-t border-slate-100">
+        <details className="rounded-md border border-border bg-card">
+          <summary className="cursor-pointer px-5 py-4 text-[15px] font-medium text-foreground">Left out ({excludedTotal}): location rules</summary>
+          <ul className="divide-y divide-border border-t border-border">
             {excluded.map((m) => (
               <li key={m.expertId} className="flex items-center justify-between gap-4 px-5 py-2.5 text-sm">
-                <Link href={`/experts/${m.expertId}`} className="text-slate-800 hover:text-accent">
+                <Link href={`/experts/${m.expertId}`} className="text-foreground hover:text-primary">
                   {m.expert.fullName}
                 </Link>
-                <span className="text-xs text-red-700">{m.excludedBecause.join("; ")}</span>
+                <span className="text-xs text-danger">{m.excludedBecause.join("; ")}</span>
               </li>
             ))}
           </ul>
@@ -228,10 +228,10 @@ async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnTy
               {subs.map((s) => (
                 <Tr key={s.sub.id}>
                   <Td className="min-w-44">
-                    <Link href={`/experts/${s.sub.expertId}`} className="font-medium text-slate-900 hover:text-accent">
+                    <Link href={`/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
                       {s.expertName}
                     </Link>
-                    <div className="text-xs text-slate-500">{s.expertCountry ?? "–"}</div>
+                    <div className="text-xs text-muted-foreground">{s.expertCountry ?? "–"}</div>
                   </Td>
                   <Td className="tabular">{s.sub.score ?? "–"}</Td>
                   <Td>
@@ -275,11 +275,11 @@ async function SubmissionsTab({ id, subs }: { id: string; subs: Awaited<ReturnTy
       >
         <div className="space-y-3 text-sm">
           {plan.included.length ? (
-            <p className="text-slate-700">
+            <p className="text-foreground/80">
               Included ({plan.included.length}): {plan.included.map((l) => l.expert.fullName).join(", ")}
             </p>
           ) : (
-            <p className="text-slate-500">Nobody can be exported yet.</p>
+            <p className="text-muted-foreground">Nobody can be exported yet.</p>
           )}
           {plan.missingCv.length ? <Notice tone="warning">No CV on file for {plan.missingCv.join(", ")}: their row has an empty Résumé filename.</Notice> : null}
           {plan.skipped.length ? (
@@ -311,7 +311,7 @@ async function DetailsTab({ id }: { id: string }) {
             { label: "Partner", value: partner.name },
             { label: "Reference", value: req.externalRef },
             { label: "Slots", value: req.slots },
-            { label: "Must-have skills", value: req.mustSkills.length ? <Chips items={req.mustSkills} max={30} tone="blue" /> : null },
+            { label: "Must-have skills", value: req.mustSkills.length ? <Chips items={req.mustSkills} max={30} tone="info" /> : null },
             { label: "Nice-to-have", value: req.niceSkills.length ? <Chips items={req.niceSkills} max={30} /> : null },
             { label: "Domains", value: req.domains.join(", ") || "Any" },
             { label: "Degree", value: req.degrees.length ? req.degrees.map(label).join(" or ") : "Any" },
@@ -323,7 +323,7 @@ async function DetailsTab({ id }: { id: string }) {
             { label: "Created", value: `${fmtDate(req.createdAt)}${req.createdBy ? ` by ${req.createdBy}` : ""}` },
           ]}
         />
-        {req.description ? <pre className="mt-6 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-700">{req.description}</pre> : null}
+        {req.description ? <pre className="prose-box mt-6">{req.description}</pre> : null}
       </Section>
       <Section title="Activity">
         <ActivityList items={activity} showEntity={false} />

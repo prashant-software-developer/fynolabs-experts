@@ -2,21 +2,29 @@ import type { ReactNode } from "react";
 import { label } from "@/lib/constants";
 import { cn } from "./cn";
 
-type Tone = "neutral" | "blue" | "green" | "amber" | "red" | "violet" | "slate";
+/**
+ * Status pills: soft tints, never the primary blue (that is kept for the main action and links).
+ * "outline" is for skills and tags, so they read differently from statuses.
+ */
+type Tone = "neutral" | "muted" | "info" | "progress" | "success" | "warning" | "danger" | "outline";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-slate-100 text-slate-700",
-  slate: "bg-slate-100 text-slate-500",
-  blue: "bg-accent-soft text-accent-ink",
-  green: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-800",
-  red: "bg-red-50 text-red-700",
-  violet: "bg-violet-50 text-violet-700",
+  neutral: "bg-secondary text-foreground/80",
+  muted: "bg-secondary text-muted-foreground",
+  info: "bg-info-soft text-info",
+  progress: "bg-progress-soft text-progress",
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-warning",
+  danger: "bg-danger-soft text-danger",
+  outline: "border border-border bg-background text-foreground/80",
 };
 
 export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", tones[tone], className)}>
+    <span
+      title={title}
+      className={cn("inline-flex h-5 items-center rounded-md px-1.5 text-xs leading-none font-medium whitespace-nowrap", tones[tone], className)}
+    >
       {children}
     </span>
   );
@@ -25,41 +33,41 @@ export function Badge({ tone = "neutral", children, className, title }: { tone?:
 const STATUS_TONE: Record<string, Tone> = {
   // experts
   applicant: "neutral",
-  screening: "violet",
-  bench: "blue",
-  submitted: "amber",
-  placed: "green",
-  inactive: "slate",
-  do_not_contact: "red",
+  screening: "progress",
+  bench: "info",
+  submitted: "warning",
+  placed: "success",
+  inactive: "muted",
+  do_not_contact: "danger",
   // availability
-  available: "green",
-  limited: "amber",
-  busy: "slate",
-  unavailable: "slate",
+  available: "success",
+  limited: "warning",
+  busy: "muted",
+  unavailable: "muted",
   // consent
-  yes: "green",
-  no: "red",
-  unknown: "slate",
+  yes: "success",
+  no: "danger",
+  unknown: "muted",
   // requirements
-  open: "blue",
-  filling: "amber",
-  filled: "green",
-  closed: "slate",
+  open: "info",
+  filling: "warning",
+  filled: "success",
+  closed: "muted",
   // submissions
   shortlisted: "neutral",
-  consent_requested: "violet",
-  partner_review: "amber",
-  approved: "green",
-  rejected: "red",
-  active: "green",
-  ended: "slate",
-  withdrawn: "slate",
+  consent_requested: "progress",
+  partner_review: "warning",
+  approved: "success",
+  rejected: "danger",
+  active: "success",
+  ended: "muted",
+  withdrawn: "muted",
   // placements
-  paused: "amber",
+  paused: "warning",
 };
 
 export function StatusBadge({ value, prefix }: { value: string | null | undefined; prefix?: string }) {
-  if (!value) return <span className="text-slate-400">–</span>;
+  if (!value) return <span className="text-muted-foreground/70">–</span>;
   return (
     <Badge tone={STATUS_TONE[value] ?? "neutral"}>
       {prefix ? `${prefix} ` : ""}
@@ -68,17 +76,17 @@ export function StatusBadge({ value, prefix }: { value: string | null | undefine
   );
 }
 
-export function Chips({ items, max = 6, tone = "neutral" }: { items: string[]; max?: number; tone?: Tone }) {
-  if (!items.length) return <span className="text-slate-400">–</span>;
+export function Chips({ items, max = 6, tone = "outline" }: { items: string[]; max?: number; tone?: Tone }) {
+  if (!items.length) return <span className="text-muted-foreground/70">–</span>;
   const shown = items.slice(0, max);
   return (
     <span className="inline-flex flex-wrap gap-1">
       {shown.map((s) => (
-        <Badge key={s} tone={tone} className="font-normal">
+        <Badge key={s} tone={tone === "neutral" ? "outline" : tone} className="font-normal">
           {s}
         </Badge>
       ))}
-      {items.length > max ? <span className="text-xs text-slate-500">+{items.length - max}</span> : null}
+      {items.length > max ? <span className="self-center text-xs text-muted-foreground">+{items.length - max}</span> : null}
     </span>
   );
 }

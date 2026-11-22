@@ -56,7 +56,7 @@ function describe(a: Activity): string {
 export function ActivityList({ items, showEntity = true }: { items: Activity[]; showEntity?: boolean }) {
   if (!items.length) return <EmptyState title="Nothing yet" description="Every change made here will be listed." />;
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-border">
       {items.map((a) => {
         const href = showEntity ? hrefFor(a) : null;
         const text = describe(a);
@@ -64,15 +64,15 @@ export function ActivityList({ items, showEntity = true }: { items: Activity[]; 
           <li key={a.id} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
             <div className="min-w-0">
               {href ? (
-                <Link href={href} className="text-slate-800 hover:text-accent">
+                <Link href={href} className="text-foreground hover:text-primary">
                   {text}
                 </Link>
               ) : (
-                <span className="text-slate-800">{text}</span>
+                <span className="text-foreground">{text}</span>
               )}
-              <span className="ml-2 text-xs text-slate-400">{a.actorEmail}</span>
+              <span className="ml-2 text-xs text-muted-foreground/70">{a.actorEmail}</span>
             </div>
-            <time className="shrink-0 text-xs text-slate-400" title={fmtDateTime(a.createdAt)}>
+            <time className="shrink-0 text-xs text-muted-foreground/70" title={fmtDateTime(a.createdAt)}>
               {ago(a.createdAt)}
             </time>
           </li>

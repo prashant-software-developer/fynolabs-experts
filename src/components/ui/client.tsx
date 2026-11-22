@@ -41,7 +41,7 @@ export function SelectAll({ label = "Select all" }: { label?: string }) {
     <input
       type="checkbox"
       aria-label={label}
-      className="h-4 w-4 rounded border-slate-300 accent-[#205ff3]"
+      className="h-4 w-4 rounded-sm border-input align-middle"
       onChange={(e) => {
         const form = e.currentTarget.form;
         if (!form) return;

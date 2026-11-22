@@ -17,12 +17,12 @@ export function Field({
   htmlFor?: string;
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-slate-700">
+    <div className={cn("min-w-0 space-y-1.5", className)}>
+      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-foreground/80">
         {label}
       </label>
       {children}
-      {error ? <p className="text-xs text-red-600">{error}</p> : hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -61,8 +61,8 @@ export function Select({
 
 export function Checkbox({ label, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
   return (
-    <label className={cn("inline-flex items-center gap-2 text-sm text-slate-700", className)}>
-      <input type="checkbox" className="h-4 w-4 rounded border-slate-300 accent-[#205ff3]" {...props} />
+    <label className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-foreground/80", className)}>
+      <input type="checkbox" className="h-4 w-4 shrink-0 rounded-sm border-input" {...props} />
       {label}
     </label>
   );
@@ -72,3 +72,4 @@ export function Checkbox({ label, className, ...props }: InputHTMLAttributes<HTM
 export function FieldRow({ children }: { children: ReactNode }) {
   return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
 }
+

@@ -53,7 +53,7 @@ export function JobsSyncPanel({ available }: { available: boolean }) {
   );
 }
 
-const ACTION_TONE = { create: "green", update: "blue", unchanged: "slate", duplicate: "amber", skip: "red" } as const;
+const ACTION_TONE = { create: "success", update: "info", unchanged: "muted", duplicate: "warning", skip: "danger" } as const;
 const ACTION_LABEL = { create: "Create", update: "Fill in", unchanged: "No change", duplicate: "Review", skip: "Skip" } as const;
 
 export function CsvImportPanel() {
@@ -79,7 +79,7 @@ export function CsvImportPanel() {
             id="csvfile"
             type="file"
             accept=".csv,text/csv"
-            className="block text-sm text-slate-600 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-slate-700 hover:file:bg-slate-50"
+            className="file-control block"
             onChange={async (e) => {
               const f = e.target.files?.[0];
               reset();
@@ -141,45 +141,45 @@ export function CsvImportPanel() {
       {preview?.ok ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-slate-500">{fileName}: read as {preview.kind === "register" ? "Talent register" : "Admin CRM / list"} ·</span>
+            <span className="text-muted-foreground">{fileName}: read as {preview.kind === "register" ? "Talent register" : "Admin CRM / list"} ·</span>
             {(["all", "create", "update", "unchanged", "duplicate", "skip"] as const).map((a) => (
-              <button key={a} onClick={() => setFilter(a)} className={`rounded-full px-2.5 py-0.5 text-xs ${filter === a ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+              <button key={a} onClick={() => setFilter(a)} className={`inline-flex h-6 items-center rounded-md px-2 text-xs transition-colors ${filter === a ? "bg-foreground text-background" : "bg-secondary text-foreground/80 hover:bg-accent"}`}>
                 {a === "all" ? `All ${preview.rows.length}` : `${ACTION_LABEL[a]} ${preview.counts[a]}`}
               </button>
             ))}
           </div>
           {preview.kind === "admin_crm" ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Columns used: {Object.entries(preview.mapped).map(([h, f]) => `${h} → ${f}`).join(" · ") || "none"}. Other columns are ignored.
             </p>
           ) : null}
           {preview.parseErrors.length ? <Notice tone="warning">{preview.parseErrors.join(" · ")}</Notice> : null}
-          <div className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200">
+          <div className="max-h-[28rem] overflow-auto rounded-md border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="eyebrow sticky top-0 border-b border-border bg-background text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2">Row</th>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Action</th>
-                  <th className="px-3 py-2">Why</th>
+                  <th className="h-9 px-3 font-normal">Row</th>
+                  <th className="h-9 px-3 font-normal">Name</th>
+                  <th className="h-9 px-3 font-normal">Action</th>
+                  <th className="h-9 px-3 font-normal">Why</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {preview.rows
                   .filter((r) => filter === "all" || r.action === filter)
                   .map((r) => (
                     <tr key={r.row}>
-                      <td className="tabular px-3 py-2 text-slate-400">{r.row}</td>
+                      <td className="tabular px-3 py-2 text-muted-foreground">{r.row}</td>
                       <td className="px-3 py-2">
-                        <div className="font-medium text-slate-900">{r.name}</div>
-                        {r.email ? <div className="text-xs text-slate-500">{r.email}</div> : null}
+                        <div className="font-medium text-foreground">{r.name}</div>
+                        {r.email ? <div className="text-xs text-muted-foreground">{r.email}</div> : null}
                       </td>
                       <td className="px-3 py-2">
                         <Badge tone={ACTION_TONE[r.action]}>{ACTION_LABEL[r.action]}</Badge>
                       </td>
-                      <td className="px-3 py-2 text-xs text-slate-600">
+                      <td className="px-3 py-2 text-xs text-foreground/70">
                         {r.reason}
-                        {r.warnings.length ? <div className="text-amber-700">{r.warnings.join("; ")}</div> : null}
+                        {r.warnings.length ? <div className="text-warning">{r.warnings.join("; ")}</div> : null}
                       </td>
                     </tr>
                   ))}

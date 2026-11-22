@@ -33,7 +33,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
       <PageHeader title="Submissions" subtitle="Everyone put forward to a partner, across all requirements." />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Section flush>
-        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
+        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
           <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
           <Select name="requirement" defaultValue={requirementId} options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))} placeholder="All requirements" className="w-auto max-w-xs" aria-label="Requirement" />
           <Select
@@ -48,11 +48,11 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
             Filter
           </Button>
           {filtered ? (
-            <Link href="/submissions" className="text-sm text-slate-500 hover:text-slate-900">
+            <Link href="/submissions" className="text-sm text-muted-foreground hover:text-foreground">
               Clear
             </Link>
           ) : null}
-          <span className="ml-auto text-[13px] text-slate-500">{rows.length} shown</span>
+          <span className="ml-auto text-[13px] text-muted-foreground">{rows.length} shown</span>
         </form>
         {rows.length ? (
           <Table>
@@ -70,7 +70,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                 return (
                   <Tr key={s.sub.id}>
                     <Td className="min-w-40">
-                      <Link href={`/experts/${s.sub.expertId}`} className="font-medium text-slate-900 hover:text-accent">
+                      <Link href={`/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {s.expertName}
                       </Link>
                       <div className="mt-0.5">
@@ -78,7 +78,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                       </div>
                     </Td>
                     <Td className="min-w-44">
-                      <Link href={`/requirements/${s.sub.requirementId}?tab=submissions`} className="text-slate-800 hover:text-accent">
+                      <Link href={`/requirements/${s.sub.requirementId}?tab=submissions`} className="text-foreground hover:text-primary">
                         {s.reqTitle}
                       </Link>
                     </Td>
@@ -89,7 +89,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                     </Td>
                     <Td className="whitespace-nowrap">
                       {fmtDate(s.sub.submittedAt)}
-                      {waiting != null && waiting >= 3 ? <div className="text-xs text-amber-700">{waiting} days waiting</div> : null}
+                      {waiting != null && waiting >= 3 ? <div className="text-xs text-warning">{waiting} days waiting</div> : null}
                     </Td>
                   </Tr>
                 );

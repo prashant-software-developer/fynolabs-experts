@@ -42,7 +42,7 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Tabs tabs={VIEWS.map((v) => ({ href: hrefWith("/requirements", sp, { view: v.key === "active" ? null : v.key, ok: null }), label: v.label, active: v.key === view }))} />
       <Section flush>
-        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
+        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
           {view !== "active" ? <input type="hidden" name="view" value={view} /> : null}
           <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
           <Button type="submit" variant="secondary" size="sm">
@@ -64,10 +64,10 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
               {rows.map((r) => (
                 <Tr key={r.req.id}>
                   <Td className="min-w-56">
-                    <Link href={`/requirements/${r.req.id}`} className="font-medium text-slate-900 hover:text-accent">
+                    <Link href={`/requirements/${r.req.id}`} className="font-medium text-foreground hover:text-primary">
                       {r.req.title}
                     </Link>
-                    {r.req.externalRef ? <div className="text-xs text-slate-500">{r.req.externalRef}</div> : null}
+                    {r.req.externalRef ? <div className="text-xs text-muted-foreground">{r.req.externalRef}</div> : null}
                   </Td>
                   <Td>{r.partnerName}</Td>
                   <Td>
