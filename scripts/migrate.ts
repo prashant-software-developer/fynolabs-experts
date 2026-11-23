@@ -13,18 +13,20 @@ async function main() {
   }
   const url = requireConfirm("Migrations");
   try {
-    await migrateNeon(url);
+    const done = await migrateNeon(url);
+    console.log(done === "up-to-date" ? "The tables are up to date (schema hub)." : "Migrations applied (schema hub).");
   } catch (e) {
     if (e instanceof MigrationGuardError) {
       console.error(e.message);
       process.exit(1);
     }
-    throw e;
+    const { describeError, scrubSecrets } = await import("../src/lib/server/db-connect");
+    console.error(`Stopped: ${scrubSecrets(describeError(e), [url])}`);
+    process.exit(1);
   }
-  console.log("Migrations applied (schema hub).");
 }
 
-main().catch((err) => {
-  console.error(err);
+main().catch(() => {
+  console.error("Stopped with an unexpected error (details hidden: they could include the database address).");
   process.exit(1);
 });

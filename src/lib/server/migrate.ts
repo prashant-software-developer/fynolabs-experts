@@ -1,6 +1,12 @@
-// Applying the hub migrations to a real database (Neon), shared by `npm run db:migrate` and
-// `npm run copy:engine`. The guard refuses any migration that reaches outside the `hub` schema.
+// Applying the hub migrations to the real database (Neon), shared by `npm run db:migrate`,
+// `npm run admin:create` and `npm run copy:engine`. The guard refuses any migration that reaches
+// outside the `hub` schema.
+//
+// Step 1 asks over HTTPS (the same way the web app talks to Neon) whether anything is pending; if
+// not, nothing else is opened. Step 2, only when something is pending, applies it through a
+// connection from db-connect (TCP first, Neon WebSocket as the fallback), in one transaction.
 import { checkMigrationsFolder, type GuardProblem } from "@/lib/migration-guard";
+import { openPool, type OpenedPool } from "./db-connect";
 
 export const MIGRATIONS_CONFIG = { migrationsFolder: "drizzle", migrationsSchema: "hub", migrationsTable: "__drizzle_migrations" } as const;
 
@@ -16,28 +22,56 @@ export function assertMigrationsSafe(): void {
   if (problems.length) throw new MigrationGuardError(problems);
 }
 
-type NeonPool = InstanceType<(typeof import("@neondatabase/serverless"))["Pool"]>;
-
-/** Migrates through an open Neon Pool (WebSocket, so the migrations run in one transaction). */
-export async function migrateNeonPool(pool: NeonPool): Promise<void> {
-  assertMigrationsSafe();
-  const { drizzle } = await import("drizzle-orm/neon-serverless");
-  const { migrate } = await import("drizzle-orm/neon-serverless/migrator");
-  await migrate(drizzle({ client: pool }), MIGRATIONS_CONFIG);
+/** The newest migration in drizzle/ (journal "when"), the same number drizzle stores as created_at. */
+export async function latestLocalMigration(): Promise<number> {
+  const { readMigrationFiles } = await import("drizzle-orm/migrator");
+  const files = readMigrationFiles(MIGRATIONS_CONFIG);
+  return files.reduce((m, f) => Math.max(m, f.folderMillis), 0);
 }
 
-export async function neonPool(url: string, max = 1): Promise<NeonPool> {
-  const { Pool, neonConfig } = await import("@neondatabase/serverless");
-  neonConfig.webSocketConstructor = globalThis.WebSocket;
-  return new Pool({ connectionString: url, max });
-}
-
-/** npm run db:migrate. */
-export async function migrateNeon(url: string): Promise<void> {
-  const pool = await neonPool(url);
+/**
+ * True when the database already has every migration in drizzle/. Asked over HTTPS; any problem
+ * (not a Neon address, no table yet, no network) answers false so the normal path runs.
+ */
+export async function upToDateOverHttp(url: string): Promise<boolean> {
   try {
-    await migrateNeonPool(pool);
-  } finally {
-    await pool.end();
+    const latest = await latestLocalMigration();
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(url);
+    const rows = (await sql.query(
+      `select coalesce(max(created_at), 0)::text as m from "${MIGRATIONS_CONFIG.migrationsSchema}"."${MIGRATIONS_CONFIG.migrationsTable}"`,
+    )) as unknown as { m: string }[];
+    return Number(rows?.[0]?.m ?? 0) >= latest;
+  } catch {
+    return false;
   }
+}
+
+/** Applies pending migrations through an open connection (node-postgres or Neon WebSocket). */
+export async function migrateOpened(conn: OpenedPool): Promise<void> {
+  assertMigrationsSafe();
+  if (conn.via === "tcp") {
+    const { drizzle } = await import("drizzle-orm/node-postgres");
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await migrate(drizzle({ client: conn.pool as any }), MIGRATIONS_CONFIG);
+  } else {
+    const { drizzle } = await import("drizzle-orm/neon-serverless");
+    const { migrate } = await import("drizzle-orm/neon-serverless/migrator");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await migrate(drizzle({ client: conn.pool as any }), MIGRATIONS_CONFIG);
+  }
+}
+
+/** npm run db:migrate (and the first step of admin:create). Returns what it did. */
+export async function migrateNeon(url: string): Promise<"up-to-date" | "applied"> {
+  assertMigrationsSafe();
+  if (await upToDateOverHttp(url)) return "up-to-date";
+  const conn = await openPool(url, 1);
+  try {
+    await migrateOpened(conn);
+  } finally {
+    await conn.pool.end().catch(() => {});
+  }
+  return "applied";
 }

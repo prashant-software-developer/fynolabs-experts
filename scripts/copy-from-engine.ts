@@ -12,6 +12,7 @@
 //
 // Engine is only read (one READ ONLY snapshot, SELECT statements only). Connection strings are never
 // printed or written anywhere: only user@host/db.
+import { describeError } from "../src/lib/server/db-connect";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -48,6 +49,7 @@ function scrub(text: string, urls: string[]): string {
 
 /** A readable message from an Error, or from the WebSocket ErrorEvent the Neon driver rejects with. */
 function errText(e: unknown, depth = 0): string {
+  if (depth === 0) return describeError(e);
   if (e instanceof Error) {
     const cause = (e as { cause?: unknown }).cause;
     return `${e.name === "Error" ? "" : `${e.name}: `}${e.message}${cause && depth < 2 ? ` (${errText(cause, depth + 1)})` : ""}`;
@@ -118,6 +120,9 @@ async function main() {
     let source: Awaited<ReturnType<typeof openSource>> | null = null;
     try {
       source = await openSource(sourceUrl);
+      const { viaLabel } = await import("../src/lib/server/db-connect");
+      if (target.via) console.log(`  Connected to the new database (${viaLabel(target.via)}).`);
+      if (source.via) console.log(`  Connected to Engine, read only (${viaLabel(source.via)}).\n`);
       const res = await copyFromEngine({
         source: source.raw,
         target,

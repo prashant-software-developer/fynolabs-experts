@@ -1,13 +1,13 @@
-// Opening the two databases for the copy. Engine: one Neon connection to the direct host (no
-// pooler: one long read-only snapshot). Target: a Neon Pool of one WebSocket connection, used by
-// Drizzle and the raw statements alike. pglite:<folder> addresses (local PGlite) for --local-test.
+// Opening the two databases for the copy (src/lib/server/db-connect: TCP first, Neon WebSocket as
+// the fallback). Engine: one connection to the direct host (no pooler: one long read-only
+// snapshot). Target: a pool of one connection, used by Drizzle and the raw statements alike. pglite:<folder> addresses (local PGlite) for --local-test.
 import { mkdirSync } from "node:fs";
 import type { DB } from "@/db/client";
 import { directUrl, parseDbUrl } from "./env";
 import type { SqlRunner } from "./source";
 
-export type TargetConn = { db: DB; raw: SqlRunner; migrate: () => Promise<void>; close: () => Promise<void> };
-export type SourceConn = { raw: SqlRunner; close: () => Promise<void> };
+export type TargetConn = { db: DB; raw: SqlRunner; via?: "tcp" | "websocket"; migrate: () => Promise<void>; close: () => Promise<void> };
+export type SourceConn = { raw: SqlRunner; via?: "tcp" | "websocket"; close: () => Promise<void> };
 
 export async function openTarget(url: string): Promise<TargetConn> {
   const ref = parseDbUrl(url);
@@ -32,17 +32,19 @@ export async function openTarget(url: string): Promise<TargetConn> {
       close: () => client.close(),
     };
   }
-  const { migrateNeonPool, neonPool } = await import("@/lib/server/migrate");
-  const { drizzle } = await import("drizzle-orm/neon-serverless");
+  const { migrateOpened } = await import("@/lib/server/migrate");
+  const { openPool } = await import("@/lib/server/db-connect");
   const schema = await import("@/db/schema");
-  const pool = await neonPool(url, 1);
-  // A dropped connection fails the statement that was running (reported, scrubbed); don't crash on the event.
-  pool.on("error", () => {});
+  const conn = await openPool(url, 1);
+  const drizzleMod = conn.via === "tcp" ? await import("drizzle-orm/node-postgres") : await import("drizzle-orm/neon-serverless");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = (drizzleMod.drizzle as any)({ client: conn.pool, schema }) as DB;
   return {
-    db: drizzle({ client: pool, schema }) as unknown as DB,
-    raw: pool as unknown as SqlRunner,
-    migrate: () => migrateNeonPool(pool),
-    close: () => pool.end(),
+    db,
+    raw: conn.pool as unknown as SqlRunner,
+    via: conn.via,
+    migrate: () => migrateOpened(conn),
+    close: () => conn.pool.end(),
   };
 }
 
@@ -55,10 +57,7 @@ export async function openSource(url: string): Promise<SourceConn> {
     await client.waitReady;
     return { raw: client as unknown as SqlRunner, close: () => client.close() };
   }
-  const { Client, neonConfig } = await import("@neondatabase/serverless");
-  neonConfig.webSocketConstructor = globalThis.WebSocket;
-  const client = new Client({ connectionString: directUrl(url) });
-  client.on("error", () => {});
-  await client.connect();
-  return { raw: client as unknown as SqlRunner, close: () => client.end() };
+  const { openClient } = await import("@/lib/server/db-connect");
+  const conn = await openClient(directUrl(url));
+  return { raw: conn.client as unknown as SqlRunner, via: conn.via, close: () => conn.client.end() };
 }

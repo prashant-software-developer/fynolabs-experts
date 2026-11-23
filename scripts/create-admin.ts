@@ -151,7 +151,8 @@ async function main(): Promise<number> {
   let close: () => Promise<void> = async () => {};
   if (url) {
     const { migrateNeon } = await import("../src/lib/server/migrate");
-    await migrateNeon(url);
+    const done = await migrateNeon(url);
+    console.log(done === "up-to-date" ? "The tables are up to date." : "New tables added.");
     const { neon } = await import("@neondatabase/serverless");
     const { drizzle } = await import("drizzle-orm/neon-http");
     const schema = await import("../src/db/schema");
@@ -221,9 +222,10 @@ async function main(): Promise<number> {
 
 main().then(
   (code) => process.exit(code),
-  (err) => {
-    // Never print a connection string: only what kind of error it was.
-    const msg = err instanceof Error ? err.message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "(database address)") : "unexpected error";
+  async (err) => {
+    // Never print a connection string or a password: describe the error, then scrub it.
+    const { describeError, scrubSecrets } = await import("../src/lib/server/db-connect");
+    const msg = scrubSecrets(describeError(err), [process.env.DATABASE_URL ?? ""]);
     console.error(`\nStopped: ${msg}\nNothing secret was printed. Check the database address in .env.local and try again.`);
     process.exit(1);
   },

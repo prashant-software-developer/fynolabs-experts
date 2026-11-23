@@ -42,7 +42,9 @@ It prints which database it's about to change, refuses without `CONFIRM_DB=yes`,
 
 There is no demo data and nothing to seed: `npm run dev` and `Start Expert Hub.bat` use this database too (the one environment), and without `DATABASE_URL` the app only shows a "Database not set up" page.
 
-You can skip this step: the copy in step 3 and the admin account in step 4 migrate the database themselves before they write anything.
+You can skip this step: the copy in step 3, the admin account in step 4 and `Start Expert Hub.bat` all migrate the database themselves before they write anything.
+
+**How the scripts connect (23 Nov 2026).** They first ask Neon over HTTPS whether any migration is pending; when nothing is, they open no other connection. To write, they use a direct Postgres connection (port 5432, node-postgres), and if that's blocked, Neon's WebSocket (port 443). If both fail, the error names what each one answered, with the password removed. The web app itself uses Neon's HTTPS driver. The first real run on 23 Nov failed on the WebSocket path alone, which is why the direct connection comes first.
 
 ## 3. Copy everything from Engine
 
