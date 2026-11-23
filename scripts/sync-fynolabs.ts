@@ -90,6 +90,7 @@ async function main(): Promise<number> {
     if (dbUrl) {
       const { openTarget } = await import("../src/lib/import/engine/connect");
       target = await openTarget(dbUrl);
+      if (target.note) console.log(`  Connected to the hub database (${target.note}).`);
       const { looksLikeEngine } = await import("../src/lib/import/engine/copy");
       if (await looksLikeEngine(target.raw)) {
         console.error("Refusing: DATABASE_URL has the jobs site's own tables, so it is Engine, not expert-hub.");

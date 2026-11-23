@@ -11,19 +11,26 @@ export type Via = "tcp" | "websocket";
 export type Queryable = {
   query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[]; rowCount?: number | null }>;
 };
-export type OpenedPool = { pool: Queryable & { end: () => Promise<void> }; via: Via };
-export type OpenedClient = { client: Queryable & { end: () => Promise<void> }; via: Via };
+export type OpenedPool = { pool: Queryable & { end: () => Promise<void> }; via: Via; note?: string };
+export type OpenedClient = { client: Queryable & { end: () => Promise<void> }; via: Via; note?: string };
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
-/** node-postgres settings from a connection string: sslmode/channel_binding handled here, not by the URL parser. */
-export function pgConfig(url: string, max?: number) {
+/**
+ * node-postgres settings from a connection string: sslmode/channel_binding handled here, not by the
+ * URL parser. `address` (from resolveHost) connects to that IP while TLS still uses the real name, so
+ * the certificate is checked against it and Neon's proxy finds the database by name (SNI).
+ */
+export function pgConfig(url: string, max?: number, address?: string) {
   const u = new URL(url);
   const sslmode = (u.searchParams.get("sslmode") ?? "").toLowerCase();
   u.searchParams.delete("sslmode");
   u.searchParams.delete("channel_binding");
-  const local = LOCAL_HOSTS.has(u.hostname);
-  const ssl = sslmode === "disable" || (local && sslmode !== "require") ? false : { rejectUnauthorized: true };
+  const name = u.hostname;
+  const local = LOCAL_HOSTS.has(name);
+  if (address) u.hostname = address;
+  const ssl =
+    sslmode === "disable" || (local && sslmode !== "require") ? false : { rejectUnauthorized: true, ...(address ? { servername: name } : {}) };
   return {
     connectionString: u.toString(),
     ssl,
@@ -31,6 +38,48 @@ export function pgConfig(url: string, max?: number) {
     keepAlive: true,
     ...(max ? { max } : {}),
   };
+}
+
+const DNS_MISS = new Set(["ENOTFOUND", "EAI_AGAIN", "ESERVFAIL", "ETIMEOUT", "ECONNREFUSED"]);
+const resolved = new Map<string, string>();
+
+/**
+ * The computer's own address lookup sometimes can't find Neon's database names (seen on Prashant's
+ * PC: getaddrinfo ENOTFOUND, on and off). When that happens, ask Cloudflare (1.1.1.1) and then Google
+ * (8.8.8.8) over HTTPS for the address instead. Returns null when the normal lookup works (or for
+ * local addresses), so nothing changes in the usual case.
+ */
+export async function resolveHost(hostname: string): Promise<{ address: string; by: string } | null> {
+  if (!hostname || LOCAL_HOSTS.has(hostname) || /^[\d.]+$/.test(hostname) || hostname.includes(":")) return null;
+  const cached = resolved.get(hostname);
+  if (cached) return { address: cached, by: "backup lookup" };
+  try {
+    const dns = await import("node:dns");
+    await dns.promises.lookup(hostname);
+    return null;
+  } catch (e) {
+    const code = (e as { code?: string }).code ?? "";
+    if (!DNS_MISS.has(code)) return null;
+  }
+  const services: [string, string][] = [
+    ["Cloudflare", `https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}&type=A`],
+    ["Google", `https://8.8.8.8/resolve?name=${encodeURIComponent(hostname)}&type=A`],
+  ];
+  for (const [by, url] of services) {
+    try {
+      const res = await fetch(url, { headers: { accept: "application/dns-json" }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const body = (await res.json()) as { Answer?: { type: number; data: string }[] };
+      const a = body.Answer?.find((r) => r.type === 1 && /^\d+\.\d+\.\d+\.\d+$/.test(r.data))?.data;
+      if (a) {
+        resolved.set(hostname, a);
+        return { address: a, by };
+      }
+    } catch {
+      /* try the next one */
+    }
+  }
+  return null;
 }
 
 /** The message, code and causes of an error, one line. Run the result through scrubSecrets before showing it. */
@@ -90,11 +139,12 @@ export async function openPool(url: string, max = 1): Promise<OpenedPool> {
   let tcpErr: unknown;
   try {
     const pg = (await import("pg")).default;
-    const pool = new pg.Pool(pgConfig(url, max));
+    const r = await resolveHost(new URL(url).hostname);
+    const pool = new pg.Pool(pgConfig(url, max, r?.address));
     pool.on("error", () => {}); // a dropped idle connection fails the next statement, which reports it
     try {
       await pool.query("select 1");
-      return { pool: pool as unknown as OpenedPool["pool"], via: "tcp" };
+      return { pool: pool as unknown as OpenedPool["pool"], via: "tcp", note: r ? `address found through ${r.by}` : undefined };
     } catch (e) {
       await pool.end().catch(() => {});
       throw e;
@@ -123,11 +173,12 @@ export async function openClient(url: string): Promise<OpenedClient> {
   let tcpErr: unknown;
   try {
     const pg = (await import("pg")).default;
-    const client = new pg.Client(pgConfig(url));
+    const r = await resolveHost(new URL(url).hostname);
+    const client = new pg.Client(pgConfig(url, undefined, r?.address));
     client.on("error", () => {});
     try {
       await client.connect();
-      return { client: client as unknown as OpenedClient["client"], via: "tcp" };
+      return { client: client as unknown as OpenedClient["client"], via: "tcp", note: r ? `address found through ${r.by}` : undefined };
     } catch (e) {
       await client.end().catch(() => {});
       throw e;

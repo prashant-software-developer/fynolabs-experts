@@ -154,10 +154,12 @@ async function main(): Promise<number> {
     const { migrateNeon } = await import("../src/lib/server/migrate");
     const done = await migrateNeon(url);
     console.log(done === "up-to-date" ? "The tables are up to date." : "New tables added.");
-    const { neon } = await import("@neondatabase/serverless");
-    const { drizzle } = await import("drizzle-orm/neon-http");
-    const schema = await import("../src/db/schema");
-    db = drizzle({ client: neon(url), schema }) as unknown as typeof db;
+    // A direct connection (with the backup address lookup), the same way the copies connect.
+    const { openTarget } = await import("../src/lib/import/engine/connect");
+    const target = await openTarget(url);
+    if (target.note) console.log(`Connected (${target.note}).`);
+    db = target.db as unknown as typeof db;
+    close = () => target.close();
   } else {
     const { openLocalDbWithClient } = await import("../src/db/local/open");
     const local = await openLocalDbWithClient({ dataDir: testDir! });

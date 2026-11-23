@@ -6,8 +6,8 @@ import type { DB } from "@/db/client";
 import { directUrl, parseDbUrl } from "./env";
 import type { SqlRunner } from "./source";
 
-export type TargetConn = { db: DB; raw: SqlRunner; via?: "tcp" | "websocket"; migrate: () => Promise<void>; close: () => Promise<void> };
-export type SourceConn = { raw: SqlRunner; via?: "tcp" | "websocket"; close: () => Promise<void> };
+export type TargetConn = { db: DB; raw: SqlRunner; via?: "tcp" | "websocket"; note?: string; migrate: () => Promise<void>; close: () => Promise<void> };
+export type SourceConn = { raw: SqlRunner; via?: "tcp" | "websocket"; note?: string; close: () => Promise<void> };
 
 export async function openTarget(url: string): Promise<TargetConn> {
   const ref = parseDbUrl(url);
@@ -43,6 +43,7 @@ export async function openTarget(url: string): Promise<TargetConn> {
     db,
     raw: conn.pool as unknown as SqlRunner,
     via: conn.via,
+    note: conn.note,
     migrate: () => migrateOpened(conn),
     close: () => conn.pool.end(),
   };
@@ -59,5 +60,5 @@ export async function openSource(url: string): Promise<SourceConn> {
   }
   const { openClient } = await import("@/lib/server/db-connect");
   const conn = await openClient(directUrl(url));
-  return { raw: conn.client as unknown as SqlRunner, via: conn.via, close: () => conn.client.end() };
+  return { raw: conn.client as unknown as SqlRunner, via: conn.via, note: conn.note, close: () => conn.client.end() };
 }

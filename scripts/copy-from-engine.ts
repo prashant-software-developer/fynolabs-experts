@@ -122,8 +122,8 @@ async function main() {
     try {
       source = await openSource(sourceUrl);
       const { viaLabel } = await import("../src/lib/server/db-connect");
-      if (target.via) console.log(`  Connected to the new database (${viaLabel(target.via)}).`);
-      if (source.via) console.log(`  Connected to Engine, read only (${viaLabel(source.via)}).\n`);
+      if (target.via) console.log(`  Connected to the new database (${viaLabel(target.via)}${target.note ? `; ${target.note}` : ""}).`);
+      if (source.via) console.log(`  Connected to Engine, read only (${viaLabel(source.via)}${source.note ? `; ${source.note}` : ""}).\n`);
       const res = await copyFromEngine({
         source: source.raw,
         target,
