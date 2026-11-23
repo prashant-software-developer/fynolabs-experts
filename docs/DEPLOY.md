@@ -6,6 +6,14 @@ You need access to: **Neon** (to create the project), **Vercel**, the GitHub rep
 
 ## 1. Create the database (Neon project "expert-hub")
 
+**Done 23 Nov 2026.** Created from Vercel → project `fynolabs-experts` → Storage → Create Database → Neon:
+- Settings: Singapore, Free plan, Neon Auth off.
+- The Neon project id is `hidden-wind-69338805`, in Prashant's Personal Neon org.
+- It's connected to the project for all environments with the prefix `DATABASE`, so Vercel already has `DATABASE_URL`.
+- The local `.env.local` has the direct connection string.
+
+The steps below are for re-creating it from scratch.
+
 1. Go to [neon.tech](https://neon.tech) and sign up (Google sign-in is fine). Use the FynoLabs admin account so the company owns it.
 2. **Create project**:
    - Project name: `expert-hub`
