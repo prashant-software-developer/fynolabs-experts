@@ -256,12 +256,23 @@ export async function deleteExpertOnRequest(db: DB, id: string, actor: Actor): P
   for (const s of srcs) rows.push({ emailSha256: null, source: s.source, externalId: s.externalId, actorEmail: actorEmail(actor) });
   if (rows.length) await db.insert(erasures).values(rows);
   await db.update(placements).set({ notes: null, updatedAt: new Date() }).where(eq(placements.expertId, id));
+  // From the FynoLabs admin: fee rows stay for accounting without the person; rows that only hold
+  // their email go (their timeline, documents, engagements and referrals go with the record).
+  await db.execute(sql`update hub.referral_fees set person_name = null, notes = null where expert_id = ${id}`);
+  if (e.email) {
+    const em = e.email.toLowerCase();
+    for (const [t, c] of [["referral_group_members", "email"], ["messages", "email"], ["email_send_log", "recipient_email"], ["referrals", "recipient_email"], ["message_replies", "recipient_email"]] as const) {
+      await db.execute(sql`delete from ${sql.raw(`hub."${t}"`)} where lower(${sql.raw(`"${c}"`)}) = ${em}`);
+    }
+  }
   await db.delete(activity).where(and(eq(activity.entityType, "expert"), eq(activity.entityId, id)));
   const subIds = (await db.select({ id: submissions.id }).from(submissions).where(eq(submissions.expertId, id))).map((r) => r.id);
   if (subIds.length) await db.delete(activity).where(and(eq(activity.entityType, "submission"), inArray(activity.entityId, subIds)));
   const appIds = (await db.select({ id: applications.id }).from(applications).where(eq(applications.expertId, id))).map((r) => r.id);
   if (appIds.length) await db.delete(activity).where(and(eq(activity.entityType, "application"), inArray(activity.entityId, appIds)));
+  const fyFiles = (await db.select({ ref: expertFiles.externalRef }).from(expertFiles).where(and(eq(expertFiles.expertId, id), eq(expertFiles.storage, "fynolabs")))).map((r) => r.ref ?? "");
   await forgetCopiedRecords(db, id, srcs);
+  await forgetFynolabsCopy(db, { email: e.email, profileIds: srcs.filter((s) => s.source === "admin_crm").map((s) => s.externalId), fileRefs: fyFiles });
   // A "Delete my data" request from the portal is now done (the row keeps no link to the person).
   await db.update(dataRequests).set({ status: "done", handledBy: actorEmail(actor), handledAt: new Date() }).where(and(eq(dataRequests.expertId, id), eq(dataRequests.status, "open")));
   // Their expert login goes too (team accounts are never touched here).
@@ -297,4 +308,32 @@ async function forgetCopiedRecords(db: DB, expertId: string, srcs: { source: str
     await db.execute(sql.raw(`delete from engine_copy."${t}" where "${c}"::text = any('${ids}'::text[])`));
   }
   await db.execute(sql.raw(`delete from engine_copy.users where id::text = any('${ids}'::text[])`));
+}
+
+/**
+ * Part of delete on request: their rows in fynolabs_copy (the copy of the FynoLabs admin, outside
+ * hub) go too: the profile, everything with their profile id or email, and their stored files.
+ * The next copy leaves them out (hub.erasures has their email hash and FynoLabs id).
+ */
+export async function forgetFynolabsCopy(db: DB, input: { email: string | null; profileIds: string[]; fileRefs: string[] }) {
+  const [has] = rowsOf<{ ok: boolean }>(await db.execute(sql`select to_regclass('fynolabs_copy.talent_profiles') is not null as ok`));
+  if (!has?.ok) return;
+  const ids = input.profileIds.filter((x) => isUuid(x));
+  const email = input.email?.trim().toLowerCase() ?? null;
+  const cols = rowsOf<{ t: string; c: string }>(
+    await db.execute(sql`select table_name::text as t, column_name::text as c from information_schema.columns
+      where table_schema = 'fynolabs_copy' and column_name in ('profile_id', 'email', 'recipient_email')`),
+  );
+  const idList = sql.raw(`'{${ids.join(",")}}'::text[]`);
+  for (const { t, c } of cols) {
+    const table = sql.raw(`fynolabs_copy."${t.replace(/"/g, "")}"`);
+    if (c === "profile_id" && ids.length) await db.execute(sql`delete from ${table} where profile_id::text = any(${idList})`);
+    if (c !== "profile_id" && email) await db.execute(sql`delete from ${table} where lower(btrim(${sql.raw(`"${c}"`)})) = ${email}`);
+  }
+  if (ids.length) await db.execute(sql`delete from fynolabs_copy.talent_profiles where id::text = any(${idList})`);
+  const [st] = rowsOf<{ ok: boolean }>(await db.execute(sql`select to_regclass('fynolabs_copy.storage_objects') is not null as ok`));
+  for (const ref of input.fileRefs) {
+    const m = /^fynolabs:([^/]+)\/(.+)$/.exec(ref);
+    if (m && st?.ok) await db.execute(sql`delete from fynolabs_copy.storage_objects where bucket = ${m[1]} and name = ${m[2]}`);
+  }
 }

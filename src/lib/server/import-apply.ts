@@ -35,7 +35,7 @@ export async function loadIndex(db: DB) {
       })
       .from(experts),
     db.select({ source: expertSources.source, externalId: expertSources.externalId, expertId: expertSources.expertId }).from(expertSources),
-    db.select({ emailSha256: erasures.emailSha256, source: erasures.source, externalId: erasures.externalId }).from(erasures),
+    db.select({ emailSha256: erasures.emailSha256, emailMd5: erasures.emailMd5, source: erasures.source, externalId: erasures.externalId }).from(erasures),
   ]);
   return buildIndex(rows as ExistingExpert[], srcs, erased);
 }

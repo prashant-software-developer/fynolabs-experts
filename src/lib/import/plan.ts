@@ -4,6 +4,7 @@
 // Update rule (also used by the jobs-site sync): an import only FILLS EMPTY FIELDS. Anything a
 // team member typed stays as it is. Tags are merged. Status and CV consent count as empty while
 // they are still the defaults ("applicant" / "unknown").
+import { createHash } from "node:crypto";
 import { emailHash, nameKey } from "@/lib/normalize";
 import type { DraftRow, ExpertDraft } from "./types";
 
@@ -36,6 +37,8 @@ export type ExistingIndex = {
   experts: Map<string, ExistingExpert>;
   bySource: Map<string, string>;
   erasedEmails: Set<string>;
+  /** MD5s of erased emails (erasures copied from the FynoLabs admin). */
+  erasedMd5?: Set<string>;
   erasedSources: Set<string>;
 };
 
@@ -60,11 +63,12 @@ export type ImportPlan = { rows: PlanRow[]; counts: Record<PlanAction, number> }
 
 export const sourceKey = (source: string, externalId: string) => `${source}|${externalId}`;
 
-export function buildIndex(experts: ExistingExpert[], sources: { source: string; externalId: string; expertId: string }[], erasures: { emailSha256: string | null; source: string | null; externalId: string | null }[] = []): ExistingIndex {
+export function buildIndex(experts: ExistingExpert[], sources: { source: string; externalId: string; expertId: string }[], erasures: { emailSha256: string | null; emailMd5?: string | null; source: string | null; externalId: string | null }[] = []): ExistingIndex {
   const index: ExistingIndex = {
     experts: new Map(experts.map((e) => [e.id, e])),
     bySource: new Map(sources.map((s) => [sourceKey(s.source, s.externalId), s.expertId])),
     erasedEmails: new Set(erasures.map((e) => e.emailSha256).filter((x): x is string => !!x)),
+    erasedMd5: new Set(erasures.map((e) => e.emailMd5).filter((x): x is string => !!x)),
     erasedSources: new Set(erasures.filter((e) => e.source && e.externalId).map((e) => sourceKey(e.source!, e.externalId!))),
   };
   return index;
@@ -148,7 +152,8 @@ export function planImport(rows: DraftRow[], index: ExistingIndex, opts: PlanOpt
       continue;
     }
     const key = r.externalId ? sourceKey(r.source, r.externalId) : null;
-    if ((d.email && index.erasedEmails.has(emailHash(d.email))) || (key && index.erasedSources.has(key))) {
+    const md5 = d.email && index.erasedMd5?.size ? createHash("md5").update(d.email.trim().toLowerCase()).digest("hex") : null;
+    if ((d.email && index.erasedEmails.has(emailHash(d.email))) || (md5 && index.erasedMd5!.has(md5)) || (key && index.erasedSources.has(key))) {
       push({ action: "skip", reason: "Deleted on request earlier: not imported again" });
       continue;
     }

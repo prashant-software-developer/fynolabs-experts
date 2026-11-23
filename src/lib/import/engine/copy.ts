@@ -10,6 +10,7 @@ import type { DB } from "@/db/client";
 import { rowsOf } from "@/db/client";
 import { activity } from "@/db/schema";
 import { emailHash } from "@/lib/normalize";
+import { emailMd5 } from "@/lib/server/erasure";
 import { actorEmail, actorRole, type Actor } from "@/lib/server/activity";
 import { dbReader, JOBS_SITE_TABLES, type JobsLocation, type Reader } from "@/lib/server/jobs-sync";
 import { copyFiles, hubTables, mapApplications, mapJobs, mapPeople, mapPeopleDetails, type ApplicationCounts, type FileCounts, type JobCounts, type PeopleCounts } from "./hub";
@@ -56,10 +57,15 @@ export async function looksLikeEngine(raw: SqlRunner): Promise<boolean> {
 
 async function erasureCheck(db: DB, ready: boolean) {
   if (!ready) return (_id: string, _email: string | null) => false;
-  const rows = rowsOf<{ email_sha256: string | null; source: string | null; external_id: string | null }>(await db.execute(sql`select email_sha256, source, external_id from hub.erasures`));
+  // email_md5: erasures copied from the FynoLabs admin (it kept an MD5 only). The column is new in 0006.
+  const cols = rowsOf<{ c: string }>(await db.execute(sql`select column_name::text as c from information_schema.columns where table_schema = 'hub' and table_name = 'erasures'`)).map((r) => r.c);
+  const rows = rowsOf<{ email_sha256: string | null; email_md5: string | null; source: string | null; external_id: string | null }>(
+    await db.execute(cols.includes("email_md5") ? sql`select email_sha256, email_md5, source, external_id from hub.erasures` : sql`select email_sha256, null as email_md5, source, external_id from hub.erasures`),
+  );
   const emails = new Set(rows.map((r) => r.email_sha256).filter(Boolean) as string[]);
+  const md5s = new Set(rows.map((r) => r.email_md5).filter(Boolean) as string[]);
   const ids = new Set(rows.filter((r) => r.source === "jobs_site" && r.external_id).map((r) => r.external_id!));
-  return (userId: string, email: string | null) => ids.has(userId) || Boolean(email && emails.has(emailHash(email)));
+  return (userId: string, email: string | null) => ids.has(userId) || Boolean(email && (emails.has(emailHash(email)) || (md5s.size > 0 && md5s.has(emailMd5(email)))));
 }
 
 async function hubCounts(db: DB) {

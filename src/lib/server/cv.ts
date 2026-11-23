@@ -2,6 +2,8 @@
 //  - jobs_db: the CV someone uploaded on the jobs site. The bytes stay in public.xdl_jobs_files
 //    (read only); we keep a pointer. Downloading streams it from there.
 //  - upload:  a CV a team member uploaded here. Stored as bytea in hub.expert_files.data.
+//  - fynolabs: a CV or document from the FynoLabs admin. The bytes are in fynolabs_copy.storage_objects
+//    (copied by npm run sync:fynolabs, stored once); external_ref is "fynolabs:<bucket>/<path>".
 // To move uploads to object storage later (S3, R2, Vercel Blob), change saveUploadedCv/readCv only.
 import { and, eq, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
@@ -52,6 +54,14 @@ export async function readCv(db: DB, file: FileRow): Promise<CvFile | null> {
       limit 1`);
     const [r] = rowsOf<{ filename: string; mime: string; b64: string }>(res);
     return r ? { filename: r.filename, mime: r.mime, bytes: Buffer.from(r.b64, "base64") } : null;
+  }
+  if (file.storage === "fynolabs") {
+    const ref = file.externalRef ?? "";
+    const m = /^fynolabs:([^/]+)\/(.+)$/.exec(ref);
+    if (!m) return null;
+    const res = await db.execute(sql`select encode(data, 'base64') as b64 from fynolabs_copy.storage_objects where bucket = ${m[1]} and name = ${m[2]} and data is not null limit 1`);
+    const [r] = rowsOf<{ b64: string }>(res);
+    return r ? { filename: file.filename, mime: file.mime, bytes: Buffer.from(r.b64, "base64") } : null;
   }
   const res = await db.execute(sql`select encode(data, 'base64') as b64 from hub.expert_files where id = ${file.id} and data is not null`);
   const [r] = rowsOf<{ b64: string }>(res);

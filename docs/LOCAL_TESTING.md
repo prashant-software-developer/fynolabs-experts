@@ -6,6 +6,7 @@ There is one environment: the database in the Neon project **expert-hub**. Every
 
 1. **Set up the database.** Open [neon.tech](https://neon.tech) with the FynoLabs admin account, open the project **expert-hub**, press **Connect**, keep the main branch and copy the connection string (it starts with `postgresql://`). In this folder, open `.env.local` in Notepad (or create it) and add one line: `DATABASE_URL=the string you copied`. Save it. Keep that string private: it contains a password.
 2. **Double-click `Copy experts from Engine.bat`.** It creates the tables and brings every expert record across from the old jobs site (dry run first, then type YES). Details: [DEPLOY.md, step 3](DEPLOY.md#3-copy-everything-from-engine).
+2b. **Double-click `Copy FynoLabs data.bat`** to bring the FynoLabs admin across (experts and their pipelines, companies, contacts, calendar, referrals, projects, emails, messages, analytics). The first time it explains a one-time setup: two secrets in Lovable and a push of the main site ([DEPLOY.md, step 3b](DEPLOY.md#3b-copy-the-fynolabs-admin)). Then dry run, type YES, copy.
 3. **Double-click `Create my admin account.bat`.** Press Enter to keep `prashant@xocket.sh` and the name Prashant. Then type a password (at least 10 characters) twice: nothing shows on screen while you type, that's normal. Or just press Enter and a strong password is made for you and shown once: copy it, you'll choose your own when you first sign in. Run it again any time: it asks "Reset the password? (yes/no)", so it's also how you get back in if you forget your password.
 4. **Double-click `Start Expert Hub.bat`** and sign in at http://localhost:3000/signin with that email and password. Keep the black window open while you use the app; close it to stop.
 
@@ -44,12 +45,17 @@ Sign-up with a password needs email to be set up (Resend or SMTP, see [DEPLOY.md
 |---|---|
 | Dashboard `/admin` | Jobs taking applications, counts by status, open requirements and slots, recent activity |
 | Experts `/admin/experts` | Search by a skill; filter by domain, country and status; tick a few, then "Add to requirement"; "Export CSV" |
-| One expert | Edit a field and save; job applications; submissions and placements; download the CV |
+| One expert | Edit a field and save; job applications with their **pipeline stage** and next action; **Pipeline and outreach** (owner, outreach, next action, where they came from) for people from the FynoLabs admin; the **Activity** tab's timeline; submissions and placements; download the CV (also a CV that came from FynoLabs) |
+| After the FynoLabs copy | Pick someone you know is in both the jobs site and the FynoLabs admin: one profile, sources "Admin CRM" and "Jobs site", FynoLabs' headline and status. Edit their headline, run `Copy FynoLabs data.bat` again: your edit stays. Partners lists the FynoLabs accounts (one per company). |
 | Requirements and jobs | Paste a partner requirement, check the pre-filled fields, open the matches; **Create job from requirement**, build the form, publish it, open the public link in a private window and apply |
 | Roles | Sign in as the recruiter you added: no money, no Team & access; jobs yes |
 | Phone width | Shrink the window on the sign-in page, a job page and the admin: everything stacks; the menu button opens the admin navigation |
 
 Write down anything that looks off (a screenshot and the page name is enough) and send it to Claude.
+
+## The automated tests
+
+`npm test` runs everything on PGlite (a real Postgres inside Node), nothing on the network. The FynoLabs part: `tests/hub-sync-edge.test.ts` runs the edge function's logic (`tests/edge/hub-sync-logic.ts`, checked to be the same file as the main site's `supabase/functions/hub-sync/logic.ts`) against a copy of the FynoLabs schema (`tests/fixtures/fynolabs-schema.ts`, the live column lists of 23 Nov 2026) with fictional data; `tests/fynolabs-sync.test.ts` folds it into the hub after an Engine copy (one person in both, FynoLabs wins over Engine, hub edits kept, pipelines, companies, everything else, money, a second and third run, delete on request); `tests/fynolabs-runner.test.ts` runs `npm run sync:fynolabs`'s runner against a fake edge function over HTTP (dry run, real run, cursors, errors, the token never printed); `tests/pipeline.test.ts` checks that new public applications and sign-ups get a pipeline and a timeline.
 
 ## If something goes wrong
 
@@ -58,4 +64,5 @@ Write down anything that looks off (a screenshot and the page name is enough) an
 - **"Node.js is not installed"**: install the LTS version from https://nodejs.org, then run the .bat again.
 - **Port 3000 is busy**: close the other app, or run `npm run dev -- -p 3001` in this folder.
 - **A strange error after an update**: delete the `node_modules` and `.next` folders, then start again.
+- **`Copy FynoLabs data.bat` says the token was refused (401)**: `FYNOLABS_SYNC_TOKEN` in `.env.local` and `HUB_SYNC_TOKEN` in Lovable (Cloud → Secrets) must be exactly the same. **"isn't there yet (404)"**: push the main site so Lovable deploys `hub-sync`.
 - **The `.data` folder** is left over from the old demo mode and isn't used any more: you can delete it.

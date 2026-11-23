@@ -2,6 +2,8 @@
 // "Engine" database with other apps without touching their tables.
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
+  bigint,
   boolean,
   check,
   customType,
@@ -12,12 +14,47 @@ import {
   numeric,
   pgSchema,
   primaryKey,
+  smallint,
   text,
+  time,
   timestamp,
   unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+import {
+  APPLICATION_CHANNELS,
+  BUSINESS_LINES,
+  CALENDAR_KINDS,
+  CALENDAR_STATUSES,
+  CAMPAIGN_STATUSES,
+  COMPANY_ACTIVITY_KINDS,
+  COMPANY_PRIORITIES,
+  COMPANY_STAGES,
+  CONTACT_KINDS,
+  CONTACT_SOURCES,
+  CONTACT_STAGES,
+  DOCUMENT_KINDS,
+  DOCUMENT_STAGES,
+  DOCUMENT_STATUSES,
+  EXPERT_ACTIVITY_KINDS,
+  FEE_STATUSES,
+  LINK_CHANNELS,
+  OUTREACH_STATUSES,
+  PARTNER_KINDS,
+  PIPELINE_STAGES,
+  PROJECT_KINDS,
+  PROJECT_ROLES,
+  PROJECT_STATUSES,
+  RECIPIENT_STATUSES,
+  REFERRAL_METHODS,
+  REFERRAL_OUTCOMES,
+  REJECT_REASONS,
+  SENIORITY,
+  TEMPLATE_KINDS,
+  VISIT_SOURCES,
+} from "../lib/constants";
 
 export const hub = pgSchema("hub");
 
@@ -81,6 +118,30 @@ export const experts = hub.table(
     // Expert portal: first sign-in, and the onboarding steps they have saved.
     portalJoinedAt: ts("portal_joined_at"),
     onboardingDone: textArray("onboarding_done"),
+    // From the FynoLabs admin (talent_profiles), 23 Nov 2026. Workflow fields the team uses day to day.
+    location: text("location"),
+    timezone: text("timezone"),
+    seniority: text("seniority"),
+    links: text("links"),
+    ownerTeamMemberId: uuid("owner_team_member_id").references((): AnyPgColumn => teamMembers.id, { onDelete: "set null" }),
+    ownerName: text("owner_name"),
+    outreachStatus: text("outreach_status"),
+    nextAction: text("next_action"),
+    nextActionDue: date("next_action_due", { mode: "string" }),
+    nextActionAuto: boolean("next_action_auto").notNull().default(false),
+    lastActivityAt: ts("last_activity_at"),
+    // How they first reached FynoLabs (talent_call, job, referral, sourced, ...), and the detail.
+    sourceChannel: text("source_channel"),
+    sourceDetail: text("source_detail"),
+    sourceCompanyId: uuid("source_company_id").references((): AnyPgColumn => partners.id, { onDelete: "set null" }),
+    importBatchId: uuid("import_batch_id").references((): AnyPgColumn => importBatches.id, { onDelete: "set null" }),
+    consentSource: text("consent_source"),
+    consentVersion: text("consent_version"),
+    dncReason: text("dnc_reason"),
+    dncAt: ts("dnc_at"),
+    emailOptOut: boolean("email_opt_out").notNull().default(false),
+    emailOptOutAt: ts("email_opt_out_at"),
+    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
     // Kept up to date by the trigger hub.experts_search_refresh (see drizzle/0001_*.sql).
     search: tsvector("search"),
   },
@@ -104,6 +165,10 @@ export const experts = hub.table(
       inList("primary_source", SOURCE_VALUES),
     ),
     check("experts_years_check", sql`${t.yearsExperience} is null or ${t.yearsExperience} between 0 and 70`),
+    check("experts_seniority_check", sql`${t.seniority} is null or ${inList("seniority", SENIORITY)}`),
+    check("experts_outreach_check", sql`${t.outreachStatus} is null or ${inList("outreach_status", OUTREACH_STATUSES)}`),
+    index("experts_owner_idx").on(t.ownerTeamMemberId),
+    index("experts_next_action_idx").on(t.nextActionDue),
   ],
 );
 
@@ -131,7 +196,10 @@ export const expertSources = hub.table(
  * Files. kind: cv, attachment (other job-form uploads) or tax (tax forms copied from the old jobs
  * site: money-only, admins and finance). storage = 'jobs_db': the bytes stay in the jobs site's
  * table (public.xdl_jobs_files, read only) and external_ref holds that file id. storage = 'upload':
- * the bytes are in `data` (external_ref "jobs:<id>" when copied from the jobs site).
+ * the bytes are in `data` (external_ref "jobs:<id>" when copied from the jobs site). storage =
+ * 'fynolabs': a CV or document from the FynoLabs admin; the bytes are stored once, in
+ * fynolabs_copy.storage_objects, and external_ref is "fynolabs:<bucket>/<path>". kind 'document':
+ * an agreement or NDA (hub.expert_documents points at it).
  */
 export const expertFiles = hub.table(
   "expert_files",
@@ -152,11 +220,18 @@ export const expertFiles = hub.table(
   },
   (t) => [
     index("expert_files_expert_idx").on(t.expertId, t.createdAt),
-    check("expert_files_storage_check", inList("storage", ["jobs_db", "upload"])),
-    check("expert_files_kind_check", inList("kind", ["cv", "attachment", "tax"])),
+    check("expert_files_storage_check", inList("storage", ["jobs_db", "upload", "fynolabs"])),
+    check("expert_files_kind_check", inList("kind", ["cv", "attachment", "tax", "document"])),
   ],
 );
 
+/**
+ * Companies: one record per organisation. The partners that send requirements and every account of
+ * the FynoLabs admin's CRM (accounts: AI data partners, expert platforms, agencies, staffing firms,
+ * talent sources, trainer gigs, clients) with their owner, stage, next step, due date and route.
+ * Kept under its first name (partners) so requirements, jobs, placements and pod-lead scopes keep
+ * pointing at it. updated_by = 'fynolabs sync' while only the sync has written the row.
+ */
 export const partners = hub.table(
   "partners",
   {
@@ -166,10 +241,32 @@ export const partners = hub.table(
     website: text("website"),
     notes: text("notes"),
     createdAt: ts("created_at").notNull().defaultNow(),
+    businessLine: text("business_line").notNull().default("ai_training"),
+    stage: text("stage").notNull().default("active"),
+    priority: text("priority").notNull().default("normal"),
+    ownerTeamMemberId: uuid("owner_team_member_id").references((): AnyPgColumn => teamMembers.id, { onDelete: "set null" }),
+    ownerName: text("owner_name"),
+    nextStep: text("next_step"),
+    nextStepDue: date("next_step_due", { mode: "string" }),
+    bestRoute: text("best_route"),
+    domain: text("domain"),
+    location: text("location"),
+    platformId: uuid("platform_id").references((): AnyPgColumn => platforms.id, { onDelete: "set null" }),
+    tags: textArray("tags"),
+    stageChangedAt: ts("stage_changed_at").notNull().defaultNow(),
+    lastActivityAt: ts("last_activity_at"),
+    createdBy: text("created_by"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: text("updated_by"),
   },
   (t) => [
     uniqueIndex("partners_name_key").on(sql`lower(${t.name})`),
-    check("partners_kind_check", inList("kind", ["data_partner", "frontier_lab", "expert_platform", "agency", "other"])),
+    check("partners_kind_check", inList("kind", PARTNER_KINDS)),
+    check("partners_stage_check", inList("stage", COMPANY_STAGES)),
+    check("partners_priority_check", inList("priority", COMPANY_PRIORITIES)),
+    check("partners_business_line_check", inList("business_line", BUSINESS_LINES)),
+    index("partners_stage_idx").on(t.stage, t.nextStepDue),
+    index("partners_owner_idx").on(t.ownerTeamMemberId),
   ],
 );
 
@@ -311,12 +408,15 @@ export const erasures = hub.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     emailSha256: text("email_sha256"),
+    // The FynoLabs admin's erasures (privacy_log) only kept an MD5 of the email; checked too.
+    emailMd5: text("email_md5"),
+    reason: text("reason"),
     source: text("source"),
     externalId: text("external_id"),
     actorEmail: text("actor_email").notNull(),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
-  (t) => [index("erasures_email_idx").on(t.emailSha256), index("erasures_source_idx").on(t.source, t.externalId)],
+  (t) => [index("erasures_email_idx").on(t.emailSha256), index("erasures_md5_idx").on(t.emailMd5), index("erasures_source_idx").on(t.source, t.externalId)],
 );
 
 /**
@@ -336,6 +436,9 @@ export const teamMembers = hub.table(
       .array()
       .notNull()
       .default(sql`'{}'::uuid[]`),
+    // The FynoLabs admin's module access for this person (contact, talent, profiles, platforms, ...).
+    sections: textArray("sections"),
+    invitedBy: text("invited_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
     createdBy: text("created_by"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -363,7 +466,9 @@ export const savedViews = hub.table(
   (t) => [
     index("saved_views_owner_idx").on(t.collection, t.ownerEmail),
     index("saved_views_shared_idx").on(t.collection, t.shared),
-    check("saved_views_collection_check", inList("collection", ["experts"])),
+    // fynolabs_*: views copied from the FynoLabs admin (their filters as FynoLabs had them), kept
+    // apart from the hub's own Experts tabs until those screens exist here.
+    check("saved_views_collection_check", inList("collection", ["experts", "fynolabs_experts", "fynolabs_submissions"])),
   ],
 );
 
@@ -397,6 +502,18 @@ export const jobs = hub.table(
     closesOn: date("closes_on", { mode: "string" }),
     internalRateNote: text("internal_rate_note"),
     publishedAt: ts("published_at"),
+    // From the FynoLabs admin's posted jobs. company_name: the company the FynoLabs post named
+    // (internal: the public page shows public_company_label). pay_unit is money (admins and finance).
+    // source_visibility: public / internal as it was on fynolabs.si; the hub never publishes a copied job.
+    companyName: text("company_name"),
+    projectId: uuid("project_id").references((): AnyPgColumn => projects.id, { onDelete: "set null" }),
+    trackId: uuid("track_id").references((): AnyPgColumn => projectTracks.id, { onDelete: "set null" }),
+    radarListingId: uuid("radar_listing_id").references((): AnyPgColumn => radarListings.id, { onDelete: "set null" }),
+    applyUrl: text("apply_url"),
+    requireGithub: boolean("require_github").notNull().default(false),
+    badge: text("badge"),
+    payUnit: text("pay_unit"),
+    sourceVisibility: text("source_visibility"),
     createdBy: text("created_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -476,12 +593,40 @@ export const applications = hub.table(
     internalNote: text("internal_note"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
+    // The pipeline (one per person per job), with the FynoLabs admin's stages: Applied, Shortlisted,
+    // Proposed to client, Selected, Documents sent, Signed, Active, Ended, Rejected. A trigger keeps
+    // `status` and `stage` in step whichever one a change sets (drizzle/0006_*.sql).
+    stage: text("stage").notNull().default("new"),
+    stageChangedAt: ts("stage_changed_at").notNull().defaultNow(),
+    startedOn: date("started_on", { mode: "string" }),
+    endedOn: date("ended_on", { mode: "string" }),
+    ownerTeamMemberId: uuid("owner_team_member_id").references((): AnyPgColumn => teamMembers.id, { onDelete: "set null" }),
+    ownerName: text("owner_name"),
+    trackId: uuid("track_id").references((): AnyPgColumn => projectTracks.id, { onDelete: "set null" }),
+    // How it came in (applied, sourced, import, referral, agency, partner, manual).
+    channel: text("channel").notNull().default("applied"),
+    screening: jsonb("screening").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    eligible: boolean("eligible"),
+    nextAction: text("next_action"),
+    nextActionDue: date("next_action_due", { mode: "string" }),
+    nextActionAuto: boolean("next_action_auto").notNull().default(false),
+    rejectReason: text("reject_reason"),
+    consentVersion: text("consent_version"),
+    consentAt: ts("consent_at"),
+    // Talent-call applications (no job of their own): when the team handled it.
+    handledAt: ts("handled_at"),
+    handledBy: text("handled_by"),
+    createdBy: text("created_by"),
   },
   (t) => [
     unique("applications_job_expert_key").on(t.jobId, t.expertId),
     index("applications_job_idx").on(t.jobId, t.status),
     index("applications_expert_idx").on(t.expertId),
+    index("applications_stage_idx").on(t.stage, t.nextActionDue),
     check("applications_status_check", inList("status", ["new", "reviewing", "shortlisted", "submitted_to_partner", "rejected", "hired", "withdrawn"])),
+    check("applications_stage_check", inList("stage", PIPELINE_STAGES)),
+    check("applications_channel_check", inList("channel", APPLICATION_CHANNELS)),
+    check("applications_reject_reason_check", sql`${t.rejectReason} is null or ${inList("reject_reason", REJECT_REASONS)}`),
   ],
 );
 
@@ -499,6 +644,10 @@ export const jobInvites = hub.table(
     emailed: boolean("emailed").notNull().default(false),
     createdBy: text("created_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
+    expiresAt: ts("expires_at"),
+    openedAt: ts("opened_at"),
+    acceptedAt: ts("accepted_at"),
+    applicationId: uuid("application_id").references((): AnyPgColumn => applications.id, { onDelete: "set null" }),
   },
   (t) => [unique("job_invites_job_expert_key").on(t.jobId, t.expertId)],
 );
@@ -642,6 +791,8 @@ export const expertPayout = hub.table("expert_payout", {
   payoutHandle: text("payout_handle"),
   taxFormType: text("tax_form_type"),
   taxFormAt: ts("tax_form_at"),
+  // The FynoLabs admin's default commission for this expert (talent_profiles.default_commission_percent).
+  defaultCommissionPercent: numeric("default_commission_percent", { precision: 5, scale: 2, mode: "number" }),
   updatedBy: text("updated_by"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
@@ -666,6 +817,723 @@ export const legacyMap = hub.table(
   (t) => [primaryKey({ columns: [t.sourceTable, t.sourceId] }), index("legacy_map_hub_idx").on(t.hubTable, t.hubId)],
 );
 
+// =====================================================================================================
+// The FynoLabs admin's structure (fynolabs.si/admin, Lovable / Supabase), 23 Nov 2026. Same fields, same
+// meaning, snake_case. Rows copied by `npm run sync:fynolabs` keep their FynoLabs id (hub.legacy_map
+// says so, with source_table 'fynolabs.<table>') and updated_by = 'fynolabs sync' until someone edits
+// them in the hub; after that the sync leaves them alone. Money columns are marked: only admins and
+// finance see them (src/lib/auth/permissions.ts, MONEY_COLUMNS).
+// =====================================================================================================
+
+const updatedBy = () => text("updated_by");
+
+/** Expert platforms and other organisations with a referral link (FynoLabs org_logos: "Platforms"). */
+export const platforms = hub.table(
+  "platforms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("both"),
+    domain: text("domain"),
+    logoUrl: text("logo_url"),
+    websiteUrl: text("website_url"),
+    referralUrl: text("referral_url"),
+    jobsUrl: text("jobs_url"),
+    status: text("status").notNull().default("active"),
+    notes: text("notes"),
+    referenceLinks: jsonb("reference_links").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+    lastOpenedAt: ts("last_opened_at"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("platforms_name_idx").on(sql`lower(${t.name})`)],
+);
+
+/** What happened with a company: notes, emails, calls, meetings, stage changes (FynoLabs account_activities). */
+export const companyActivities = hub.table(
+  "company_activities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => partners.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id").references((): AnyPgColumn => contacts.id, { onDelete: "set null" }),
+    kind: text("kind").notNull().default("note"),
+    summary: text("summary").notNull(),
+    detail: text("detail"),
+    happenedAt: ts("happened_at").notNull().defaultNow(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("company_activities_company_idx").on(t.companyId, t.happenedAt), check("company_activities_kind_check", inList("kind", COMPANY_ACTIVITY_KINDS))],
+);
+
+/** People at companies (FynoLabs leads): role, stage, where we found them, next follow-up. */
+export const contacts = hub.table(
+  "contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    company: text("company"),
+    role: text("role"),
+    kind: text("kind").notNull().default("client"),
+    stage: text("stage").notNull().default("new"),
+    source: text("source").notNull().default("linkedin"),
+    sourceUrl: text("source_url"),
+    profileUrl: text("profile_url"),
+    email: text("email"),
+    nextFollowUp: date("next_follow_up", { mode: "string" }),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [
+    index("contacts_company_idx").on(t.companyId),
+    index("contacts_email_idx").on(sql`lower(${t.email})`),
+    check("contacts_kind_check", inList("kind", CONTACT_KINDS)),
+    check("contacts_stage_check", inList("stage", CONTACT_STAGES)),
+    check("contacts_source_check", inList("source", CONTACT_SOURCES)),
+  ],
+);
+
+/** Calls, meetings, follow-ups, deadlines, tasks and posts. Dates and times are India time (timezone). */
+export const calendarEvents = hub.table(
+  "calendar_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    kind: text("kind").notNull().default("call"),
+    status: text("status").notNull().default("planned"),
+    eventDate: date("event_date", { mode: "string" }),
+    startTime: time("start_time"),
+    endTime: time("end_time"),
+    timezone: text("timezone").notNull().default("Asia/Kolkata"),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    contactIds: uuid("contact_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    teamMemberIds: uuid("team_member_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    meetingUrl: text("meeting_url"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [
+    index("calendar_events_date_idx").on(t.eventDate, t.startTime),
+    index("calendar_events_company_idx").on(t.companyId),
+    check("calendar_events_kind_check", inList("kind", CALENDAR_KINDS)),
+    check("calendar_events_status_check", inList("status", CALENDAR_STATUSES)),
+  ],
+);
+
+/** An expert's timeline: notes, emails, stage changes, applications, documents, referrals (FynoLabs expert_activities). */
+export const expertActivities = hub.table(
+  "expert_activities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    kind: text("kind").notNull().default("note"),
+    summary: text("summary").notNull(),
+    detail: text("detail"),
+    happenedAt: ts("happened_at").notNull().defaultNow(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("expert_activities_expert_idx").on(t.expertId, t.happenedAt), check("expert_activities_kind_check", inList("kind", EXPERT_ACTIVITY_KINDS))],
+);
+
+/** Projects (P### codes): what we staff or refer for, with targets, rules and Discord. */
+export const projects = hub.table(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("referral"),
+    status: text("status").notNull().default("planned"),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    platformId: uuid("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+    referralUrl: text("referral_url"),
+    ownerTeamMemberId: uuid("owner_team_member_id").references(() => teamMembers.id, { onDelete: "set null" }),
+    targetCount: integer("target_count"),
+    startsOn: date("starts_on", { mode: "string" }),
+    endsOn: date("ends_on", { mode: "string" }),
+    countries: textArray("countries"),
+    rules: jsonb("rules").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    discord: text("discord"),
+    externalRef: text("external_ref"),
+    description: text("description"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [uniqueIndex("projects_code_key").on(t.code), check("projects_kind_check", inList("kind", PROJECT_KINDS)), check("projects_status_check", inList("status", PROJECT_STATUSES))],
+);
+
+export const projectTracks = hub.table(
+  "project_tracks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    targetCount: integer("target_count"),
+    position: smallint("position").notNull().default(0),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("project_tracks_project_idx").on(t.projectId, t.position)],
+);
+
+/** Who works on a project (the team), with their role there. */
+export const projectMembers = hub.table(
+  "project_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    teamMemberId: uuid("team_member_id")
+      .notNull()
+      .references(() => teamMembers.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("recruiter"),
+    active: boolean("active").notNull().default(true),
+    capacity: integer("capacity"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [unique("project_members_project_member_key").on(t.projectId, t.teamMemberId), check("project_members_role_check", inList("role", PROJECT_ROLES))],
+);
+
+/** Documents a project needs from each expert, and by which pipeline stage. */
+export const projectDocuments = hub.table(
+  "project_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("agreement"),
+    title: text("title").notNull(),
+    requiredStage: text("required_stage").notNull().default("selected"),
+    expiresAfterDays: integer("expires_after_days"),
+    position: smallint("position").notNull().default(0),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("project_documents_kind_check", inList("kind", DOCUMENT_KINDS)), check("project_documents_stage_check", inList("required_stage", DOCUMENT_STAGES))],
+);
+
+/** Money-only: what a partner pays us per person reaching a stage. */
+export const projectFeeRules = hub.table("project_fee_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  trackId: uuid("track_id").references(() => projectTracks.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  earnedAtStage: text("earned_at_stage").notNull().default("active"),
+  paymentTermsDays: integer("payment_terms_days").notNull().default(30),
+  active: boolean("active").notNull().default(true),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  updatedBy: updatedBy(),
+});
+
+/** An expert's documents (NDA, agreement, compliance): status, who it went to, when it was signed; the files are in expert_files. */
+export const expertDocuments = hub.table(
+  "expert_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    projectDocumentId: uuid("project_document_id").references(() => projectDocuments.id, { onDelete: "set null" }),
+    kind: text("kind").notNull().default("agreement"),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("draft"),
+    fileId: uuid("file_id").references(() => expertFiles.id, { onDelete: "set null" }),
+    signedFileId: uuid("signed_file_id").references(() => expertFiles.id, { onDelete: "set null" }),
+    sentTo: text("sent_to"),
+    sentAt: ts("sent_at"),
+    signedAt: ts("signed_at"),
+    expiresAt: ts("expires_at"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("expert_documents_expert_idx").on(t.expertId), check("expert_documents_kind_check", inList("kind", DOCUMENT_KINDS)), check("expert_documents_status_check", inList("status", DOCUMENT_STATUSES))],
+);
+
+/** A partner's monthly report (sign-ups, qualified, active) matched against our referrals. */
+export const partnerReports = hub.table("partner_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+  label: text("label"),
+  periodStart: date("period_start", { mode: "string" }),
+  periodEnd: date("period_end", { mode: "string" }),
+  signups: integer("signups"),
+  qualified: integer("qualified"),
+  active: integer("active"),
+  rowsTotal: integer("rows_total").notNull().default(0),
+  matched: integer("matched").notNull().default(0),
+  updated: integer("updated").notNull().default(0),
+  createdSubmissions: integer("created_submissions").notNull().default(0),
+  unmatchedCount: integer("unmatched_count").notNull().default(0),
+  unmatched: jsonb("unmatched").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedBy: updatedBy(),
+});
+
+/** Where an expert works through a platform or agency (FynoLabs talent_engagements). commission_percent is money. */
+export const engagements = hub.table("engagements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  expertId: uuid("expert_id")
+    .notNull()
+    .references(() => experts.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  agency: text("agency"),
+  project: text("project"),
+  status: text("status").notNull().default("active"),
+  commissionPercent: numeric("commission_percent", { precision: 5, scale: 2, mode: "number" }),
+  startedOn: date("started_on", { mode: "string" }),
+  endedOn: date("ended_on", { mode: "string" }),
+  notes: text("notes"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  updatedBy: updatedBy(),
+});
+
+/** Money-only: what an expert earned in a month on an engagement, and our commission (INR). */
+export const monthlyEarnings = hub.table(
+  "monthly_earnings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    engagementId: uuid("engagement_id")
+      .notNull()
+      .references(() => engagements.id, { onDelete: "cascade" }),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    month: date("month", { mode: "string" }).notNull(),
+    grossInr: numeric("gross_inr", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
+    commissionInr: numeric("commission_inr", { mode: "number" }).notNull().default(0),
+    commissionPercent: numeric("commission_percent", { mode: "number" }),
+    notes: text("notes"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [unique("monthly_earnings_engagement_month_key").on(t.engagementId, t.month)],
+);
+
+/** Sent referrals and submissions to partners (FynoLabs talent_referrals): method, outcome, opens and clicks. */
+export const referrals = hub.table(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "cascade" }),
+    platformId: uuid("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+    platform: text("platform").notNull(),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    engagementId: uuid("engagement_id").references(() => engagements.id, { onDelete: "set null" }),
+    referralUrl: text("referral_url"),
+    recipientEmail: text("recipient_email").notNull(),
+    recipientName: text("recipient_name"),
+    personalNote: text("personal_note"),
+    status: text("status").notNull().default("sent"),
+    method: text("method").notNull().default("email"),
+    outcome: text("outcome").notNull().default("sent"),
+    outcomeAt: ts("outcome_at"),
+    sentAt: ts("sent_at").notNull().defaultNow(),
+    respondedAt: ts("responded_at"),
+    // The open/click tracking token in emails already sent. Internal: never shown in the app.
+    trackingToken: uuid("tracking_token"),
+    firstOpenedAt: ts("first_opened_at"),
+    lastOpenedAt: ts("last_opened_at"),
+    openCount: integer("open_count").notNull().default(0),
+    firstClickedAt: ts("first_clicked_at"),
+    lastClickedAt: ts("last_clicked_at"),
+    clickCount: integer("click_count").notNull().default(0),
+    externalRef: text("external_ref"),
+    submittedBy: text("submitted_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [
+    index("referrals_expert_idx").on(t.expertId, t.sentAt),
+    index("referrals_project_idx").on(t.projectId),
+    check("referrals_method_check", inList("method", REFERRAL_METHODS)),
+    check("referrals_outcome_check", inList("outcome", REFERRAL_OUTCOMES)),
+  ],
+);
+
+/** Money-only: fees partners owe us for referrals (expected, invoiced, paid, void). */
+export const referralFees = hub.table(
+  "referral_fees",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    ruleId: uuid("rule_id").references(() => projectFeeRules.id, { onDelete: "set null" }),
+    applicationId: uuid("application_id").references(() => applications.id, { onDelete: "set null" }),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "set null" }),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    personName: text("person_name"),
+    amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    currency: text("currency").notNull().default("USD"),
+    status: text("status").notNull().default("expected"),
+    earnedOn: date("earned_on", { mode: "string" }).notNull(),
+    invoiceNumber: text("invoice_number"),
+    invoicedOn: date("invoiced_on", { mode: "string" }),
+    dueOn: date("due_on", { mode: "string" }),
+    paidOn: date("paid_on", { mode: "string" }),
+    paidAmount: numeric("paid_amount", { precision: 12, scale: 2, mode: "number" }),
+    voidReason: text("void_reason"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("referral_fees_status_check", inList("status", FEE_STATUSES))],
+);
+
+/** Lists of people a referral email goes to in one go (FynoLabs referral_groups and members). */
+export const referralGroups = hub.table("referral_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedBy: updatedBy(),
+});
+
+export const referralGroupMembers = hub.table(
+  "referral_group_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => referralGroups.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    name: text("name"),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "set null" }),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [unique("referral_group_members_group_email_key").on(t.groupId, t.email)],
+);
+
+/** Short links for posts and partners (fynolabs.si/go/<code>), and clicks per day. */
+export const trackedLinks = hub.table(
+  "tracked_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    label: text("label"),
+    targetUrl: text("target_url").notNull(),
+    channel: text("channel").notNull().default("other"),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    platformId: uuid("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+    companyId: uuid("company_id").references(() => partners.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("active"),
+    clicks: bigint("clicks", { mode: "number" }).notNull().default(0),
+    lastClickedAt: ts("last_clicked_at"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [uniqueIndex("tracked_links_code_key").on(t.code), check("tracked_links_channel_check", inList("channel", LINK_CHANNELS))],
+);
+
+export const trackedLinkClicks = hub.table(
+  "tracked_link_clicks",
+  {
+    linkId: uuid("link_id")
+      .notNull()
+      .references(() => trackedLinks.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    clicks: integer("clicks").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.linkId, t.day] })],
+);
+
+/** Job radar: roles found on other platforms (FynoLabs job_listings). Pay is money (admins and finance). */
+export const radarListings = hub.table(
+  "radar_listings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platform: text("platform").notNull(),
+    platformId: uuid("platform_id").references(() => platforms.id, { onDelete: "set null" }),
+    externalId: text("external_id").notNull(),
+    title: text("title").notNull(),
+    company: text("company"),
+    location: text("location"),
+    url: text("url").notNull(),
+    payMin: numeric("pay_min", { mode: "number" }),
+    payMax: numeric("pay_max", { mode: "number" }),
+    payPeriod: text("pay_period"),
+    postedAt: ts("posted_at"),
+    status: text("status").notNull().default("new"),
+    matchedKeywords: textArray("matched_keywords"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [unique("radar_listings_platform_external_key").on(t.platform, t.externalId)],
+);
+
+/** Settings as key / value (the FynoLabs admin's admin_settings, job radar settings, email sending state). */
+export const settings = hub.table("settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  updatedBy: updatedBy(),
+});
+
+export const emailTemplates = hub.table(
+  "email_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("update"),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("email_templates_kind_check", inList("kind", TEMPLATE_KINDS))],
+);
+
+/** Bulk emails to experts (approved before sending), with an optional follow-up. */
+export const emailCampaigns = hub.table(
+  "email_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("update"),
+    templateId: uuid("template_id").references(() => emailTemplates.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    followUpSubject: text("follow_up_subject"),
+    followUpBody: text("follow_up_body"),
+    followUpAfterDays: integer("follow_up_after_days"),
+    status: text("status").notNull().default("draft"),
+    recipientCount: integer("recipient_count").notNull().default(0),
+    createdBy: text("created_by"),
+    approvedBy: text("approved_by"),
+    approvedAt: ts("approved_at"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("email_campaigns_status_check", inList("status", CAMPAIGN_STATUSES))],
+);
+
+export const emailCampaignRecipients = hub.table(
+  "email_campaign_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => emailCampaigns.id, { onDelete: "cascade" }),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    status: text("status").notNull().default("pending"),
+    reason: text("reason"),
+    // The token in the email's links (already sent). Internal: never shown.
+    token: uuid("token"),
+    sentAt: ts("sent_at"),
+    followedUpAt: ts("followed_up_at"),
+    updatedBy: updatedBy(),
+  },
+  (t) => [unique("email_campaign_recipients_campaign_expert_key").on(t.campaignId, t.expertId), check("email_campaign_recipients_status_check", inList("status", RECIPIENT_STATUSES))],
+);
+
+/** Every email sent (or not) and why: template, status, error. */
+export const emailSendLog = hub.table(
+  "email_send_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    messageId: text("message_id"),
+    templateName: text("template_name").notNull(),
+    recipientEmail: text("recipient_email").notNull(),
+    status: text("status").notNull(),
+    errorMessage: text("error_message"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("email_send_log_created_idx").on(t.createdAt)],
+);
+
+/** Addresses we must not email (unsubscribed, bounced, complained). */
+export const suppressedEmails = hub.table(
+  "suppressed_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    reason: text("reason").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [uniqueIndex("suppressed_emails_email_key").on(t.email)],
+);
+
+/** Unsubscribe links already sent. The token is internal: never shown in the app. */
+export const unsubscribeTokens = hub.table(
+  "unsubscribe_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    token: text("token").notNull(),
+    email: text("email").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    usedAt: ts("used_at"),
+    updatedBy: updatedBy(),
+  },
+  (t) => [uniqueIndex("unsubscribe_tokens_token_key").on(t.token), uniqueIndex("unsubscribe_tokens_email_key").on(t.email)],
+);
+
+/** Messages from the website's contact form (FynoLabs contact_submissions). */
+export const messages = hub.table(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    message: text("message").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    handledAt: ts("handled_at"),
+    handledBy: text("handled_by"),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("messages_created_idx").on(t.createdAt)],
+);
+
+/**
+ * Replies the team sent: to a message (source_type 'contact', source_id = hub.messages id), a
+ * talent-call or job application ('talent' / 'job', source_id = hub.applications id) or an expert
+ * ('expert', hub.experts id).
+ */
+export const messageReplies = hub.table(
+  "message_replies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    recipientEmail: text("recipient_email").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("sent"),
+    errorMessage: text("error_message"),
+    sentBy: text("sent_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("message_replies_source_idx").on(t.sourceType, t.sourceId)],
+);
+
+export const replyDrafts = hub.table(
+  "reply_drafts",
+  {
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    subject: text("subject").notNull().default(""),
+    body: text("body").notNull().default(""),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [primaryKey({ columns: [t.sourceType, t.sourceId] })],
+);
+
+/** Bulk imports run in the FynoLabs admin (experts, submissions, outcomes): counts and errors. */
+export const importBatches = hub.table("import_batches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").notNull().default("experts"),
+  label: text("label"),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+  options: jsonb("options").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  total: integer("total").notNull().default(0),
+  created: integer("created").notNull().default(0),
+  updated: integer("updated").notNull().default(0),
+  unchanged: integer("unchanged").notNull().default(0),
+  skipped: integer("skipped").notNull().default(0),
+  failed: integer("failed").notNull().default(0),
+  errors: jsonb("errors").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+  createdBy: text("created_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+/** Visitor analytics of fynolabs.si: page views, visitors per source per day, sessions per source. */
+export const visitorPageviews = hub.table(
+  "visitor_pageviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id").notNull(),
+    source: text("source").notNull(),
+    referrerHost: text("referrer_host"),
+    landingPath: text("landing_path").notNull(),
+    pagePath: text("page_path").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("visitor_pageviews_created_idx").on(t.createdAt), check("visitor_pageviews_source_check", inList("source", VISIT_SOURCES))],
+);
+
+export const visitorSourceDaily = hub.table(
+  "visitor_source_daily",
+  {
+    visitDate: date("visit_date", { mode: "string" }).notNull(),
+    source: text("source").notNull(),
+    visitors: bigint("visitors", { mode: "number" }).notNull().default(0),
+    pageViews: bigint("page_views", { mode: "number" }).notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.visitDate, t.source] })],
+);
+
+export const visitorSourceSessions = hub.table(
+  "visitor_source_sessions",
+  {
+    visitDate: date("visit_date", { mode: "string" }).notNull(),
+    source: text("source").notNull(),
+    sessionId: uuid("session_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.visitDate, t.source, t.sessionId] })],
+);
+
 export type Expert = typeof experts.$inferSelect;
 export type NewExpert = typeof experts.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
@@ -683,3 +1551,7 @@ export type FormTemplate = typeof formTemplates.$inferSelect;
 export type Application = Omit<typeof applications.$inferSelect, "rateExpectationUsd">;
 export type ExpertDetails = typeof expertDetails.$inferSelect;
 export type ExpertPayout = typeof expertPayout.$inferSelect;
+export type ExpertActivity = typeof expertActivities.$inferSelect;
+export type Company = typeof partners.$inferSelect;
+export type Contact = typeof contacts.$inferSelect;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;

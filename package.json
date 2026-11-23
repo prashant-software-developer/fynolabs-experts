@@ -18,7 +18,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "import:jobs": "tsx scripts/import-jobs.ts",
-    "copy:engine": "tsx scripts/copy-from-engine.ts"
+    "copy:engine": "tsx scripts/copy-from-engine.ts",
+    "sync:fynolabs": "tsx scripts/sync-fynolabs.ts",
+    "token:new": "tsx scripts/token-new.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.17",

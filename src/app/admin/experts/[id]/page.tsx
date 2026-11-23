@@ -4,7 +4,7 @@ import { Download, FileText, Link2 } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can, canSeeContact, canSeeMoney, fileDownloadAction, partnerScope, visibleExpert, visibleFiles } from "@/lib/auth/permissions";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
-import { CV_CONSENT, label } from "@/lib/constants";
+import { CV_CONSENT, label, PIPELINE_STAGE_LABELS, type PipelineStage } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";
 import { bytes, fmtDate, fmtDateTime } from "@/lib/format";
 import { valuesFromExpert } from "@/lib/forms/expert";
@@ -14,6 +14,7 @@ import { currentCv, detailsFor, filesFor, getExpert, payoutFor, sourcesFor, type
 import { jobsApplicationsFor } from "@/lib/server/jobs-sync";
 import { applicationsOf } from "@/lib/server/applications";
 import { openDeletionRequest } from "@/lib/server/portal";
+import { crmFieldsFor, timelineFor } from "@/lib/server/timeline";
 import { experts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { listPlacements } from "@/lib/server/placements";
@@ -121,7 +122,7 @@ function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
 
 async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
   const db = await getDb();
-  const [allFiles, sources, apps, hubApps, deletion, portal, details, payout] = await Promise.all([
+  const [allFiles, sources, apps, hubApps, deletion, portal, details, payout, crm] = await Promise.all([
     filesFor(db, e.id),
     sourcesFor(db, e.id),
     jobsApplicationsFor(db, e.id),
@@ -130,6 +131,7 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
     db.select({ joined: experts.portalJoinedAt }).from(experts).where(eq(experts.id, e.id)).limit(1),
     detailsFor(db, e.id, user.role),
     payoutFor(db, e.id, user.role),
+    crmFieldsFor(db, e.id),
   ]);
   // Tax forms are money: only admins and finance see them listed.
   const files = visibleFiles(user.role, allFiles);
@@ -183,6 +185,8 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
         </div>
       </Section>
 
+      {crm ? <CrmDetails c={crm} /> : null}
+
       {details ? <JobsSiteDetails d={details} contact={canSeeContact(user.role)} /> : null}
 
       {payout ? (
@@ -223,7 +227,9 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
           <Table>
             <THead>
               <Th>Job</Th>
+              <Th>Pipeline stage</Th>
               <Th>Status</Th>
+              <Th>Next action</Th>
               <Th>Applied</Th>
             </THead>
             <TBody>
@@ -234,9 +240,11 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
                       {a.jobTitle}
                     </Link>
                   </Td>
+                  <Td className="whitespace-nowrap">{PIPELINE_STAGE_LABELS[a.stage as PipelineStage] ?? a.stage}</Td>
                   <Td>
                     <StatusBadge value={a.status} />
                   </Td>
+                  <Td className="text-xs text-muted-foreground">{[a.nextAction, a.nextActionDue ? `by ${fmtDate(a.nextActionDue)}` : null].filter(Boolean).join(" ") || "–"}</Td>
                   <Td className="whitespace-nowrap">{fmtDate(a.createdAt)}</Td>
                 </Tr>
               ))}
@@ -284,6 +292,30 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
         ) : null}
       </Section>
     </Stack>
+  );
+}
+
+type Crm = NonNullable<Awaited<ReturnType<typeof crmFieldsFor>>>;
+
+/** Owner, outreach, next action and where they came from (the FynoLabs admin's fields). Hidden when all are empty. */
+function CrmDetails({ c }: { c: Crm }) {
+  const items = [
+    { label: "Owner", value: c.ownerName },
+    { label: "Outreach", value: c.outreachStatus ? label(c.outreachStatus) : null },
+    { label: "Next action", value: [c.nextAction, c.nextActionDue ? `by ${fmtDate(c.nextActionDue)}` : null].filter(Boolean).join(" ") || null },
+    { label: "Last activity", value: c.lastActivityAt ? fmtDateTime(c.lastActivityAt) : null },
+    { label: "Based in", value: [c.location, c.timezone].filter(Boolean).join(" · ") || null },
+    { label: "Seniority", value: c.seniority ? label(c.seniority) : null },
+    { label: "Came from", value: [c.sourceChannel ? label(c.sourceChannel) : null, c.sourceDetail].filter(Boolean).join(": ") || null },
+    { label: "Links", value: c.links ? <span className="whitespace-pre-line break-all">{c.links}</span> : null },
+    { label: "Do not contact", value: c.dncReason },
+    { label: "Emails", value: c.emailOptOut ? "Opted out of bulk emails" : null },
+  ].filter((x) => x.value != null && x.value !== "");
+  if (!items.length) return null;
+  return (
+    <Section title="Pipeline and outreach" description="Owner, outreach and next action, as the FynoLabs admin keeps them.">
+      <DefinitionList items={items} />
+    </Section>
   );
 }
 
@@ -455,11 +487,34 @@ async function WorkTab({
 
 async function ActivityTab({ id }: { id: string }) {
   const db = await getDb();
-  const items = await activityFor(db, "expert", id);
+  const [items, timeline] = await Promise.all([activityFor(db, "expert", id), timelineFor(db, id)]);
   return (
-    <Section title="Activity" description="Every change to this record. Values aren't stored here, only what changed.">
-      <ActivityList items={items} showEntity={false} />
-    </Section>
+    <Stack>
+      <Section title="Timeline" description="Applications, stage changes, notes, emails, documents and referrals, newest first." flush>
+        {timeline.length ? (
+          <ul className="divide-y divide-border">
+            {timeline.map((t) => (
+              <li key={t.id} className="px-5 py-3 text-sm">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="eyebrow text-muted-foreground">{label(t.kind)}</span>
+                  <span className="text-foreground">{t.summary}</span>
+                  <span className="text-xs text-muted-foreground/70">
+                    {fmtDateTime(t.happenedAt)}
+                    {t.createdBy ? ` · ${t.createdBy}` : ""}
+                  </span>
+                </div>
+                {t.detail ? <p className="mt-1 whitespace-pre-line text-foreground/80">{t.detail}</p> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState size="section" title="Nothing on the timeline yet" />
+        )}
+      </Section>
+      <Section title="Activity" description="Every change to this record. Values aren't stored here, only what changed.">
+        <ActivityList items={items} showEntity={false} />
+      </Section>
+    </Stack>
   );
 }
 

@@ -7,10 +7,11 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { accounts, accountTokens, erasures, experts, teamMembers, type AccountRow } from "@/db/schema";
+import { accounts, accountTokens, expertActivities, experts, teamMembers, type AccountRow } from "@/db/schema";
 import { isTeamByEnv } from "@/lib/auth/account";
 import { hashPassword, needsRehash, passwordMessage, verifyPassword } from "@/lib/auth/password";
-import { cleanText, emailHash, normalizeEmail } from "@/lib/normalize";
+import { cleanText, normalizeEmail } from "@/lib/normalize";
+import { isErasedEmail } from "./erasure";
 import { logActivity, type Actor } from "./activity";
 import { brandedEmail, emailConfigured, sendEmail } from "./email";
 import { clearAttempts, overLimit, recordAttempt } from "./rate-limit";
@@ -53,10 +54,7 @@ export async function isTeamEmail(db: DB, email: string): Promise<boolean> {
   return Boolean(m);
 }
 
-async function isErased(db: DB, email: string): Promise<boolean> {
-  const [row] = await db.select({ id: erasures.id }).from(erasures).where(eq(erasures.emailSha256, emailHash(email))).limit(1);
-  return Boolean(row);
-}
+const isErased = isErasedEmail;
 
 async function bump(db: DB, id: string, set: Partial<typeof accounts.$inferInsert>, now = new Date()) {
   await db
@@ -357,6 +355,7 @@ export async function linkExpertForAccount(db: DB, account: AccountRow, now = ne
       expertId = row.id;
       created = true;
       await logActivity(db, { entityType: "expert", entityId: row.id, actor: { email: "expert-portal", role: "expert" }, action: "created", detail: { source: "portal" } });
+      await db.insert(expertActivities).values({ expertId: row.id, kind: "system", summary: "Signed up on the expert portal", createdBy: "expert-portal", updatedBy: "expert-portal" });
     }
   }
   await db.update(accounts).set({ expertId, updatedAt: now }).where(eq(accounts.id, account.id));

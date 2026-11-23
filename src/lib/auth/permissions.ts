@@ -262,6 +262,44 @@ export function visibleExpert<T extends { email?: string | null; phone?: string 
   return out;
 }
 
+// ---------- Money columns (every table) ----------
+
+/**
+ * Columns that are money: only roles with money.read (admins and finance) ever get them. "*" means
+ * the whole table is money (none of its rows go to other roles). The FynoLabs tables brought pay,
+ * fees, commissions and earnings (23 Nov 2026); they are listed here so every screen uses one rule.
+ */
+export const MONEY_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+  experts: ["rateExpectationUsd", "rate_expectation_usd"],
+  applications: ["rateExpectationUsd", "rate_expectation_usd"],
+  requirements: ["rateNote", "rate_note"],
+  jobs: ["internalRateNote", "internal_rate_note", "payUnit", "pay_unit"],
+  placements: ["rateToExpert", "rate_to_expert", "rateFromPartner", "rate_from_partner", "earnedByExpert", "earned_by_expert", "revenue"],
+  engagements: ["commissionPercent", "commission_percent"],
+  radar_listings: ["payMin", "pay_min", "payMax", "pay_max", "payPeriod", "pay_period"],
+  expert_payout: ["*"],
+  project_fee_rules: ["*"],
+  referral_fees: ["*"],
+  monthly_earnings: ["*"],
+};
+
+export const isMoneyTable = (table: string) => MONEY_COLUMNS[table]?.includes("*") ?? false;
+
+/** The row as a role may see it: money columns set to null (or no row at all for a money-only table). */
+export function withoutMoney<T extends Record<string, unknown>>(role: Role, table: string, row: T): T | null {
+  if (canSeeMoney(role)) return row;
+  const cols = MONEY_COLUMNS[table] ?? [];
+  if (cols.includes("*")) return null;
+  const out: Record<string, unknown> = { ...row };
+  for (const c of cols) if (c in out) out[c] = null;
+  return out as T;
+}
+
+/** Many rows: money-only tables give an empty list to roles without money rights. */
+export function rowsWithoutMoney<T extends Record<string, unknown>>(role: Role, table: string, rows: T[]): T[] {
+  return rows.map((r) => withoutMoney(role, table, r)).filter((r): r is T => r !== null);
+}
+
 // ---------- Files ----------
 
 /** Tax forms (copied from the old jobs site) are money: admins and finance. CVs and attachments: CV download rights. */

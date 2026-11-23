@@ -30,11 +30,12 @@ export async function savePartner(fd: FormData) {
       .limit(1);
     if (clash) go("error", `There's already a partner called "${name}".`);
     if (id && isUuid(id)) {
-      await db.update(partners).set({ name: name!, kind, website, notes }).where(eq(partners.id, id));
+      // updated_by: the FynoLabs sync then leaves this company's changed fields alone.
+      await db.update(partners).set({ name: name!, kind, website, notes, updatedBy: user.email, updatedAt: new Date() }).where(eq(partners.id, id));
       await logActivity(db, { entityType: "partner", entityId: id, actor: user, action: "updated" });
       go("ok", "Partner saved.");
     }
-    const [row] = await db.insert(partners).values({ name: name!, kind, website, notes }).returning({ id: partners.id });
+    const [row] = await db.insert(partners).values({ name: name!, kind, website, notes, createdBy: user.email, updatedBy: user.email }).returning({ id: partners.id });
     await logActivity(db, { entityType: "partner", entityId: row.id, actor: user, action: "created" });
     go("ok", "Partner added.");
   });

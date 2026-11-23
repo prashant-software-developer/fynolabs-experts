@@ -4,8 +4,8 @@
 // listing applicants, changing status, notes and the CSV export.
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { applications, erasures, expertFiles, experts, jobs, type Application, type Job } from "@/db/schema";
-import { APPLICATION_STATUSES, isOneOf, type ApplicationStatus } from "@/lib/constants";
+import { applications, expertActivities, expertFiles, experts, jobs, type Application, type Job } from "@/db/schema";
+import { APPLICATION_STATUSES, isOneOf, PIPELINE_STAGE_LABELS, stageForStatus, type ApplicationStatus } from "@/lib/constants";
 import {
   consentGiven,
   mergeIntoProfile,
@@ -18,7 +18,8 @@ import {
   type FormValues,
 } from "@/lib/forms/job-fields";
 import { acceptsApplications } from "@/lib/jobs-public";
-import { emailHash, normalizeLinkedin } from "@/lib/normalize";
+import { normalizeLinkedin } from "@/lib/normalize";
+import { isErasedEmail } from "./erasure";
 import { logActivity, type Actor } from "./activity";
 import { isUuid } from "./experts";
 import { overLimit, recordAttempt } from "./rate-limit";
@@ -54,9 +55,11 @@ export function sourceFromParams(get: (k: string) => string | null): SourceInfo 
   return { ...(Object.keys(utm).length ? { utm } : {}), ...(ref && /^[\w-]+$/.test(ref) ? { ref } : {}), invite };
 }
 
-async function isErased(db: DB, email: string): Promise<boolean> {
-  const [row] = await db.select({ id: erasures.id }).from(erasures).where(eq(erasures.emailSha256, emailHash(email))).limit(1);
-  return Boolean(row);
+const isErased = isErasedEmail;
+
+/** One line on the expert's timeline (hub.expert_activities), as the FynoLabs admin keeps it. */
+export async function addTimeline(db: DB, e: { expertId: string; kind: string; summary: string; applicationId?: string | null; detail?: string | null; by: string }) {
+  await db.insert(expertActivities).values({ expertId: e.expertId, applicationId: e.applicationId ?? null, kind: e.kind, summary: e.summary.slice(0, 500), detail: e.detail ?? null, createdBy: e.by, updatedBy: e.by });
 }
 
 const expertCols = {
@@ -196,7 +199,8 @@ export async function submitApplication(
     }
   }
 
-  if (consentGiven(fields, v.answers)) {
+  const consented = consentGiven(fields, v.answers);
+  if (consented) {
     await db.update(experts).set({ cvConsent: "yes", cvConsentAt: now, updatedAt: now }).where(eq(experts.id, expertId));
     await logActivity(db, { entityType: "expert", entityId: expertId, actor: JOB_FORM_ACTOR, action: "cv_consent_recorded", detail: { value: "yes", via: "job_form", jobId: job.id } });
   }
@@ -211,18 +215,22 @@ export async function submitApplication(
     applicationId = existing.id;
     await db
       .update(applications)
-      .set({ answers, source, ipHash, updatedAt: now, ...(existing.status === "withdrawn" ? { status: "new" } : {}) })
+      .set({ answers, source, ipHash, updatedAt: now, ...(existing.status === "withdrawn" ? { status: "new" } : {}), ...(consented ? { consentAt: now } : {}) })
       .where(eq(applications.id, existing.id));
     await logActivity(db, { entityType: "application", entityId: applicationId, actor: JOB_FORM_ACTOR, action: "reapplied", detail: { jobId: job.id, expertId } });
+    await addTimeline(db, { expertId, applicationId, kind: "application", summary: `Applied again to ${job.title}`, by: "job-form" });
   } else {
+    // The pipeline starts at Applied (stage new), as in the FynoLabs admin.
     const [row] = await db
       .insert(applications)
-      .values({ jobId: job.id, expertId, status: "new", answers, source, ipHash, createdAt: now, updatedAt: now })
+      .values({ jobId: job.id, expertId, status: "new", stage: "new", channel: "applied", answers, source, ipHash, consentAt: consented ? now : null, createdAt: now, updatedAt: now })
       .onConflictDoUpdate({ target: [applications.jobId, applications.expertId], set: { answers, source, ipHash, updatedAt: now } })
       .returning({ id: applications.id });
     applicationId = row.id;
     await logActivity(db, { entityType: "application", entityId: applicationId, actor: JOB_FORM_ACTOR, action: "created", detail: { jobId: job.id, expertId, ...(source.ref ? { ref: source.ref } : {}) } });
+    await addTimeline(db, { expertId, applicationId, kind: "application", summary: `Applied to ${job.title}`, by: "job-form" });
   }
+  if (consented) await addTimeline(db, { expertId, applicationId, kind: "consent", summary: "Consent to share their profile and CV recorded (job form)", by: "job-form" });
 
   const [after] = await db.select({ portalJoinedAt: experts.portalJoinedAt }).from(experts).where(eq(experts.id, expertId)).limit(1);
   return { ok: true, applicationId, expertId, newExpert, reapplied: Boolean(existing), hasPortalAccount: Boolean(after?.portalJoinedAt) };
@@ -242,6 +250,25 @@ export const applicationColumns = {
   internalNote: applications.internalNote,
   createdAt: applications.createdAt,
   updatedAt: applications.updatedAt,
+  stage: applications.stage,
+  stageChangedAt: applications.stageChangedAt,
+  startedOn: applications.startedOn,
+  endedOn: applications.endedOn,
+  ownerTeamMemberId: applications.ownerTeamMemberId,
+  ownerName: applications.ownerName,
+  trackId: applications.trackId,
+  channel: applications.channel,
+  screening: applications.screening,
+  eligible: applications.eligible,
+  nextAction: applications.nextAction,
+  nextActionDue: applications.nextActionDue,
+  nextActionAuto: applications.nextActionAuto,
+  rejectReason: applications.rejectReason,
+  consentVersion: applications.consentVersion,
+  consentAt: applications.consentAt,
+  handledAt: applications.handledAt,
+  handledBy: applications.handledBy,
+  createdBy: applications.createdBy,
 };
 
 export const applicantColumns = {
@@ -289,8 +316,16 @@ export async function setApplicationStatus(db: DB, actor: Actor, jobId: string, 
   const rows = await db.select({ id: applications.id, status: applications.status }).from(applications).where(and(eq(applications.jobId, jobId), inArray(applications.id, clean)));
   const moving = rows.filter((r) => r.status !== status);
   if (moving.length) {
+    // The pipeline stage follows the status (a database trigger keeps the two in step).
     await db.update(applications).set({ status: status as ApplicationStatus, updatedAt: new Date() }).where(inArray(applications.id, moving.map((r) => r.id)));
-    for (const r of moving) await logActivity(db, { entityType: "application", entityId: r.id, actor, action: "status_changed", detail: { jobId, from: r.status, to: status } });
+    const after = await db.select({ id: applications.id, expertId: applications.expertId, stage: applications.stage }).from(applications).where(inArray(applications.id, moving.map((r) => r.id)));
+    const by = typeof actor === "string" ? actor : actor.email;
+    for (const r of moving) {
+      await logActivity(db, { entityType: "application", entityId: r.id, actor, action: "status_changed", detail: { jobId, from: r.status, to: status } });
+      const a = after.find((x) => x.id === r.id);
+      const from = PIPELINE_STAGE_LABELS[stageForStatus(r.status as ApplicationStatus)];
+      if (a) await addTimeline(db, { expertId: a.expertId, applicationId: a.id, kind: "stage", summary: `Stage: ${from} -> ${PIPELINE_STAGE_LABELS[a.stage as keyof typeof PIPELINE_STAGE_LABELS] ?? a.stage}`, by });
+    }
   }
   return { ok: true as const, changed: moving.length, unchanged: rows.length - moving.length };
 }
@@ -315,7 +350,7 @@ export async function applicationMoney(db: DB, id: string): Promise<{ rateExpect
 export async function applicationsOf(db: DB, expertId: string) {
   if (!isUuid(expertId)) return [];
   return db
-    .select({ id: applications.id, status: applications.status, createdAt: applications.createdAt, updatedAt: applications.updatedAt, jobId: jobs.id, jobTitle: jobs.title, jobSlug: jobs.slug, jobStatus: jobs.status, jobVisibility: jobs.visibility, jobClosesOn: jobs.closesOn })
+    .select({ id: applications.id, status: applications.status, stage: applications.stage, stageChangedAt: applications.stageChangedAt, nextAction: applications.nextAction, nextActionDue: applications.nextActionDue, createdAt: applications.createdAt, updatedAt: applications.updatedAt, jobId: jobs.id, jobTitle: jobs.title, jobSlug: jobs.slug, jobStatus: jobs.status, jobVisibility: jobs.visibility, jobClosesOn: jobs.closesOn })
     .from(applications)
     .innerJoin(jobs, eq(jobs.id, applications.jobId))
     .where(eq(applications.expertId, expertId))

@@ -107,6 +107,40 @@ Then set `ENGINE_DATABASE_URL=postgresql://expert_hub_reader:...@<Engine's host>
 
 The older `npm run import:jobs` (people and CVs only, `JOBS_DATABASE_URL`) still works and shares the same rules; files it copied are recognised and not copied again.
 
+## 3b. Copy the FynoLabs admin
+
+Everything the FynoLabs admin (fynolabs.si/admin, the Lovable project with its Supabase database) holds comes into expert-hub too, with the same structure: experts and their pipelines, companies (accounts), contacts (leads), the calendar, platforms and referral links, referral groups and sent referrals, projects with tracks, team, documents and fee rules, engagements and monthly earnings, campaigns and templates, messages, the job radar, saved views, settings, the audit log and visitor analytics. Like the Engine copy it is **re-runnable**: run it whenever you like until the Lovable admin is retired.
+
+**How it works.** Two halves, so no password to FynoLabs' database ever leaves Supabase:
+
+1. **`hub-sync`**, a small edge function in the main site (`Main Website - FyonLabs/supabase/functions/hub-sync`). It reads FynoLabs (SELECT only, every table in `public`, so new tables come along; from `auth.users` only id, email, name and dates; the CVs and documents of the three storage buckets) and writes them into expert-hub, schema **`fynolabs_copy`**: one table per FynoLabs table with the same columns, types and keys. It answers with counts and cursors only, never row data, and only to a request carrying the right token.
+2. **`npm run sync:fynolabs`** (the launcher **`Copy FynoLabs data.bat`**) on your PC: asks hub-sync for the counts, has it copy every table and the files (it carries on from a cursor, about 100 s per call), then folds `fynolabs_copy` into the hub's own tables ([DATA.md](DATA.md#the-copy-of-the-fynolabs-admin-npm-run-syncfynolabs)) and checks the numbers.
+
+**One-time setup** (about 5 minutes):
+
+1. Double-click **`Copy FynoLabs data.bat`**. The first time it adds a random `FYNOLABS_SYNC_TOKEN=...` line to `.env.local` (the token is never shown on screen) and stops with these steps.
+2. In **Lovable**, open the FynoLabs project → **Cloud** → **Secrets** and add two secrets:
+   - `HUB_SYNC_TOKEN`: the value after `FYNOLABS_SYNC_TOKEN=` in `.env.local` (open it in Notepad and copy everything after the `=`);
+   - `HUB_DATABASE_URL`: the value after `DATABASE_URL=` in the same file (the expert-hub connection string).
+3. **Push the main site** (`git push` in `Main Website - FyonLabs`), so Lovable deploys the function `hub-sync` (its `config.toml` entry turns off Supabase's JWT check: the token is the check).
+4. Double-click **`Copy FynoLabs data.bat`** again.
+
+Both values are passwords: never paste them in Slack, a doc or a chat. To change the token: delete the `FYNOLABS_SYNC_TOKEN` line, run `npm run token:new`, and put the new value in Lovable.
+
+**Each run:** the launcher checks Node, `DATABASE_URL` and the token, does a **dry run** (FynoLabs' counts next to what `fynolabs_copy` and the hub hold now: nothing copied or changed), asks *Type YES*, then copies and folds. The first run takes a few minutes (about 35,000 analytics rows and 17 MB of files); later runs are quicker. The table at the end shows, for every FynoLabs table: rows in FynoLabs, in `fynolabs_copy`, in the hub, and why any differ (left out because the person was deleted on request, edited in the hub so kept, merged into one record). **CHECK OK** means everything is accounted for; anything else ends with a non-zero exit and says what. Everything printed is in `logs\copy-fynolabs-latest.log`, the report (counts only) in `logs\sync-fynolabs-<date>-<time>.txt`.
+
+The same from a terminal: `npm run sync:fynolabs -- --dry-run`, then `CONFIRM_DB=yes npm run sync:fynolabs`. Settings: `FYNOLABS_SYNC_TOKEN`, `FYNOLABS_SYNC_URL` (default `https://kmnlyniplnkwfkbhehei.supabase.co/functions/v1/hub-sync`), `DATABASE_URL`.
+
+**Safety.**
+
+- FynoLabs is only read: hub-sync runs SELECT statements on it and writes only to `fynolabs_copy` in expert-hub; the mapping writes only to `hub`.
+- Nothing is ever deleted because it disappeared from FynoLabs (it is kept and counted), except the rows of people deleted on request in the hub, which hub-sync leaves out and removes from the copy.
+- The token is compared in constant time; a wrong or missing token gets 401, and the function refuses to run without the secret.
+- The runner never prints or saves the token or the database address.
+- Records edited in the hub keep those edits ([DATA.md](DATA.md#merge-rules)).
+
+**Errors.** "refused the token (401)": the two token values differ. "isn't there yet (404)": the main site hasn't been pushed (or Lovable hasn't deployed it yet). Any other stop: run it again (it carries on), and if it repeats, send Claude `logs\copy-fynolabs-latest.log` (it has no passwords).
+
 ## 4. Create your admin account
 
 Double-click **`Create my admin account.bat`** in this folder (or `CONFIRM_DB=yes npm run admin:create -- --email prashant@xocket.sh --name Prashant`). It uses the same `DATABASE_URL` as the copy, so it creates your login in production:
@@ -199,4 +233,4 @@ Neon keeps point-in-time history for the project (see the project's settings for
 
 ## Removing the app completely
 
-Everything is in two schemas: `hub` (the app) and `engine_copy` (the replica of Engine). As the database owner: `DROP SCHEMA engine_copy CASCADE; DROP SCHEMA hub CASCADE;` (or delete the Neon project). Take a branch or backup first. Engine itself is never touched.
+Everything is in three schemas: `hub` (the app), `engine_copy` (the replica of Engine) and `fynolabs_copy` (the copy of the FynoLabs admin). As the database owner: `DROP SCHEMA fynolabs_copy CASCADE; DROP SCHEMA engine_copy CASCADE; DROP SCHEMA hub CASCADE;` (or delete the Neon project). Take a branch or backup first. Engine and FynoLabs themselves are never touched. Also remove the `HUB_SYNC_TOKEN` and `HUB_DATABASE_URL` secrets in Lovable.

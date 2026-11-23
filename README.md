@@ -28,12 +28,12 @@ Three parts, one database:
 | Page | What you do there |
 |---|---|
 | **Dashboard** `/admin` | Jobs taking applications (new applicants), deletion requests, experts by status, open requirements and their free slots, people waiting on a partner's answer, active placements, recent changes. |
-| **Experts** `/admin/experts` | Search everyone (name, skills, headline, university, email). Filter by domain, skills, country, status, availability, CV consent, source, years. Sort columns, pick columns, 25 / 50 / 100 per page. **Table or Board** (one column per status; change a status from the card). **Saved views** as tabs (filters, sort, columns and layout; personal or shared with the team), and every view is a link. Tick people and **Add to requirement**. **Export CSV** of what you see. Click a name for a quick view; open the full profile to edit, upload a CV, change CV consent, add notes, see sources, submissions, placements and the change history. |
+| **Experts** `/admin/experts` | Search everyone (name, skills, headline, university, email). Filter by domain, skills, country, status, availability, CV consent, source, years. Sort columns, pick columns, 25 / 50 / 100 per page. **Table or Board** (one column per status; change a status from the card). **Saved views** as tabs (filters, sort, columns and layout; personal or shared with the team), and every view is a link. Tick people and **Add to requirement**. **Export CSV** of what you see. Click a name for a quick view; open the full profile to edit, upload a CV, change CV consent, add notes, see sources, job applications with their pipeline stage, owner / outreach / next action, submissions, placements, the timeline and the change history. |
 | **Requirements** `/admin/requirements` | **New requirement**: paste what the partner sent, press *Read requirement*, check the fields, save. The requirement page then shows the **best matches** with a score and the reasons, and one-click **Shortlist**. **Create job from requirement** starts a job with its title, skills, fields, countries, minimum years and openings. |
 | **Jobs** `/admin/jobs` | Every job with status, visibility and applicants (views: open, drafts, closed, featured; search, visibility, partner). A job has five tabs: **Details** (public text, plus the internal partner, requirement and rate note), **Form** (the builder: add a question of any of 17 types, edit wording, help, required, choices and which profile field it fills, move, duplicate, delete, templates, live preview), **Applicants** (status filters, key answers as columns, side panel with every answer, status and bulk status, internal note, CSV export, CV download), **Matches** (experts already in the hub ranked for the job, with reasons; copy an invite link, mark invited, shortlist to the requirement) and **Share** (public link, open / pause / close, public / unlisted / internal, featured, closing date, tagged links for LinkedIn, WhatsApp, Slack and email). |
 | **Submissions** `/admin/submissions` | Everyone put forward, across partners. Change status (each change is logged). You **can't mark someone Submitted without their CV consent**: the app says why. |
 | **Placements** `/admin/placements` | Who is working where, hours or tasks, what the expert earned and what the partner paid, with totals per partner and per month. Start one from an approved submission. |
-| **Partners** `/admin/partners` | The companies that send requirements. |
+| **Partners** `/admin/partners` | Companies: the partners that send requirements and every account of the FynoLabs admin (kind, stage, owner, next step and due date, route, platform, tags; one record per organisation). Their full CRM screens (activity, contacts, calendar) come in Phase 3b. |
 | **Import** `/admin/import` | Pull people in from the old jobs site, or from a spreadsheet (Talent register, old admin CRM export) with a preview before anything changes. |
 | **Team & access** `/admin/settings/team` | Admins only: **Add team member** (email, name, role) creates their login with a temporary password **shown once** in a copy box; per member: change role (and a pod lead's partners), **Reset password** (a new temporary password, shown once), turn access off (signs them out at once) and on, last sign-in. Every change is logged. |
 
@@ -43,8 +43,9 @@ You need [Node.js 22](https://nodejs.org) (the LTS installer is fine) and the da
 
 1. Put `DATABASE_URL=...` in `.env.local` (the Neon steps are in [DEPLOY.md](docs/DEPLOY.md#1-create-the-database-neon-project-expert-hub); every launcher prints them too).
 2. **`Copy experts from Engine.bat`**: brings every expert record across (and creates the tables).
-3. **`Create my admin account.bat`**: your admin login (email `prashant@xocket.sh` by default). Type a password twice (nothing shows while you type), or press Enter to get a strong one printed once.
-4. **`Start Expert Hub.bat`**, then sign in at http://localhost:3000/signin.
+3. **`Copy FynoLabs data.bat`**: brings the FynoLabs admin across (experts, pipelines, companies, contacts, calendar, referrals, projects, emails, messages, analytics). One-time setup the first time: two secrets in Lovable and a push of the main site ([DEPLOY.md step 3b](docs/DEPLOY.md#3b-copy-the-fynolabs-admin)).
+4. **`Create my admin account.bat`**: your admin login (email `prashant@xocket.sh` by default). Type a password twice (nothing shows while you type), or press Enter to get a strong one printed once.
+5. **`Start Expert Hub.bat`**, then sign in at http://localhost:3000/signin.
 
 The same from a terminal: `npm ci`, `CONFIRM_DB=yes npm run admin:create -- --email you@xocket.sh`, `npm run dev`.
 
@@ -113,6 +114,7 @@ The rules live in one small file, `src/lib/match/score.ts`, with tests in `tests
 
 ## How imports work
 
+- **Everything from the FynoLabs admin** (`Copy FynoLabs data.bat`, or `npm run sync:fynolabs`): the `hub-sync` edge function (in the main site) copies every FynoLabs table, the team's auth users (no secrets) and the stored CVs and documents into the schema `fynolabs_copy`; the runner folds it into `hub` with the same structure: one expert per person (email, then LinkedIn; FynoLabs wins over Engine, never over hub edits), a pipeline per person per job with FynoLabs' stages, the timeline, documents, companies (merged with the hub's partners), contacts, calendar, platforms, referrals, projects, engagements and earnings, campaigns, messages, job radar, settings, audit log and visitor analytics. Dry run first; safe to run again until the Lovable admin is retired. Details: [DEPLOY.md step 3b](docs/DEPLOY.md#3b-copy-the-fynolabs-admin), [DATA.md](docs/DATA.md#the-copy-of-the-fynolabs-admin-npm-run-syncfynolabs).
 - **Everything from Engine** (`Copy experts from Engine.bat`, or `npm run copy:engine`): every expert record from the old jobs site's database (Engine), **read only**, into the hub's database: an exact replica of the expert tables in the schema `engine_copy` (login secrets left out), plus every person, profile detail, CV and tax form, the old jobs (internal) and every application with its screening answers mapped into `hub`. Dry run first; safe to run again any time until jobs.fynolabs.si moves over. Details: [DEPLOY.md step 3](docs/DEPLOY.md#3-copy-everything-from-engine), [DATA.md](docs/DATA.md#the-copy-from-engine-npm-run-copyengine).
 - **Jobs site, people only** (button on `/admin/import`, or `npm run import:jobs`): reads the old jobs site's tables (**read only**), from `JOBS_DATABASE_URL` when set (the shared Engine project; CVs are then copied into the hub) or else from the same database. New people are added. For people already in the hub (same jobs-site user, same email, or same LinkedIn URL) it **only fills fields that are empty**, so anything the team typed is never overwritten. The newest jobs-site CV becomes the current CV unless someone uploaded one here; the file itself stays on the jobs site and is streamed when you download it.
 - **Spreadsheets** (Talent register, admin CRM export): save as CSV, upload, look at the preview (new / fill in / no change / **review** for possible duplicates / skip), then import. Same "fill empty fields only" rule. The register has no email column, so a name that matches an existing expert is held back for review, unless you tick "treat an exact name match as the same person".
@@ -141,6 +143,8 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 | `npm run db:migrate` | Applies migrations to `DATABASE_URL` (the app's own Neon project). Refuses unless `CONFIRM_DB=yes` is also set, prints which database it targets, and refuses anything outside the `hub` schema. |
 | `npm run admin:create` | Creates or updates your admin login in `DATABASE_URL` (`-- --email you@xocket.sh [--name "Your Name"]`): runs the migrations, makes the team member an admin, marks the email verified, and asks for a password (hidden, twice) or makes one (printed once, to be changed at the first sign-in). Asks before resetting an existing password. Needs `CONFIRM_DB=yes`. On Windows: `Create my admin account.bat`. |
 | `npm run import:jobs` | Jobs-site sync from the command line (`-- --dry-run` to preview). Reads `JOBS_DATABASE_URL` when set. Needs `CONFIRM_DB=yes`. |
+| `npm run sync:fynolabs` | Copy everything from the FynoLabs admin into `DATABASE_URL` and fold it into the hub (`-- --dry-run` first: counts only). Needs `FYNOLABS_SYNC_TOKEN` (equal to Lovable's `HUB_SYNC_TOKEN` secret) and `CONFIRM_DB=yes`. On Windows: `Copy FynoLabs data.bat`. |
+| `npm run token:new` | Adds a fresh random `FYNOLABS_SYNC_TOKEN` to `.env.local` if there is none (never prints it). |
 | `npm run copy:engine` | Copy every expert record from Engine into `DATABASE_URL` (`-- --dry-run` first; `--source-env <file> --source-key <KEY>` or `ENGINE_DATABASE_URL` for Engine). Needs `CONFIRM_DB=yes`. On Windows: `Copy experts from Engine.bat`. |
 
 Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.example).
@@ -149,7 +153,8 @@ Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.exam
 
 - **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
 - **Postgres** through **Drizzle ORM**: the app's own Neon project, "expert-hub" (`@neondatabase/serverless`, HTTP driver), the one environment (`npm run dev` uses it too). The automated tests use PGlite (a real Postgres inside Node).
-- All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the copy and the import; the copy keeps its replica in the schema **`engine_copy`**, outside `hub`.
+- All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the copy and the import; the copy keeps its replica in the schema **`engine_copy`**, outside `hub`. The FynoLabs admin's copy is in **`fynolabs_copy`**, written by the main site's `hub-sync` edge function.
+- **Pipelines:** every application (public forms, the Engine copy, the FynoLabs admin) is one row per person per job with the FynoLabs admin's stages (Applied, Shortlisted, Proposed to client, Selected, Documents sent, Signed, Active, Ended, Rejected); a database trigger keeps the applicant status and the stage in step.
 - **Auth.js v5** (next-auth): email + password (Credentials provider, scrypt hashes in `hub.accounts`), plus Google and LinkedIn when configured; email through Resend or SMTP (nodemailer). The middleware is the first gate (public / signed-in / team / temporary password); every page, action and download checks the account and role again on the server (`src/lib/auth/`).
 - **Vitest** for tests.
 
@@ -159,18 +164,18 @@ src/components/     forms, tables, auth/ (sign-in forms), jobs/ (form fields, ap
 src/db/             schema.ts (hub tables), client.ts, env.ts, local/ (PGlite for tests, jobs-site stub)
 src/lib/forms/      job-fields (field types, validation, template, profile mapping), job, expert, requirement forms
 src/lib/match/      dictionary, paste reader, scorer
-src/lib/import/     register / CRM / jobs-site mapping, the import planner, engine/ (the copy from Engine: read-only source, replica, hub mapping, report)
+src/lib/import/     register / CRM / jobs-site mapping, the import planner, engine/ (the copy from Engine: read-only source, replica, hub mapping, report), fynolabs/ (the FynoLabs admin: runner, merge rules, mapping)
 src/lib/auth/       access rules, passwords, the signed-in account, roles, permissions (can / masking), the guard
 src/lib/server/     database work (accounts, experts, requirements, jobs, applications, portal, submissions, placements, CVs, imports, team, saved views, email)
 drizzle/            SQL migrations (hub schema only)
-scripts/            migrate, create-admin, import-jobs, copy-from-engine
+scripts/            migrate, create-admin, import-jobs, copy-from-engine, sync-fynolabs, token-new
 tests/              unit tests + PGlite integration tests (fixtures/: fictional test data, the jobs site's real schema for the copy)
 docs/               DEPLOY.md, DATA.md, LOCAL_TESTING.md, PRODUCT_PLAN.md, screenshots/
 ```
 
 ## Roadmap
 
-Done in Phase 2: jobs with a form builder, public applications, expert sign-up, onboarding and profile, the job board.
+Done in Phase 2: jobs with a form builder, public applications, expert sign-up, onboarding and profile, the job board. Done in Phase 3a: the FynoLabs admin's structure and data (`npm run sync:fynolabs`). Next, Phase 3b: the admin screens for companies, contacts, calendar, pipelines, projects, referrals, campaigns, messages, job radar and analytics ([PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md#phase-3b-the-admin-screens)).
 
 1. Screening per field (short assessments kept on the profile), interviews, and a job pipeline with more stages (onboarding, active).
 2. Uploads in object storage (Vercel Blob or R2): needed for CVs over 4.5 MB on Vercel.

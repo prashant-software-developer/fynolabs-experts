@@ -84,8 +84,28 @@ Generous white space, short labels, and tables over side-by-side columns.
 |---|---|---|
 | 1 | Internal hub: expert database, requirement matching, partner submissions, placements and pay | Built 22 Nov (v1), with roles, saved views and the FynoLabs design system |
 | 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply) | Built 23 Nov: jobs with a form builder (17 field types, templates), public applications merged into the expert record, Matches and invites, job board with Google Jobs data, expert sign-up, onboarding, profile, data export and deletion requests; team app moved to `/admin`. Real sign-in and sign-up (23 Nov): email + password for the team and experts, email verification, password reset, Team & access with temporary passwords, `npm run admin:create` for the owner; the preview / demo mode is gone. Screening assessments and the longer job pipeline move to Phase 3 |
-| 3 | Admin parity with the Lovable admin (accounts, leads, calendar, campaigns, platforms and referrals, projects, fees and earnings, analytics), plus views, saved views, custom fields and automations | After 2 |
+| 3a | The FynoLabs admin's structure and data in the hub | **Done 23 Nov**: the hub has the same tables as the Lovable admin (companies with owner, stage, next step, due date and activity; contacts; calendar; platforms and referral links; referral groups and sent referrals; projects with tracks, team, documents and fee rules; engagements and monthly earnings; campaigns, templates and the email log; messages and replies; job radar; settings; visitor analytics), one expert per person with every FynoLabs field, a pipeline per person per job with FynoLabs' stages (Applied to Active or Rejected) for every application (public forms, Engine copy, FynoLabs), the expert timeline and documents. `npm run sync:fynolabs` (`Copy FynoLabs data.bat`) copies everything through the `hub-sync` edge function and folds it in, re-runnable until the Lovable admin is retired |
+| 3b | Admin parity screens on that structure, plus views, saved views, custom fields and automations | Next (see below) |
 | 4 | Cut-over: migrate data from the Lovable admin and the jobs site, move the jobs.fynolabs.si domain, retire the old admin | Started 23 Nov: one environment (expert-hub's main branch); `npm run copy:engine` copies every expert record from Engine (replica in `engine_copy`, everything mapped into `hub`) and is re-run until jobs.fynolabs.si moves over. Lovable admin data, the domain move and retiring the old admin still to do |
+
+## Phase 3b: the admin screens
+
+The data and the rules are in place (Phase 3a); these screens put them in front of the team, with the same list / board / side panel patterns as Experts. Every save sets `updated_by` to the person, so the FynoLabs sync then leaves that record alone.
+
+| Screen | What it shows and does |
+|---|---|
+| **Companies** `/admin/companies` (today's Partners, grown) | Every company with kind, owner, stage chip, next step, due date chip, best route, tags; table and board by stage; side panel with contacts, activity log (note, call, meeting, email, stage), projects, requirements, jobs and referrals; log an activity; change stage (writes an activity). |
+| **Contacts** | People at companies: role, stage, source, email / LinkedIn, next follow-up; filters by company, stage and follow-up due. |
+| **Calendar** | One timeline of calls, meetings, follow-ups, deadlines, tasks and posts in India time, beside companies' next steps, pipelines' next actions and job closing dates; mark done (logs it on the company). |
+| **Pipelines** | Per job and per project: board by stage (Applied, Shortlisted, Proposed to client, Selected, Documents sent, Signed, Active, Ended, Rejected) with owner, track, next action and reject reason; moving a card writes the timeline; documents due by stage. |
+| **Expert page** | Already shows the pipeline stage, timeline and outreach fields; next: edit owner, outreach, next action; documents (send, signed, withdraw); engagements and (money roles) earnings and commission. |
+| **Projects** | Code, kind, status, company, platform, target and pace, tracks, team with roles and capacity, rules, documents, fee rules (money roles). |
+| **Platforms and referrals** | Platforms with referral links; send referrals (one or a group); sent referrals with method, outcome, opens and clicks; referral groups; referral fees (money roles). |
+| **Campaigns** | Templates; bulk emails with approval, follow-up, recipients and their status; the email log; suppressed addresses. |
+| **Messages** | Contact-form messages and replies, with drafts; mark handled. |
+| **Job radar** | Roles found on other platforms with matched keywords and status; publish one as an internal job. |
+| **Analytics** | Visitors and page views per source per day, top pages. |
+| **Saved views** | Translate the copied FynoLabs views (`fynolabs_experts`, `fynolabs_submissions`) into hub views. |
 
 ## Decisions needed
 

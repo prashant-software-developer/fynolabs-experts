@@ -16,6 +16,9 @@ const ALLOWED_STARTS = [
   /^drop trigger (if exists )?"[\w]+" on "hub"\./,
   /^create (or replace )?trigger "[\w]+" (before|after) /,
   /^comment on (table|column) "hub"\./,
+  // Data fixes that go with a change of structure (e.g. filling a new column from an old one).
+  /^update "hub"\."[\w]+" set /,
+  /^insert into "hub"\."[\w]+" /,
 ];
 
 const FORBIDDEN = [

@@ -43,6 +43,13 @@
       "when": 1795389702303,
       "tag": "0005_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795419760672,
+      "tag": "0006_fynolabs_structure",
+      "breakpoints": true
     }
   ]
 }
