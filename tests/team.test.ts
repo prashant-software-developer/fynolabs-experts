@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import type { PGlite } from "@electric-sql/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
 import { partners, teamMembers } from "@/db/schema";
 import { ForbiddenError, type Role } from "@/lib/auth/permissions";
@@ -32,7 +32,7 @@ describe("team & access in the database", () => {
   const admin = (email = "boss@xocket.sh") => ({ email, role: "admin" as Role, partnerIds: [] as string[] });
 
   beforeAll(async () => {
-    ({ db, client } = await openLocalDbWithClient({ seed: false }));
+    ({ db, client } = await openTestDb());
     process.env.ALLOWED_DOMAIN = "xocket.sh";
     process.env.ADMIN_EMAILS = "";
     [{ id: partnerA }, { id: partnerB }] = await db.insert(partners).values([{ name: "Team Partner A" }, { name: "Team Partner B" }]).returning({ id: partners.id });
@@ -61,8 +61,9 @@ describe("team & access in the database", () => {
     expect(await addMember(db, admin(), { email: "pod@xocket.sh", role: "viewer" })).toMatchObject({ ok: false });
     expect(await addMember(db, admin(), { email: "not an email", role: "viewer" })).toEqual({ ok: false, reason: "Type a full email address." });
     expect(await addMember(db, admin(), { email: "x@xocket.sh", role: "owner" })).toEqual({ ok: false, reason: "Pick a role." });
+    // An outside address on the list is team too: it gets a team login with a temporary password.
     const outside = await addMember(db, admin(), { email: "contractor@gmail.com", role: "viewer" });
-    expect(outside.ok && outside.warning).toMatch(/ALLOWED_EMAILS/);
+    expect(outside.ok && outside.tempPassword).toMatch(/^.{20}$/);
     const log = rowsOf<{ actor_email: string; actor_role: string; action: string }>(
       await db.execute(sql`select actor_email, actor_role, action from hub.activity where entity_type = 'team_member' and entity_id = ${row.id}`),
     );

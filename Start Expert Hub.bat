@@ -1,5 +1,5 @@
 @echo off
-title Expert Hub (local)
+title Expert Hub
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
@@ -7,15 +7,15 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-for /f "tokens=1 delims=v." %%a in ('node -v') do set NODEMAJOR=%%a
 echo Node version:
 node -v
-if not exist node_modules (
+node -e "const f=require('fs');try{process.exit(f.statSync('node_modules/.package-lock.json').mtimeMs>=f.statSync('package-lock.json').mtimeMs?0:1)}catch(e){process.exit(1)}"
+if errorlevel 1 (
   echo.
-  echo First run: installing packages, this takes a few minutes...
-  call npm install
+  echo Installing packages ^(first run, or after an update^). This takes a few minutes...
+  call npm ci
   if errorlevel 1 (
-    echo npm install failed. Send Claude the text above.
+    echo Installing packages failed. Close any other Expert Hub window and try again, or send Claude the text above.
     pause
     exit /b 1
   )
@@ -23,13 +23,22 @@ if not exist node_modules (
 echo.
 node -e "try{process.loadEnvFile('.env.local')}catch{};process.exit((process.env.DATABASE_URL||'').trim()?0:1)"
 if errorlevel 1 (
-  echo Starting Expert Hub with the DEMO database ^(made-up data, signed in as dev@xocket.sh^).
-) else (
-  echo Starting Expert Hub with the REAL database ^(production^): every change is live.
-  echo A red bar in the app says so. To go back to the demo data, remove the DATABASE_URL line from .env.local.
+  echo The database isn't set up on this computer yet, so Expert Hub can't start. Do this once:
+  echo   1. Open https://neon.tech with the FynoLabs admin account and open the project "expert-hub".
+  echo   2. Press Connect, keep the main branch, and copy the connection string. It starts with postgresql://
+  echo   3. In this folder, open the file .env.local in Notepad, or create it, and add one line:
+  echo        DATABASE_URL=the string you copied
+  echo   4. Save it, close Notepad, and double-click this file again.
+  echo.
+  echo Keep that string private: it contains a password. Never paste it in Slack or a doc.
+  echo Then run "Create my admin account.bat" once to get your login.
+  pause
+  exit /b 1
 )
-echo Admin at http://localhost:3000/admin, job board at http://localhost:3000 ^(this computer only^).
+echo Starting Expert Hub with the database ^(production^): every change is live.
+echo Sign in at http://localhost:3000/signin ^(no login yet? run "Create my admin account.bat"^).
+echo Job board at http://localhost:3000 ^(this computer only^).
 echo Keep this window open while you use the app. Close it to stop.
-start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000/admin"
+start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000/signin"
 call npm run dev
 pause

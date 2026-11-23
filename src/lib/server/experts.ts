@@ -1,6 +1,6 @@
 import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { activity, applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, expertSources, experts, legacyMap, placements, submissions, type Expert, type ExpertDetails, type ExpertPayout } from "@/db/schema";
+import { accounts, activity, applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, expertSources, experts, legacyMap, placements, submissions, type Expert, type ExpertDetails, type ExpertPayout } from "@/db/schema";
 import { canSeeContact, canSeeMoney, type Role } from "@/lib/auth/permissions";
 import { rowsOf } from "@/db/client";
 import { EXPERT_STATUSES } from "@/lib/constants";
@@ -264,6 +264,8 @@ export async function deleteExpertOnRequest(db: DB, id: string, actor: Actor): P
   await forgetCopiedRecords(db, id, srcs);
   // A "Delete my data" request from the portal is now done (the row keeps no link to the person).
   await db.update(dataRequests).set({ status: "done", handledBy: actorEmail(actor), handledAt: new Date() }).where(and(eq(dataRequests.expertId, id), eq(dataRequests.status, "open")));
+  // Their expert login goes too (team accounts are never touched here).
+  await db.delete(accounts).where(and(eq(accounts.accountType, "expert"), e.email ? or(eq(accounts.expertId, id), eq(accounts.email, e.email.toLowerCase())) : eq(accounts.expertId, id)));
   await db.delete(experts).where(eq(experts.id, id));
   await logActivity(db, { entityType: "expert", entityId: id, actor, action: "deleted_on_request", detail: { sources: srcs.map((s) => s.source) } });
   return true;

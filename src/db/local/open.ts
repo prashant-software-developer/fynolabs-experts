@@ -1,4 +1,5 @@
-// Opens the local PGlite database, runs migrations and (optionally) adds demo data.
+// PGlite (a real Postgres inside Node) for the automated tests and local smoke tests only: opens
+// a database in memory or in a folder and runs the migrations. Never used with DATABASE_URL set.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
@@ -16,27 +17,17 @@ export const MIGRATIONS = {
 
 export type LocalDb = { db: DB; client: PGlite };
 
-export async function openLocalDbWithClient(opts: { dataDir?: string; seed?: boolean; jobsStub?: boolean }): Promise<LocalDb> {
+/** `jobsStub`: also create an empty copy of the old jobs site's tables (tests of the jobs-site import). */
+export async function openLocalDbWithClient(opts: { dataDir?: string; jobsStub?: boolean } = {}): Promise<LocalDb> {
   if (opts.dataDir) mkdirSync(opts.dataDir, { recursive: true });
   const client = opts.dataDir ? new PGlite(opts.dataDir) : new PGlite();
   await client.waitReady;
-  // A copy of the old jobs site's tables, like the shared Engine database had. Off for tests of a
-  // dedicated database (its own Neon project), where they live elsewhere (JOBS_DATABASE_URL).
-  if (opts.jobsStub !== false) await client.exec(JOBS_STUB_SQL);
+  if (opts.jobsStub) await client.exec(JOBS_STUB_SQL);
   const db = drizzle({ client, schema }) as unknown as DB;
   await migrate(drizzle({ client }), MIGRATIONS);
-  if (opts.seed) {
-    const { seedIfEmpty } = await import("./seed");
-    await seedIfEmpty(db);
-    const { seedJobsIfEmpty } = await import("./seed-jobs");
-    await seedJobsIfEmpty(db);
-  }
-  if (opts.dataDir && process.env.NODE_ENV !== "test") {
-    console.info(`[expert-hub] Using the local PGlite database in ${opts.dataDir} (DATABASE_URL is not set).`);
-  }
   return { db, client };
 }
 
-export async function openLocalDb(opts: { dataDir?: string; seed?: boolean }): Promise<DB> {
+export async function openLocalDb(opts: { dataDir?: string } = {}): Promise<DB> {
   return (await openLocalDbWithClient(opts)).db;
 }

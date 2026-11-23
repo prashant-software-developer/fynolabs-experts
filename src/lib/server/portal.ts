@@ -1,9 +1,10 @@
-// The expert portal (/me): an expert account is linked to its hub.experts row by email. Every
-// function here takes the expert id from the signed-in session only (see src/lib/auth/expert.ts),
-// so an expert can only ever read or change their own record. Tested in tests/portal.test.ts.
+// The expert portal (/me). A verified expert account is linked to its hub.experts row
+// (linkExpertForAccount in accounts.ts). Every function here takes the expert id from the signed-in
+// session only (see src/lib/auth/expert.ts), so an expert can only ever read or change their own
+// record. Tested in tests/portal.test.ts.
 import { and, desc, eq } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, experts, jobs, type Expert } from "@/db/schema";
+import { applications, dataRequests, expertDetails, expertFiles, expertPayout, experts, jobs, type Expert } from "@/db/schema";
 import { APPLICATION_STATUS_FOR_EXPERT, AVAILABILITY, DOMAINS, isOneOf, type ApplicationStatus } from "@/lib/constants";
 import { answerText, type Answer } from "@/lib/forms/job-fields";
 import { toCountryName } from "@/lib/countries";
@@ -45,36 +46,6 @@ export const ownColumns = {
   updatedAt: experts.updatedAt,
 };
 export type OwnProfile = Pick<Expert, keyof typeof ownColumns>;
-
-export type LinkResult = { ok: true; expertId: string; created: boolean } | { ok: false; reason: "erased" };
-
-/**
- * Links a signed-in expert to their record by email, creating one on first sign-in. People deleted
- * on request are not brought back automatically.
- */
-export async function linkExpertAccount(db: DB, account: { email: string; name: string }): Promise<LinkResult> {
-  const email = account.email.trim().toLowerCase();
-  const [found] = await db.select({ id: experts.id, portalJoinedAt: experts.portalJoinedAt }).from(experts).where(eq(experts.email, email)).limit(1);
-  if (found) {
-    if (!found.portalJoinedAt) await db.update(experts).set({ portalJoinedAt: new Date() }).where(eq(experts.id, found.id));
-    return { ok: true, expertId: found.id, created: false };
-  }
-  const [erased] = await db.select({ id: erasures.id }).from(erasures).where(eq(erasures.emailSha256, emailHash(email))).limit(1);
-  if (erased) return { ok: false, reason: "erased" };
-  const now = new Date();
-  const name = cleanText(account.name, 200) && account.name.toLowerCase() !== email ? cleanText(account.name, 200)! : email.split("@")[0];
-  const [row] = await db
-    .insert(experts)
-    .values({ fullName: name, email, primarySource: "portal", status: "applicant", portalJoinedAt: now, tags: ["portal"], createdAt: now, updatedAt: now })
-    .onConflictDoNothing()
-    .returning({ id: experts.id });
-  if (!row) {
-    const [again] = await db.select({ id: experts.id }).from(experts).where(eq(experts.email, email)).limit(1);
-    return { ok: true, expertId: again.id, created: false };
-  }
-  await logActivity(db, { entityType: "expert", entityId: row.id, actor: PORTAL_ACTOR, action: "created", detail: { source: "portal" } });
-  return { ok: true, expertId: row.id, created: true };
-}
 
 export async function ownProfile(db: DB, expertId: string): Promise<OwnProfile | null> {
   const [row] = await db.select(ownColumns).from(experts).where(eq(experts.id, expertId)).limit(1);

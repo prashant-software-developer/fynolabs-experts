@@ -1,34 +1,20 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Eye, LogOut } from "lucide-react";
-import { signOut } from "@/auth";
+import { signOutNow } from "@/app/(auth)/actions";
 import { Brand, CurrentSection, MobileNav, Sidebar, type NavAccess } from "@/components/nav";
-import { DevRoleSwitcher } from "@/components/role-controls";
 import { can, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { isLocalDb } from "@/db/client";
 
 export const metadata: Metadata = { title: { default: "Expert Hub", template: "%s · Expert Hub" }, robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const access: NavAccess = { import: can(user.role, "imports.csv"), team: can(user.role, "team.manage") };
-  // `npm run dev` with DATABASE_URL set: the one real database. Said loudly, in red.
-  const realDbInDev = process.env.NODE_ENV === "development" && !isLocalDb();
   return (
     <div className="min-h-screen bg-background lg:flex">
       <Sidebar access={access} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {realDbInDev ? (
-          <div role="alert" className="border-b border-danger/30 bg-danger px-6 py-2 text-center text-xs font-medium text-white">
-            Real database (production): every change here is live.
-            {user.devBypass ? ` Signed in automatically as ${user.email} (local development, this computer only). Previewing as ${ROLE_LABELS[user.role]}.` : null}
-          </div>
-        ) : user.devBypass ? (
-          <div className="border-b border-warning/20 bg-warning-soft px-6 py-1.5 text-center text-xs text-warning">
-            Local development: signed in automatically as {user.email} (no Google keys set). This never happens in production.
-            {isLocalDb() ? " Using the local demo database." : null} Previewing as {ROLE_LABELS[user.role]}.
-          </div>
-        ) : null}
         {user.role === "viewer" ? (
           <div className="flex items-center justify-center gap-2 border-b border-border bg-info-soft px-6 py-1.5 text-center text-xs text-info">
             <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -45,24 +31,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <CurrentSection access={access} />
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-2.5 text-[13px] text-muted-foreground">
-              <span className="hidden md:inline">{user.email}</span>
+              <Link href="/account/password" className="hidden underline-offset-4 hover:text-foreground hover:underline md:inline" title="Change password">
+                {user.email}
+              </Link>
               <span className="inline-flex h-5 items-center rounded-full border border-border bg-secondary px-2 text-[11px] font-medium text-foreground/80" title={`Your role: ${ROLE_LABELS[user.role]}`}>
                 {ROLE_LABELS[user.role]}
               </span>
-              {user.devBypass ? <DevRoleSwitcher current={user.role} realDb={!isLocalDb()} /> : null}
-              {!user.devBypass ? (
-                <form
-                  action={async () => {
-                    "use server";
-                    await signOut({ redirectTo: "/signin" });
-                  }}
-                >
-                  <button className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-foreground/75 transition-colors hover:bg-accent hover:text-foreground">
-                    <LogOut className="h-3.5 w-3.5" aria-hidden />
-                    Sign out
-                  </button>
-                </form>
-              ) : null}
+              <form action={signOutNow}>
+                <button className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-foreground/75 transition-colors hover:bg-accent hover:text-foreground">
+                  <LogOut className="h-3.5 w-3.5" aria-hidden />
+                  Sign out
+                </button>
+              </form>
             </div>
           </div>
         </header>

@@ -5,8 +5,8 @@ One place for every expert we work with (engineers, scientists, domain experts),
 Three parts, one database:
 
 - **Public job board** (`/`, `/jobs/<slug>`): the team turns a requirement into a job with its own application form (built like a Google Form) and a shareable link. Anyone can apply without an account; every answer is saved and merged into one central expert record. Never shows pay or a client's name.
-- **Expert portal** (`/join`, `/me`): experts sign up (Google; email links and LinkedIn when configured), complete their profile step by step, upload their CV, and follow their applications.
-- **Admin** (`/admin`): the core team's hub. Team = `@xocket.sh` accounts, `ADMIN_EMAILS`, `ALLOWED_EMAILS` and anyone on Team & access; everyone else who signs in is an expert and can never open the admin (403). What each team member can see and do depends on their **role** (admin, recruiter, pod lead, finance, viewer), checked on the server for every page, action and download. See [Roles and access](#roles-and-access).
+- **Expert portal** (`/join`, `/me`): experts sign up with their email and a password (a 6-digit code confirms the email; Google and LinkedIn too when their keys are set), complete their profile step by step, upload their CV, and follow their applications.
+- **Admin** (`/admin`): the core team's hub. Team logins are created by an admin on Team & access (a temporary password, changed at the first sign-in) or, for the owner, with `Create my admin account.bat`. Everyone else who signs in is an expert and can never open the admin (403). What each team member can see and do depends on their **role** (admin, recruiter, pod lead, finance, viewer), checked on the server for every page, action and download. See [Sign-in and accounts](#sign-in-and-accounts) and [Roles and access](#roles-and-access).
 
 ## Public site and expert portal
 
@@ -15,7 +15,10 @@ Three parts, one database:
 | **Job board** `/` | Open public jobs, featured first. Search by role or skill, filter by field. "Sign up" / "Sign in" for experts. |
 | **Job page** `/jobs/<slug>` | The job (description, skills, where it's open, closing date) and its application form. No account needed; signed-in experts get their profile filled in and their CV reused. Closed jobs say they no longer take applications; paused jobs show the page without the form; unlisted jobs open only by link; drafts and internal jobs are a 404 (the team sees a preview). SEO title, Open Graph and Google Jobs data (never a salary). |
 | **Thank you** `/jobs/<slug>/applied` | Confirmation, and an invitation to create an expert account or complete the profile. |
-| **Join** `/join` | Sign in or sign up (Google; email link with Resend; LinkedIn with its keys). Team members who sign in here go to the admin. |
+| **Sign in** `/signin` | One page for the team and experts: email and password, "Forgot password?", Google / LinkedIn buttons when set up. Team members land on the admin, experts on their profile (or back on the job they came from). |
+| **Join** `/join` | Expert sign-up: full name, email, password twice, the consent box. Then **Confirm your email** (`/verify-email`): the 6-digit code (or the link) from the email, 30 minutes, 5 tries. Only then is the account linked to the expert record with that email (people copied from the jobs site keep all their data) or a new one. Needs email to be set up (Resend or SMTP); without it the page says "Sign up with Google for now" or "Sign-up opens soon" and the job forms keep working without an account. Team emails can't sign up. |
+| **Forgot password** `/forgot-password` | Emails a link to `/reset-password` (single use, 30 minutes). Never says whether an email has an account. Without email set up it says to ask the FynoLabs admin (team) or use Google (experts). |
+| **Change password** `/account/password` | Current password and the new one twice. Anyone with a temporary password is sent here after signing in and can't open anything else first. Changing it signs you out everywhere else. |
 | **Profile** `/me` | Completeness score, every section with Edit, CV upload/replace, sharing consent, **Download my data** (JSON) and **Delete my data** (a request for the team). |
 | **Complete profile** `/me/onboarding` | Six steps: basics, expertise & skills, experience & education, CV, availability & hours, consent. Each step saves on its own. |
 | **Applications** `/me/applications` | Their applications with an expert-facing status (internal notes never shown). |
@@ -32,35 +35,40 @@ Three parts, one database:
 | **Placements** `/admin/placements` | Who is working where, hours or tasks, what the expert earned and what the partner paid, with totals per partner and per month. Start one from an approved submission. |
 | **Partners** `/admin/partners` | The companies that send requirements. |
 | **Import** `/admin/import` | Pull people in from the old jobs site, or from a spreadsheet (Talent register, old admin CRM export) with a preview before anything changes. |
-| **Team & access** `/admin/settings/team` | Admins only: add team members, set their role (and a pod lead's partners), turn access off and on. Every change is logged. |
+| **Team & access** `/admin/settings/team` | Admins only: **Add team member** (email, name, role) creates their login with a temporary password **shown once** in a copy box; per member: change role (and a pod lead's partners), **Reset password** (a new temporary password, shown once), turn access off (signs them out at once) and on, last sign-in. Every change is logged. |
 
-## Run it on your computer (3 commands)
+## Run it on your computer
 
-You need [Node.js 22](https://nodejs.org) (the LTS installer is fine).
+You need [Node.js 22](https://nodejs.org) (the LTS installer is fine) and the database's connection string (Neon project "expert-hub"). On Windows, double-click these in order (details in [docs/LOCAL_TESTING.md](docs/LOCAL_TESTING.md)):
 
-```bash
-npm install
-npm run dev
-# open http://localhost:3000 (job board) or http://localhost:3000/admin
-```
+1. Put `DATABASE_URL=...` in `.env.local` (the Neon steps are in [DEPLOY.md](docs/DEPLOY.md#1-create-the-database-neon-project-expert-hub); every launcher prints them too).
+2. **`Copy experts from Engine.bat`**: brings every expert record across (and creates the tables).
+3. **`Create my admin account.bat`**: your admin login (email `prashant@xocket.sh` by default). Type a password twice (nothing shows while you type), or press Enter to get a strong one printed once.
+4. **`Start Expert Hub.bat`**, then sign in at http://localhost:3000/signin.
 
-The old team addresses (`/experts`, `/requirements`, ...) redirect to `/admin/...`.
+The same from a terminal: `npm ci`, `CONFIRM_DB=yes npm run admin:create -- --email you@xocket.sh`, `npm run dev`.
 
-That's it. With `DATABASE_URL` in `.env.local` it uses the real database (expert-hub) instead, under a red "Real database (production)" bar, and the demo-only parts below are off. Without any settings the app:
+There is one environment: the app always uses `DATABASE_URL`, so every change is live. Without it, every page shows **Database not set up** with the four steps. The old team addresses (`/experts`, `/requirements`, ...) redirect to `/admin/...`.
 
-- uses a **built-in demo database** (PGlite, a real Postgres that runs inside Node) stored in `.data/`, created and filled with **made-up demo data** the first time (experts, requirements, five jobs with forms and a few applications);
-- **signs you in automatically** as `dev@xocket.sh` (a yellow bar says so). This only happens with `npm run dev` and no Google keys, and only on this computer (the dev server listens on 127.0.0.1). It can't happen on the live site.
-- makes you an **admin** (set `DEV_ROLE=recruiter`, `pod_lead`, `finance` or `viewer` in `.env.local` to start as another role). A **Preview as** menu in the top bar switches roles on the fly, so you can check what each role sees. It also has **Expert (portal)**, which signs you in as the demo expert `demo.expert@example.com`, and **Signed out (guest)**, to see the public site as a visitor. All of this exists only in local development, never in a production build.
+## Sign-in and accounts
 
-To start the demo data over: stop the app, run `npm run db:seed -- --reset`, start it again.
+- **One account per person** (`hub.accounts`), whatever the method: email + password, or Google / LinkedIn when their keys are set (the same email lands on the same account).
+- **Passwords** are hashed with scrypt (Node's built-in crypto: N=2^15, r=8, p=1, a random 16-byte salt, stored as a versioned string). Rules: at least 10 characters, not the email, not a common password; the forms show a strength hint. Plain passwords, codes and links are never stored or logged.
+- **Sign-in** answers "Email or password is incorrect" for every failure, after the same work for unknown emails (a dummy hash), so neither the message nor the timing tells whether an email has an account. Five wrong passwords lock an account for 15 minutes; there are per-address and per-email limits too.
+- **Sessions** are signed cookies (Auth.js, JWT) carrying the account id, type, role and `token_version`, re-checked against the database on every request: changing or resetting a password, or turning an account off, ends every other session at once.
+- **Team logins** are only ever created by an admin (Team & access, or `npm run admin:create` for the owner) with a temporary password the person must change at their first sign-in. Nobody can sign up as team.
+- **Experts** sign up themselves; the account sees no profile until the emailed code proves the email, and only then is it linked to their expert record.
+- **Email** (sign-up codes, reset links, invites) goes through Resend or any SMTP server, e.g. hello@fynolabs.si on Hostinger ([DEPLOY.md step 5](docs/DEPLOY.md#5-email-resend-or-smtp)).
+
+Rules in `src/lib/server/accounts.ts` (and `src/lib/auth/password.ts`, `src/auth.ts`), tests in `tests/auth-accounts.test.ts`, `tests/session.test.ts`, `tests/admin-script.test.ts` and `tests/setup-and-redirects.test.ts`.
 
 ## Roles and access
 
-Everyone signs in the same way (Google, plus email links and LinkedIn when configured). First the **account type**: team if the email is in `ADMIN_EMAILS`, ends with `@ALLOWED_DOMAIN`, is in `ALLOWED_EMAILS`, or has a row in Team & access; otherwise **expert** (the portal, never the admin). Team members land on `/admin`, experts on `/me` or back on the job they came from. For the team, the role decides what they can see and do. Both are worked out again on every request:
+Everyone signs in on the same page (`/signin`). First the **account type**: team accounts are the ones an admin created (Team & access, `npm run admin:create`), plus Google sign-ins whose email is in `ADMIN_EMAILS`, ends with `@ALLOWED_DOMAIN`, is in `ALLOWED_EMAILS` or has a row in Team & access; everyone else is an **expert** (the portal, never the admin). Team members land on `/admin`, experts on `/me` or back on the job they came from. For the team, the role decides what they can see and do. Both are worked out again on every request:
 
-1. Email in **`ADMIN_EMAILS`** → admin (this is how the first admin gets in; these people can't be demoted from the app).
-2. Otherwise their row in **Settings → Team & access** (`hub.team_members`) → that role. A member whose access is turned off gets a "your access is turned off" page and nothing else.
-3. Otherwise **`DEFAULT_ROLE`** (default `viewer`) for `@ALLOWED_DOMAIN` accounts, with a bar saying "You have view-only access. Ask an admin to change your role." Outside addresses from `ALLOWED_EMAILS` get viewer until an admin gives them a role.
+1. Email in **`ADMIN_EMAILS`** → admin, always (set it to `prashant@xocket.sh`: a way back in; these people can't be demoted from the app). Their login itself still comes from `npm run admin:create` or Team & access.
+2. Otherwise their row in **Settings → Team & access** (`hub.team_members`) → that role. A member whose access is turned off is signed out at once and can't sign in until it's turned back on.
+3. Otherwise **`DEFAULT_ROLE`** (default `viewer`) for `@ALLOWED_DOMAIN` accounts that signed in with Google, with a bar saying "You have view-only access. Ask an admin to change your role." Outside addresses from `ALLOWED_EMAILS` get viewer until an admin gives them a role.
 
 | Role | Can |
 |---|---|
@@ -74,7 +82,7 @@ Jobs: admins and recruiters create, edit, build forms, publish, invite and manag
 
 "Money" means an expert's rate expectation, placement rates, earned, revenue, margin and the totals. Hidden fields are removed on the server before the page is built, not just hidden in the browser.
 
-The rules live in one file, `src/lib/auth/permissions.ts` (`can(role, action)`, the field helpers and the masking), with tests in `tests/permissions.test.ts`. Every server action and API route goes through the guard in `src/lib/auth/guard.ts` / `api.ts`, and the activity log records each change's actor email and role. Admins can't demote or turn off themselves, and the last admin can't be removed.
+The rules live in one file, `src/lib/auth/permissions.ts` (`can(role, action)`, the field helpers and the masking), with tests in `tests/permissions.test.ts`. Every server action and API route goes through the guard in `src/lib/auth/guard.ts` / `api.ts`, and the activity log records each change's actor email and role. Admins can't demote or turn off themselves (or reset their own password there: they use Change password), and the last admin can't be removed.
 
 ## How matching works
 
@@ -125,14 +133,14 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Run locally on http://localhost:3000 (demo database unless `DATABASE_URL` is set). |
+| `npm run dev` | Run locally on http://localhost:3000 (needs `DATABASE_URL`). |
 | `npm run build` / `npm start` | Production build / run it. |
-| `npm test` | All tests (matching, paste reader, roster CSV, import mapping, and a full database run on PGlite). |
+| `npm test` | All tests (sign-in and accounts, matching, paste reader, roster CSV, import mapping, and full database runs on PGlite). |
 | `npm run typecheck` | TypeScript check. |
 | `npm run db:generate` | After changing `src/db/schema.ts`: writes a new migration into `drizzle/`. |
 | `npm run db:migrate` | Applies migrations to `DATABASE_URL` (the app's own Neon project). Refuses unless `CONFIRM_DB=yes` is also set, prints which database it targets, and refuses anything outside the `hub` schema. |
-| `npm run db:seed` | Local demo data only (refuses if `DATABASE_URL` is set). `-- --reset` starts over. |
-| `npm run import:jobs` | Jobs-site sync from the command line (`-- --dry-run` to preview). Reads `JOBS_DATABASE_URL` when set. Needs `CONFIRM_DB=yes` against a real database. |
+| `npm run admin:create` | Creates or updates your admin login in `DATABASE_URL` (`-- --email you@xocket.sh [--name "Your Name"]`): runs the migrations, makes the team member an admin, marks the email verified, and asks for a password (hidden, twice) or makes one (printed once, to be changed at the first sign-in). Asks before resetting an existing password. Needs `CONFIRM_DB=yes`. On Windows: `Create my admin account.bat`. |
+| `npm run import:jobs` | Jobs-site sync from the command line (`-- --dry-run` to preview). Reads `JOBS_DATABASE_URL` when set. Needs `CONFIRM_DB=yes`. |
 | `npm run copy:engine` | Copy every expert record from Engine into `DATABASE_URL` (`-- --dry-run` first; `--source-env <file> --source-key <KEY>` or `ENGINE_DATABASE_URL` for Engine). Needs `CONFIRM_DB=yes`. On Windows: `Copy experts from Engine.bat`. |
 
 Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.example).
@@ -140,23 +148,23 @@ Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.exam
 ## How it's built
 
 - **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
-- **Postgres** through **Drizzle ORM**. Production: the app's own Neon project, "expert-hub" (`@neondatabase/serverless`, HTTP driver), the one real environment: `npm run dev` uses it too when `DATABASE_URL` is set (red bar). Local and tests: PGlite.
+- **Postgres** through **Drizzle ORM**: the app's own Neon project, "expert-hub" (`@neondatabase/serverless`, HTTP driver), the one environment (`npm run dev` uses it too). The automated tests use PGlite (a real Postgres inside Node).
 - All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the copy and the import; the copy keeps its replica in the schema **`engine_copy`**, outside `hub`.
-- **Auth.js v5** (next-auth): Google for everyone, plus email links (Resend) and LinkedIn when configured. The middleware is the first gate (public / signed-in / team); every page, action and download checks the account and role again on the server (`src/lib/auth/`).
+- **Auth.js v5** (next-auth): email + password (Credentials provider, scrypt hashes in `hub.accounts`), plus Google and LinkedIn when configured; email through Resend or SMTP (nodemailer). The middleware is the first gate (public / signed-in / team / temporary password); every page, action and download checks the account and role again on the server (`src/lib/auth/`).
 - **Vitest** for tests.
 
 ```
-src/app/            (site)/ public board, job pages, /join, /me portal · admin/ team app · api/ (apply, exports, downloads)
-src/components/     forms, tables, jobs/ (form fields, apply form, public job), portal/, site/, small UI pieces (components/ui)
-src/db/             schema.ts (hub tables), client.ts, local/ (PGlite, demo data, demo jobs, jobs-site stub)
+src/app/            (site)/ public board, job pages, /me portal · (auth)/ sign-in, sign-up, verify, passwords · admin/ team app · api/
+src/components/     forms, tables, auth/ (sign-in forms), jobs/ (form fields, apply form, public job), portal/, site/, small UI pieces (components/ui)
+src/db/             schema.ts (hub tables), client.ts, env.ts, local/ (PGlite for tests, jobs-site stub)
 src/lib/forms/      job-fields (field types, validation, template, profile mapping), job, expert, requirement forms
 src/lib/match/      dictionary, paste reader, scorer
 src/lib/import/     register / CRM / jobs-site mapping, the import planner, engine/ (the copy from Engine: read-only source, replica, hub mapping, report)
-src/lib/auth/       accounts (team / expert / guest, access rules), roles, permissions (can / masking), the guard
-src/lib/server/     database work (experts, requirements, jobs, applications, portal, submissions, placements, CVs, imports, team, saved views)
+src/lib/auth/       access rules, passwords, the signed-in account, roles, permissions (can / masking), the guard
+src/lib/server/     database work (accounts, experts, requirements, jobs, applications, portal, submissions, placements, CVs, imports, team, saved views, email)
 drizzle/            SQL migrations (hub schema only)
-scripts/            migrate, seed, import-jobs, copy-from-engine
-tests/              unit tests + PGlite integration tests (fixtures/: the jobs site's real schema for the copy)
+scripts/            migrate, create-admin, import-jobs, copy-from-engine
+tests/              unit tests + PGlite integration tests (fixtures/: fictional test data, the jobs site's real schema for the copy)
 docs/               DEPLOY.md, DATA.md, LOCAL_TESTING.md, PRODUCT_PLAN.md, screenshots/
 ```
 

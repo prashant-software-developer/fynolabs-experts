@@ -10,6 +10,7 @@ export async function apiGuard(action: Action, ctx?: { partnerId?: string | null
   if (!account) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   if (account.kind !== "team") return NextResponse.json({ error: TEAM_ONLY }, { status: 403 });
   const user = account.user;
+  if (user.mustChangePassword) return NextResponse.json({ error: "Change your password first." }, { status: 403 });
   try {
     ensure(user, action, ctx);
   } catch (e) {

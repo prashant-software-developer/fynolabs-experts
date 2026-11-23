@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { signOut } from "@/auth";
+import { signOutNow } from "@/app/(auth)/actions";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata = { title: "No access" };
 
-/** Shown to an inactive team member: signed in with Google, but access has been turned off. */
+/** Shown to a team member whose access has been turned off (or who is no longer on the team). */
 export default async function NoAccessPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/signin");
@@ -18,15 +18,10 @@ export default async function NoAccessPage() {
           <p className="eyebrow text-primary">Expert Hub</p>
           <h1 className="text-title text-foreground">Your access is turned off</h1>
           <p className="text-sm text-muted-foreground">
-            {user.email} is on the team list but not active. Ask an admin to turn your access back on in Settings → Team &amp; access.
+            {user.email} isn&apos;t active on the team. Ask an admin to turn your access back on in Settings → Team &amp; access.
           </p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/signin" });
-          }}
-        >
+        <form action={signOutNow}>
           <button className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary/70">
             Sign out
           </button>

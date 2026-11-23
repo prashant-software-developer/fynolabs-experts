@@ -1,47 +1,73 @@
 // Auth.js settings shared by the middleware and the server. No database access here (the
-// middleware only reads the session cookie); src/auth.ts adds what needs the database.
+// middleware only reads the session cookie); src/auth.ts adds the password sign-in and the checks
+// that need the database.
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import LinkedIn from "next-auth/providers/linkedin";
 
-export type SignInMethod = "google" | "email" | "linkedin";
+export type OAuthMethod = "google" | "linkedin";
 
-/** Email magic links only when Resend is set up; LinkedIn only when its app keys are set. */
-export function signInMethods(env: Record<string, string | undefined> = process.env): SignInMethod[] {
-  const out: SignInMethod[] = ["google"];
-  if (env.RESEND_API_KEY && env.EMAIL_FROM) out.push("email");
+/** Google only when its keys are set (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET); LinkedIn the same. */
+export function oauthMethods(env: Record<string, string | undefined> = process.env): OAuthMethod[] {
+  const out: OAuthMethod[] = [];
+  if (env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET) out.push("google");
   if (env.AUTH_LINKEDIN_ID && env.AUTH_LINKEDIN_SECRET) out.push("linkedin");
   return out;
 }
 
+/** What the session cookie carries (signed and encrypted by Auth.js). */
+export type SessionClaims = {
+  /** hub.accounts.id */
+  aid?: string;
+  kind?: "team" | "expert";
+  /** The account's token_version when this session was issued: a change ends the session. */
+  tv?: number;
+  role?: string | null;
+  /** must_change_password */
+  mcp?: boolean;
+  /** Email verified (experts can't use the portal before). */
+  ev?: boolean;
+};
+
+export type SessionUser = { email: string; name?: string | null; accountId: string; kind: "team" | "expert"; tokenVersion: number; mustChangePassword: boolean; verified: boolean };
+
+const methods = oauthMethods();
+
 export const authConfig = {
   providers: [
-    // Reads AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET. Anyone with a verified Google account can sign
-    // in; whether they are team or expert is decided by their email (src/lib/auth/account.ts).
-    Google({ authorization: { params: { prompt: "select_account" } } }),
-    // Reads AUTH_LINKEDIN_ID and AUTH_LINKEDIN_SECRET (LinkedIn "Sign In with LinkedIn using OpenID Connect").
-    ...(signInMethods().includes("linkedin") ? [LinkedIn] : []),
+    // Anyone with a verified Google account can sign in; team or expert is decided by their email.
+    ...(methods.includes("google") ? [Google({ authorization: { params: { prompt: "select_account" } } })] : []),
+    // "Sign In with LinkedIn using OpenID Connect".
+    ...(methods.includes("linkedin") ? [LinkedIn] : []),
   ],
   session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
-  pages: { signIn: "/join", error: "/join", verifyRequest: "/join?check=email" },
+  pages: { signIn: "/signin", error: "/signin" },
   trustHost: true,
-  callbacks: {
-    signIn({ account, profile, user }) {
-      if (account?.provider === "google") return profile?.email_verified === true && Boolean(profile.email);
-      if (account?.provider === "linkedin") return profile?.email_verified !== false && Boolean(profile?.email);
-      // Email links: opening the link proves the address.
-      if (account?.provider === "resend") return Boolean(user?.email);
-      return false;
+  logger: {
+    // A wrong password is an answer, not an error worth logging (and nothing here may log a secret).
+    error(e: Error) {
+      const name = (e as { type?: string }).type ?? e.name;
+      if (name === "CredentialsSignin" || name === "AccessDenied") return;
+      console.error(`[auth][error] ${name}: ${e.message.split("\n")[0]}`);
     },
-    jwt({ token, profile, user }) {
-      const email = (profile?.email ?? user?.email ?? token.email ?? "").toString().toLowerCase();
-      if (email) token.email = email;
+    warn(code: string) {
+      if (code !== "debug-enabled") console.warn(`[auth][warn] ${code}`);
+    },
+  },
+  callbacks: {
+    jwt({ token }) {
       return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        session.user.email = (token.email as string) ?? session.user.email;
-        (session.user as { kind?: string }).kind = typeof token.kind === "string" ? token.kind : undefined;
+      const t = token as SessionClaims & { email?: string; name?: string };
+      if (session.user && t.aid) {
+        const u = session.user as unknown as SessionUser;
+        u.email = t.email ?? u.email;
+        u.accountId = t.aid;
+        u.kind = t.kind === "team" ? "team" : "expert";
+        u.tokenVersion = typeof t.tv === "number" ? t.tv : -1;
+        u.mustChangePassword = Boolean(t.mcp);
+        u.verified = Boolean(t.ev);
       }
       return session;
     },

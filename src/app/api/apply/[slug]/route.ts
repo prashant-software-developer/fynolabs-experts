@@ -6,7 +6,7 @@ import { getAccount } from "@/lib/auth/session";
 import { answerInputFromFormData } from "@/lib/forms/job-fields";
 import { submitApplication, sourceFromParams, type Applicant } from "@/lib/server/applications";
 import { getJobBySlug, jobFields } from "@/lib/server/jobs";
-import { linkExpertAccount } from "@/lib/server/portal";
+import { expertIdFor } from "@/lib/auth/expert";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +33,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   }
   const account = await getAccount();
   let applicant: Applicant = { kind: "guest" };
+  // A signed-in expert applies as themselves, but only once their email is verified (otherwise as a guest).
   if (account?.kind === "expert") {
-    const link = await linkExpertAccount(db, account);
-    applicant = { kind: "expert", email: account.email, expertId: link.ok ? link.expertId : null };
+    const expertId = await expertIdFor(account);
+    if (expertId) applicant = { kind: "expert", email: account.email, expertId };
   }
   const fields = await jobFields(db, job.id);
   const res = await submitApplication(db, {

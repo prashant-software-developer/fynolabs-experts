@@ -1,7 +1,6 @@
 // npm run import:jobs: the jobs-site sync from the command line (same as the button on /admin/import).
-//   npm run import:jobs                 local demo database
 //   npm run import:jobs -- --dry-run    show what would change, change nothing
-// Against a real database: DATABASE_URL=... CONFIRM_DB=yes npm run import:jobs
+//   CONFIRM_DB=yes npm run import:jobs  the real sync into DATABASE_URL
 // Old jobs-site tables in another database (the shared "Engine"): also set JOBS_DATABASE_URL.
 // Reads public.xdl_jobs_* (never writes there) and writes hub.* in DATABASE_URL only.
 import os from "node:os";
@@ -11,11 +10,11 @@ loadEnv();
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  if (process.env.DATABASE_URL) {
-    if (!dryRun) requireConfirm("The jobs-site import");
-  } else {
-    console.log("No DATABASE_URL: using the local demo database (.data/pglite). Stop `npm run dev` first.");
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL is not set. Put the expert-hub connection string in .env.local (see docs/DEPLOY.md).");
+    process.exit(1);
   }
+  if (!dryRun) requireConfirm("The jobs-site import");
   const { getDb } = await import("../src/db/client");
   const { syncJobsSite } = await import("../src/lib/server/jobs-sync");
   const { jobsSourceConfig, openJobsSource } = await import("../src/lib/server/jobs-source");

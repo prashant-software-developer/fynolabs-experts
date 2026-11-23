@@ -1,15 +1,25 @@
-// One database handle for the whole app.
-//  - DATABASE_URL set   -> Neon Postgres over HTTP (production, staging branches).
-//  - DATABASE_URL unset -> PGlite, a real Postgres running inside Node, stored in .data/pglite
-//                          (in memory for tests). Migrated and filled with demo data automatically.
+// One database handle for the whole app: Neon Postgres over HTTP, at DATABASE_URL (the Neon project
+// "expert-hub"). There is no other environment. Without DATABASE_URL the middleware shows the
+// "Database not set up" page instead of the app (src/app/db-not-set-up).
+// Automated tests open PGlite (a real Postgres inside Node) themselves through src/db/local/open.ts.
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
+import { testDbDir } from "./env";
+
+export { databaseConfigured, testDbDir } from "./env";
 
 export type Schema = typeof schema;
 export type DB = PgDatabase<PgQueryResultHKT, Schema>;
 
-type Holder = { __expertHubDb?: Promise<DB>; __expertHubLocal?: boolean };
+type Holder = { __expertHubDb?: Promise<DB> };
 const g = globalThis as Holder;
+
+export class DatabaseNotSetUp extends Error {
+  constructor() {
+    super("DATABASE_URL is not set. Put the expert-hub connection string in .env.local (see docs/DEPLOY.md).");
+    this.name = "DatabaseNotSetUp";
+  }
+}
 
 export function getDb(): Promise<DB> {
   if (!g.__expertHubDb) {
@@ -21,28 +31,20 @@ export function getDb(): Promise<DB> {
   return g.__expertHubDb;
 }
 
-/** True when the app runs on the built-in local PGlite database (never in production). */
-export function isLocalDb(): boolean {
-  return !process.env.DATABASE_URL;
-}
-
 async function createDb(): Promise<DB> {
-  const url = process.env.DATABASE_URL;
+  const url = (process.env.DATABASE_URL ?? "").trim();
   if (url) {
     const { neon } = await import("@neondatabase/serverless");
     const { drizzle } = await import("drizzle-orm/neon-http");
     return drizzle({ client: neon(url), schema }) as unknown as DB;
   }
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_LOCAL_DB !== "yes") {
-    throw new Error("DATABASE_URL is not set. Production needs a real database (see docs/DEPLOY.md).");
+  const dir = testDbDir();
+  if (dir) {
+    const { openLocalDb } = await import("./local/open");
+    return openLocalDb({ dataDir: dir });
   }
-  const { openLocalDb } = await import("./local/open");
-  const inMemory = process.env.NODE_ENV === "test";
-  return openLocalDb({ dataDir: inMemory ? undefined : localDataDir(), seed: true });
-}
-
-export function localDataDir(): string {
-  return process.env.PGLITE_DIR || ".data/pglite";
+  if (process.env.NODE_ENV === "production" && process.env.HUB_TEST_DB) console.error("[expert-hub] HUB_TEST_DB is a test-only switch and is refused in production.");
+  throw new DatabaseNotSetUp();
 }
 
 /** Rows from db.execute(), which returns a slightly different shape per driver. */

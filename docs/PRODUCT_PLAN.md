@@ -1,6 +1,6 @@
 # Expert Hub: product plan
 
-Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built). One platform and one central database of experts, in the app's own Neon project ("expert-hub", the one real environment; every expert record in the shared "Engine" is copied in by `npm run copy:engine`, re-run until the jobs site moves over). It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
+Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built; real sign-in and sign-up, no preview or demo mode). One platform and one central database of experts, in the app's own Neon project ("expert-hub", the one real environment; every expert record in the shared "Engine" is copied in by `npm run copy:engine`, re-run until the jobs site moves over). It runs the public job board, the expert portal and the admin CRM, so that a new partner requirement can be turned into a job and filled in minutes.
 
 ## The flow we are building
 
@@ -16,15 +16,15 @@ Written 22 Nov 2026 from Prashant's brief; updated 23 Nov 2026 (Phase 2 built). 
 
 | Who | Signs in with | Sees |
 |---|---|---|
-| Experts | Google, LinkedIn or email code | Job board, their profile, applications, projects, earnings, referrals |
-| Core team (admin, recruiter, pod lead, finance, viewer) | Google, @xocket.sh only | Everything their role allows |
+| Experts | Email + password (email confirmed with a code), or Google / LinkedIn when set up | Job board, their profile, applications, projects, earnings, referrals |
+| Core team (admin, recruiter, pod lead, finance, viewer) | Email + password, accounts created by an admin (temporary password, changed at first sign-in); Google when set up | Everything their role allows |
 | Partners (later) | Invite link | Only their jobs and the people put forward to them |
 
 ## Expert portal (what AI-training platforms do today)
 
 The pattern on Mercor, Outlier, micro1 and Handshake AI: a light sign-up, a profile that holds the CV and preferences, domain screening, and an onboarding checklist once a person is selected for a project.
 
-- **Sign-up:** Google, LinkedIn, or email with a one-time code.
+- **Sign-up:** email and password (a 6-digit code confirms the email before any profile is shown), or Google / LinkedIn.
 - **Onboarding steps:** basics, then expertise and skills, then experience and education, then CV upload (parsed to pre-fill), then availability and hours, then rate expectation (private), then consent to share the profile with partners.
 - **Profile:** a completeness score, sections they can edit at any time, a public-safe summary for partners, and an optional LinkedIn import.
 - **Screening:** short domain assessments per field, with results kept on the profile for reuse.
@@ -58,7 +58,7 @@ The pattern on Mercor, Outlier, micro1 and Handshake AI: a light sign-up, a prof
 
 - **App:** Next.js (App Router), TypeScript, Drizzle ORM, Tailwind with the FynoLabs design system.
 - **Database:** the app's own Neon project ("expert-hub"), with its tables in the `hub` schema. The old `public.xdl_jobs_*` tables in Engine are read by the import (`JOBS_DATABASE_URL`, read-only user) and never written; CVs are copied over. Development and tests use PGlite; changes are tried on a Neon branch before production.
-- **Auth:** Auth.js. Experts use Google, LinkedIn or an email code. The team uses Google limited to @xocket.sh. Roles and permissions are checked on every action.
+- **Auth:** Auth.js with one accounts table (`hub.accounts`) for every method: email + password (scrypt hashes, lockout, rate limits, emailed codes and reset links), and Google / LinkedIn when their keys are set. Team accounts are created by an admin; experts sign up themselves. Roles and permissions are checked on every action.
 - **Files:** CVs in the database now; object storage (Neon or R2) when volume grows.
 - **Email:** Resend. Slack messages go through the Slack API, for internal channels only.
 
@@ -83,7 +83,7 @@ Generous white space, short labels, and tables over side-by-side columns.
 | Phase | What ships | Status |
 |---|---|---|
 | 1 | Internal hub: expert database, requirement matching, partner submissions, placements and pay | Built 22 Nov (v1), with roles, saved views and the FynoLabs design system |
-| 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply) | Built 23 Nov: jobs with a form builder (17 field types, templates), public applications merged into the expert record, Matches and invites, job board with Google Jobs data, expert sign-up, onboarding, profile, data export and deletion requests; team app moved to `/admin`. Screening assessments and the longer job pipeline move to Phase 3 |
+| 2 | Requirement to job to auto-match to invite, plus public job board and expert portal (sign-up, onboarding, profile, apply) | Built 23 Nov: jobs with a form builder (17 field types, templates), public applications merged into the expert record, Matches and invites, job board with Google Jobs data, expert sign-up, onboarding, profile, data export and deletion requests; team app moved to `/admin`. Real sign-in and sign-up (23 Nov): email + password for the team and experts, email verification, password reset, Team & access with temporary passwords, `npm run admin:create` for the owner; the preview / demo mode is gone. Screening assessments and the longer job pipeline move to Phase 3 |
 | 3 | Admin parity with the Lovable admin (accounts, leads, calendar, campaigns, platforms and referrals, projects, fees and earnings, analytics), plus views, saved views, custom fields and automations | After 2 |
 | 4 | Cut-over: migrate data from the Lovable admin and the jobs site, move the jobs.fynolabs.si domain, retire the old admin | Started 23 Nov: one environment (expert-hub's main branch); `npm run copy:engine` copies every expert record from Engine (replica in `engine_copy`, everything mapped into `hub`) and is re-run until jobs.fynolabs.si moves over. Lovable admin data, the domain move and retiring the old admin still to do |
 

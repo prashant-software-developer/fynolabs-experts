@@ -2,7 +2,6 @@
 // sign-in methods are on, and signed invite links. Pure functions.
 import { describe, expect, it } from "vitest";
 import { accessFor, accountKind, isApplyEndpoint, isTeamByEnv, nextAfterSignIn, safePath } from "@/lib/auth/account";
-import { signInMethods } from "@/auth.config";
 import { sourceFromParams } from "@/lib/server/applications";
 import { inviteToken, keyedHash, readInviteToken } from "@/lib/server/tokens";
 
@@ -24,7 +23,7 @@ describe("account type at sign-in", () => {
 describe("middleware access rules", () => {
   const all = ["guest", "expert", "team"] as const;
   it("public pages and the apply endpoint are open to everyone", () => {
-    for (const p of ["/", "/jobs", "/jobs/rust-systems-engineer", "/jobs/x/applied", "/join", "/privacy", "/signin", "/api/auth/callback/google", "/api/apply/rust-systems-engineer", "/brand/fynolabs-mark.svg", "/team-only"]) {
+    for (const p of ["/", "/jobs", "/jobs/rust-systems-engineer", "/jobs/x/applied", "/join", "/privacy", "/signin", "/forgot-password", "/reset-password", "/verify-email", "/api/auth/callback/google", "/api/auth/callback/password", "/api/apply/rust-systems-engineer", "/brand/fynolabs-mark.svg", "/team-only"]) {
       for (const who of all) expect(accessFor(p, who), `${p} ${who}`).toEqual({ kind: "next" });
     }
     expect(isApplyEndpoint("/api/apply/some-job")).toBe(true);
@@ -32,8 +31,8 @@ describe("middleware access rules", () => {
   });
 
   it("/me needs any signed-in person", () => {
-    expect(accessFor("/me", "guest")).toEqual({ kind: "signin", to: "/join" });
-    expect(accessFor("/me/onboarding", "guest")).toEqual({ kind: "signin", to: "/join" });
+    expect(accessFor("/me", "guest")).toEqual({ kind: "signin", to: "/signin" });
+    expect(accessFor("/me/onboarding", "guest")).toEqual({ kind: "signin", to: "/signin" });
     expect(accessFor("/api/me/export", "guest")).toEqual({ kind: "unauthorized" });
     expect(accessFor("/me", "expert")).toEqual({ kind: "next" });
     expect(accessFor("/me/applications", "team")).toEqual({ kind: "next" });
@@ -65,15 +64,6 @@ describe("middleware access rules", () => {
     expect(nextAfterSignIn("expert", "https://evil.example/")).toBe("/me");
     expect(nextAfterSignIn("expert", "//evil.example/")).toBe("/me");
     expect(safePath("/\\evil")).toBeNull();
-  });
-});
-
-describe("sign-in methods", () => {
-  it("Google always; email links only with Resend; LinkedIn only with its keys", () => {
-    expect(signInMethods({})).toEqual(["google"]);
-    expect(signInMethods({ RESEND_API_KEY: "re_x" })).toEqual(["google"]);
-    expect(signInMethods({ RESEND_API_KEY: "re_x", EMAIL_FROM: "FynoLabs <hello@example.com>" })).toEqual(["google", "email"]);
-    expect(signInMethods({ AUTH_LINKEDIN_ID: "id", AUTH_LINKEDIN_SECRET: "s" })).toEqual(["google", "linkedin"]);
   });
 });
 

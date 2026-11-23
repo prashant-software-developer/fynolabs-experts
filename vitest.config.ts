@@ -11,5 +11,7 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 60_000,
     env: { DATABASE_URL: "" },
+    // next-auth imports "next/server" without an extension: let Vite resolve it (middleware tests).
+    server: { deps: { inline: ["next-auth"] } },
   },
 });

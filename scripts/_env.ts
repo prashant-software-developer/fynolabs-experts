@@ -1,5 +1,6 @@
 // Loads .env.local / .env like Next.js does, and describes the target database without secrets.
 import { existsSync } from "node:fs";
+import { describeDb } from "../src/lib/import/engine/env";
 
 export function loadEnv() {
   for (const f of [".env.local", ".env"]) {
@@ -13,14 +14,9 @@ export function loadEnv() {
   }
 }
 
+/** user@host/db: never the password. */
 export function describeTarget(url: string): string {
-  try {
-    const u = new URL(url);
-    const branch = u.searchParams.get("options")?.match(/endpoint%3D([^&]+)/)?.[1];
-    return `host ${u.hostname}, database ${u.pathname.replace(/^\//, "") || "(default)"}, user ${u.username || "(none)"}${branch ? `, endpoint ${branch}` : ""}`;
-  } catch {
-    return "an unreadable DATABASE_URL";
-  }
+  return describeDb(url);
 }
 
 /** Real databases need CONFIRM_DB=yes for anything that writes. */

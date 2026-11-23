@@ -128,7 +128,7 @@ export type GuardInput = { sourceUrl: string; targetUrl: string; confirm: string
 export function preflight(g: GuardInput): string[] {
   const out: string[] = [];
   const target = g.targetUrl.trim();
-  if (!target && !g.localTest) out.push("DATABASE_URL is empty, so this would copy into the local demo database. Put the expert-hub connection string in .env.local (see docs/DEPLOY.md), or pass --local-test for a local trial.");
+  if (!target && !g.localTest) out.push("DATABASE_URL is empty. Put the expert-hub connection string in .env.local (see docs/DEPLOY.md), or pass --local-test for a local trial.");
   const src = parseDbUrl(g.sourceUrl);
   if (!src) out.push("Engine's connection string isn't a postgresql:// address.");
   else if (src.kind === "pglite" && !g.localTest) out.push("pglite: addresses are only for --local-test.");

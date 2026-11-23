@@ -1,70 +1,23 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb, isLocalDb } from "@/db/client";
-import { partners, teamMembers } from "@/db/schema";
-import { accountKind } from "./account";
-import { DEV_EXPERT, DEV_USER, isDevBypass } from "./allow";
-import type { Role } from "./permissions";
-import { DEV_PREVIEW_EXPERT, DEV_PREVIEW_GUEST, DEV_ROLE_COOKIE, resolveRole, type MemberRow, type RoleSource } from "./roles";
+import type { SessionUser } from "@/auth.config";
+import { getDb } from "@/db/client";
+import { sessionAccount } from "@/lib/server/accounts";
+import * as accountRules from "./account";
+import { accountFromRow, type Account, type CurrentUser, type ExpertAccount } from "./team-access";
 
-export type CurrentUser = {
-  email: string;
-  name: string;
-  devBypass: boolean;
-  role: Role;
-  partnerIds: string[];
-  roleSource: RoleSource;
-  /** An inactive team member: signed in with Google, but every page and action is refused. */
-  blocked: boolean;
-};
-
-/** Someone signed in who is not on the team: they get the expert portal, never /admin. */
-export type ExpertAccount = { kind: "expert"; email: string; name: string; devPreview: boolean };
-export type Account = { kind: "team"; user: CurrentUser } | ExpertAccount;
-
-async function memberFor(email: string): Promise<MemberRow | null> {
-  const db = await getDb();
-  const [m] = await db
-    .select({ role: teamMembers.role, active: teamMembers.active, partnerIds: teamMembers.partnerIds })
-    .from(teamMembers)
-    .where(eq(teamMembers.email, email))
-    .limit(1);
-  return m ?? null;
-}
-
-/** Local preview as a pod lead: the dev user's own row scope if there is one, else the first partner. */
-async function devPartnerScope(member: MemberRow | null): Promise<string[]> {
-  if (member?.partnerIds?.length) return member.partnerIds;
-  const db = await getDb();
-  const [p] = await db.select({ id: partners.id }).from(partners).orderBy(asc(partners.name)).limit(1);
-  return p ? [p.id] : [];
-}
+export type { Account, CurrentUser, ExpertAccount };
 
 async function loadAccount(): Promise<Account | null> {
-  if (isDevBypass()) {
-    const jar = await cookies();
-    const preview = jar.get(DEV_ROLE_COOKIE)?.value;
-    if (preview === DEV_PREVIEW_GUEST) return null;
-    // The demo expert only exists in the demo database: on the real one an old preview cookie is ignored.
-    if (preview === DEV_PREVIEW_EXPERT && isLocalDb()) return { kind: "expert", email: DEV_EXPERT.email, name: DEV_EXPERT.name, devPreview: true };
-    const member = await memberFor(DEV_USER.email);
-    const r = resolveRole({ email: DEV_USER.email, member, dev: { cookieRole: preview, partnerIds: await devPartnerScope(member) } });
-    if (r.status !== "ok") return null;
-    return { kind: "team", user: { ...DEV_USER, devBypass: true, role: r.role, partnerIds: r.partnerIds, roleSource: r.source, blocked: false } };
-  }
   const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email) return null;
-  const name = session?.user?.name ?? email;
-  // Re-checked on every request, so a change to the team list or the settings takes effect at once.
-  const member = await memberFor(email);
-  if (accountKind({ email, hasTeamRow: Boolean(member) }) === "expert") return { kind: "expert", email, name, devPreview: false };
-  const r = resolveRole({ email, member });
-  if (r.status === "inactive") return { kind: "team", user: { email, name, devBypass: false, role: "viewer", partnerIds: [], roleSource: "team", blocked: true } };
-  return { kind: "team", user: { email, name, devBypass: false, role: r.role, partnerIds: r.partnerIds, roleSource: r.source, blocked: false } };
+  const u = session?.user as Partial<SessionUser> | undefined;
+  if (!u?.accountId) return null;
+  const db = await getDb();
+  // The account must still exist, be on, and have the token_version the session was issued with.
+  const row = await sessionAccount(db, u.accountId, u.tokenVersion);
+  if (!row) return null;
+  return accountFromRow(db, row);
 }
 
 /** Whoever is signed in (team member or expert), once per request. */
@@ -76,11 +29,20 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return a?.kind === "team" ? a.user : null;
 });
 
-/** For team pages and server actions: an active team member, else off to sign-in / team-only / no-access. */
+/** For team pages and server actions: an active team member, else off to sign-in / team-only / password / no-access. */
 export async function requireUser(): Promise<CurrentUser> {
   const a = await getAccount();
   if (!a) redirect("/signin");
   if (a.kind === "expert") redirect("/team-only");
+  if (a.user.mustChangePassword) redirect("/account/password");
   if (a.user.blocked) redirect("/no-access");
   return a.user;
+}
+
+/** Where a signed-in account goes from a sign-in page: a temporary password first, then email verification, then the app. */
+export function landingFor(a: Account, next: string | null | undefined): string {
+  const { nextAfterSignIn } = accountRules;
+  if (a.kind === "team" ? a.user.mustChangePassword : a.mustChangePassword) return "/account/password";
+  if (a.kind === "expert" && !a.verified) return "/verify-email";
+  return nextAfterSignIn(a.kind, next);
 }

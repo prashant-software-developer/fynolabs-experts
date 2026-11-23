@@ -1,5 +1,5 @@
 // Server actions and API routes, called the way Next.js calls them, as each role. The session is
-// mocked (no Google), the database is a real in-memory PGlite with the demo data.
+// mocked, the database is a real in-memory PGlite with the fictional test data.
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -48,7 +48,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: async () => ({ get: () => undefined, set: () => undefined }) }));
 
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
 import { experts, partners, placements, requirements, submissions, teamMembers } from "@/db/schema";
 import type { Role } from "@/lib/auth/permissions";
@@ -69,7 +69,7 @@ let acme: string;
 let northwind: string;
 
 const as = (role: Role, partnerIds: string[] = []) => {
-  state.user = { email: `${role}@xocket.sh`, name: role, devBypass: false, role, partnerIds, roleSource: "team", blocked: false };
+  state.user = { accountId: "00000000-0000-4000-8000-000000000001", email: `${role}@xocket.sh`, name: role, role, partnerIds, roleSource: "team", blocked: false, mustChangePassword: false };
 };
 const form = (fields: Record<string, string | string[]>) => {
   const fd = new FormData();
@@ -89,7 +89,7 @@ async function landing(p: Promise<unknown>): Promise<string> {
 const anExpert = async () => (await db.select().from(experts).limit(1))[0];
 
 beforeAll(async () => {
-  ({ db, client } = await openLocalDbWithClient({ seed: true }));
+  ({ db, client } = await openTestDb({ demo: true }));
   state.db = db;
   const ps = await db.select().from(partners);
   acme = ps.find((p) => p.name.startsWith("Acme"))!.id;
@@ -183,10 +183,11 @@ describe("server actions refuse forbidden roles", () => {
 
   it("team & access: admins only", async () => {
     as("recruiter");
-    expect(await landing(addTeamMember(form({ email: "new@xocket.sh", role: "admin" })))).toMatch(/error=.*can't manage team/);
+    expect(await addTeamMember({}, form({ email: "new@xocket.sh", role: "admin" }))).toMatchObject({ error: expect.stringMatching(/can't manage team/) });
     expect(await db.select().from(teamMembers).where(eq(teamMembers.email, "new@xocket.sh"))).toHaveLength(0);
     as("admin");
-    expect(await landing(addTeamMember(form({ email: "new@xocket.sh", role: "recruiter" })))).toMatch(/ok=Team member added/);
+    const added = await addTeamMember({}, form({ email: "new@xocket.sh", role: "recruiter" }));
+    expect(added).toMatchObject({ email: "new@xocket.sh", tempPassword: expect.stringMatching(/^.{20}$/) });
   });
 });
 
@@ -276,7 +277,7 @@ describe("API routes refuse forbidden roles", () => {
 
 describe("inactive members", () => {
   it("are sent to the no-access page by every guarded action", async () => {
-    state.user = { email: "gone@xocket.sh", name: "Gone", devBypass: false, role: "viewer", partnerIds: [], roleSource: "team", blocked: true };
+    state.user = { accountId: "00000000-0000-4000-8000-000000000009", email: "gone@xocket.sh", name: "Gone", role: "viewer", partnerIds: [], roleSource: "team", blocked: true, mustChangePassword: false };
     const e = await anExpert();
     expect(await landing(recordConsent(form({ id: e.id, consent: "yes" })))).toBe("/no-access");
     expect((await exportExperts(new NextRequest("http://localhost/api/experts/export"))).status).toBe(403);

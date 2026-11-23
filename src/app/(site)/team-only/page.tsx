@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import { signOut } from "@/auth";
+import { signOutNow } from "@/app/(auth)/actions";
 import { getAccount } from "@/lib/auth/session";
 import { buttonClass } from "@/components/ui/button";
 
@@ -28,13 +28,8 @@ export default async function TeamOnlyPage() {
         <Link href={account?.kind === "expert" ? "/me" : "/"} className={buttonClass("primary", "md")}>
           {account?.kind === "expert" ? "Go to my profile" : "See open roles"}
         </Link>
-        {account && !(account.kind === "expert" && account.devPreview) ? (
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/signin" });
-            }}
-          >
+        {account ? (
+          <form action={signOutNow}>
             <button className={buttonClass("secondary", "md")}>Sign out</button>
           </form>
         ) : null}

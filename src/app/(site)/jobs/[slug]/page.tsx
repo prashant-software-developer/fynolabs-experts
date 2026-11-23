@@ -12,7 +12,8 @@ import { prefillFromProfile } from "@/lib/forms/job-fields";
 import { jobPostingJsonLd, toPublicJob } from "@/lib/jobs-public";
 import { markdownToText, renderMarkdown } from "@/lib/markdown";
 import { jobFields } from "@/lib/server/jobs";
-import { linkExpertAccount, ownCv, ownProfile } from "@/lib/server/portal";
+import { expertIdFor } from "@/lib/auth/expert";
+import { ownCv, ownProfile } from "@/lib/server/portal";
 import { jobForPage } from "@/lib/server/public-jobs";
 import { siteName, siteUrl } from "@/lib/site";
 import { ApplyForm } from "@/components/jobs/apply-form";
@@ -61,23 +62,22 @@ export default async function JobPage({ params, searchParams }: Props) {
   let lockedEmail: string | null = null;
   let cvNote: string | null = null;
   let appliedOn: Date | null = null;
-  if (account?.kind === "expert") {
-    const link = await linkExpertAccount(db, account);
-    if (link.ok) {
-      const [p, cv, [app]] = await Promise.all([
-        ownProfile(db, link.expertId),
-        ownCv(db, link.expertId),
-        db.select({ createdAt: applications.createdAt }).from(applications).where(and(eq(applications.jobId, job.id), eq(applications.expertId, link.expertId))).limit(1),
-      ]);
-      if (p) values = prefillFromProfile(fields, p);
-      const emailField = fields.find((f) => f.mapsTo === "email");
-      if (emailField) {
-        values = { ...values, [emailField.id]: account.email };
-        lockedEmail = emailField.id;
-      }
-      if (cv && cv.storage === "upload") cvNote = `We'll use the CV you already gave us (${cv.filename}) unless you choose a new one.`;
-      appliedOn = app?.createdAt ?? null;
+  // Only a verified account ever sees its profile here.
+  const ownId = account?.kind === "expert" ? await expertIdFor(account) : null;
+  if (account?.kind === "expert" && ownId) {
+    const [p, cv, [app]] = await Promise.all([
+      ownProfile(db, ownId),
+      ownCv(db, ownId),
+      db.select({ createdAt: applications.createdAt }).from(applications).where(and(eq(applications.jobId, job.id), eq(applications.expertId, ownId))).limit(1),
+    ]);
+    if (p) values = prefillFromProfile(fields, p);
+    const emailField = fields.find((f) => f.mapsTo === "email");
+    if (emailField) {
+      values = { ...values, [emailField.id]: account.email };
+      lockedEmail = emailField.id;
     }
+    if (cv && cv.storage === "upload") cvNote = `We'll use the CV you already gave us (${cv.filename}) unless you choose a new one.`;
+    appliedOn = app?.createdAt ?? null;
   }
   const hidden: Record<string, string> = {};
   for (const k of TRACK_KEYS) {
@@ -106,7 +106,7 @@ export default async function JobPage({ params, searchParams }: Props) {
             Apply for this role
           </h2>
           <p className="text-sm text-muted-foreground">
-            {account?.kind === "expert" ? "Your profile filled in what we already know. Check it and add the rest." : "No account needed. Takes about five minutes."}
+            {ownId ? "Your profile filled in what we already know. Check it and add the rest." : "No account needed. Takes about five minutes."}
           </p>
         </div>
         {state === "closed" ? (

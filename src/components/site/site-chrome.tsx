@@ -1,7 +1,7 @@
 // The public site's header and footer (job board, job pages, sign-up, expert portal).
 import Link from "next/link";
 import { LogOut } from "lucide-react";
-import { signOut } from "@/auth";
+import { signOutNow } from "@/app/(auth)/actions";
 import type { Account } from "@/lib/auth/session";
 import { buttonClass } from "@/components/ui/button";
 import { contactEmail, siteName } from "@/lib/site";
@@ -21,13 +21,8 @@ export function SiteBrand() {
 
 export function SiteHeader({ account }: { account: Account | null }) {
   const signOutForm = (
-    <form
-      action={async () => {
-        "use server";
-        await signOut({ redirectTo: "/" });
-      }}
-    >
-      <button className={buttonClass("ghost", "sm")}>
+    <form action={signOutNow}>
+      <button className={buttonClass("ghost", "sm")} aria-label="Sign out">
         <LogOut className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">Sign out</span>
       </button>
     </form>
@@ -48,21 +43,21 @@ export function SiteHeader({ account }: { account: Account | null }) {
               <Link href="/me" className={buttonClass("secondary", "sm")}>
                 My profile
               </Link>
-              {!account.devPreview ? signOutForm : null}
+              {signOutForm}
             </>
           ) : account?.kind === "team" ? (
             <>
               <Link href="/admin" className={buttonClass("secondary", "sm")}>
                 Admin
               </Link>
-              {!account.user.devBypass ? signOutForm : null}
+              {signOutForm}
             </>
           ) : (
             <>
-              <Link href="/join" className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] whitespace-nowrap text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+              <Link href="/signin" className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] whitespace-nowrap text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
                 Sign in
               </Link>
-              <Link href="/join?mode=signup" className={buttonClass("primary", "sm")}>
+              <Link href="/join" className={buttonClass("primary", "sm")}>
                 Sign up
               </Link>
             </>

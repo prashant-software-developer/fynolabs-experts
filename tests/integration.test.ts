@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import type { PGlite } from "@electric-sql/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
 import { expertFiles, expertSources, experts, partners, requirements } from "@/db/schema";
 import { applyCsv, previewCsv } from "@/lib/server/csv-import";
@@ -30,7 +30,7 @@ async function publicFingerprint() {
 }
 
 beforeAll(async () => {
-  ({ db, client } = await openLocalDbWithClient({ seed: false }));
+  ({ db, client } = await openTestDb());
   // Fake jobs-site data (fictional people).
   await client.exec(`
     insert into public.xdl_jobs_jobs (id, slug, title, domain) values (1, 'math', 'Scientific Coding (test)', 'Mathematics'), (2, 'rust', 'Rust (test)', 'Software');

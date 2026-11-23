@@ -23,7 +23,9 @@ The old jobs site's own tables (`public.xdl_jobs_*`) stay in the shared **Engine
 | `submissions` | One row per person per requirement: status, match score when shortlisted, when submitted, note for the partner, internal note. |
 | `placements` | Who works for which partner on what: dates, hourly or per task, rate to expert, rate from partner, hours / tasks, earned, revenue, status. |
 | `activity` | Every change: who (email **and role** at the time), when, what kind of change, which fields. **Not** the values. |
-| `team_members` | The team's roles: email (lower case, unique), name, role (`admin`, `recruiter`, `pod_lead`, `finance`, `viewer`), active, partner scope (`partner_ids`, pod leads only), who added them, dates. No passwords: sign-in stays Google. |
+| `team_members` | The team's roles: email (lower case, unique), name, role (`admin`, `recruiter`, `pod_lead`, `finance`, `viewer`), active, partner scope (`partner_ids`, pod leads only), who added them, dates. Their login is in `accounts`. |
+| `accounts` | One row per login (team member or expert), whatever the method (email + password, Google, LinkedIn): email (lower case, unique), name, account type (`team` / `expert`), **the password's scrypt hash only** (a random 16-byte salt per password, versioned; never the password), when it was set, must change password (temporary passwords), when the email was verified, failed attempts and locked until (15 minutes after 5 wrong passwords), turned off at, last sign-in, `token_version` (goes up when the password changes, is reset or the account is turned off: every other session ends), the link to `team_members` (team) or to `experts` (experts, only once the email is verified), when the sign-up consent box was ticked (until it is copied to the expert record), who created it, dates. |
+| `account_tokens` | One-time email verification codes and password reset links: the account, the kind, a SHA-256 of the link's token, a keyed hash of the 6-digit code (never the code or the link), tries, expiry (30 minutes), when it was used (single use). |
 | `saved_views` | Saved Experts views: owner email, name, collection (`experts`), config (filters, sort, columns, layout as JSON), shared or personal, dates. No personal data about experts. |
 | `erasures` | People deleted on request: only a SHA-256 hash of their email and their source ids, so imports, job forms and portal sign-ups skip them. |
 | `jobs` | Job openings. **Public:** slug, title, company label (default "AI data partner (via FynoLabs)"), summary, description, location, type, fields, skills, countries, minimum years, openings, closing date, posted date. **Internal:** partner, requirement, internal rate note, status/visibility history, who created it. |
@@ -31,9 +33,8 @@ The old jobs site's own tables (`public.xdl_jobs_*`) stay in the shared **Engine
 | `form_templates` | Reusable forms (the questions only, no answers). |
 | `applications` | One row per person per job: status, every answer (keyed by question), where they came from (utm tags, invite, or the jobs site with its application id and status there), a keyed hash of the IP address (never the address), the team's internal note, and (jobs-site applications) the rate they asked for, **money-only** (`rate_expectation_usd`, never in the applicant list or CSV). Applying again updates the same row. |
 | `job_invites` | Who the team invited to a job from its Matches tab, and whether an email went out. |
-| `submit_attempts` | Rate limits for the public form: keyed hashes of IP addresses and emails with a time, kept about a day. |
+| `submit_attempts` | Rate limits for the public form, sign-in, sign-up, codes and password resets: keyed hashes of IP addresses and emails with a time, kept about a day. |
 | `data_requests` | "Delete my data" requests from the expert portal, for an admin to act on. |
-| `auth_verification_tokens` | Email sign-in links (only when Resend is set up): Auth.js stores a hash of the one-time token and its expiry. |
 | `__drizzle_migrations` | Which migrations have run. |
 
 ## Public vs internal
@@ -48,9 +49,16 @@ Public pages (job board, job pages, Google Jobs data, share links) only ever get
 - People marked do not contact, or deleted on request, get a polite "we can't accept this application online" with no reason given, and nothing is stored.
 - Spam and abuse: a hidden honeypot field (filled = nothing stored), at most 10 submissions per IP and 5 per email per hour, server-side checks of every answer (type, choices, file type and size).
 
+## Sign-in and accounts
+
+- **What's stored:** for each login, the email, name and the password's **scrypt hash** (`hub.accounts`), plus one-time codes and reset links as hashes only (`hub.account_tokens`). Plain passwords, codes and links are never stored, logged or shown again: a temporary password made on Team & access or by `npm run admin:create` is shown once, to the admin, and only its hash is kept.
+- **Team logins** are created only by an admin (Team & access) or with `npm run admin:create`; the person must change the temporary password at their first sign-in. Turning access off turns the login off and ends their sessions.
+- **Expert logins** come from sign-up (`/join`, or Google / LinkedIn). An unconfirmed sign-up stores the email, name and password hash, and nothing else is linked until the emailed code proves the address; an unconfirmed sign-up for the same email is replaced by the next one. Signing up with a team email is refused; people deleted on request can't sign up again by themselves.
+- Every session is re-checked against `accounts` on every request (turned off, or a different `token_version`: signed out).
+
 ## Expert accounts (the portal)
 
-Anyone who signs in and isn't team is an expert. Their account is linked to the `experts` row with the same email (created on first sign-in, unless that email was deleted on request). Every portal page, action and download takes the expert id from the signed-in session, never from the request, so experts only ever see or change their own record (tests: `tests/jobs.test.ts`, `tests/portal.test.ts`). They see and edit their own profile fields, CV and consent, their applications with an expert-facing status, and can download their data (JSON) or ask for deletion. They never see internal notes, tags, status, rates, sources, partners or the team's application notes. `/admin` and every admin API answer 403 to experts.
+Anyone who signs in and isn't team is an expert. Their account is linked to the `experts` row with the same email **only after the email is verified** (people copied from the jobs site keep every field the hub has; otherwise a new record is created, unless that email was deleted on request). Every portal page, action and download takes the expert id from the signed-in account, never from the request, so experts only ever see or change their own record (tests: `tests/jobs.test.ts`, `tests/portal.test.ts`, `tests/session.test.ts`). They see and edit their own profile fields, CV and consent, their applications with an expert-facing status, and can download their data (JSON) or ask for deletion. They never see internal notes, tags, status, rates, sources, partners or the team's application notes. `/admin` and every admin API answer 403 to experts.
 
 ## The copy from Engine (`npm run copy:engine`)
 
@@ -60,7 +68,7 @@ How to run it: [DEPLOY.md, step 3](DEPLOY.md#3-copy-everything-from-engine). Eng
 
 One table per jobs-site table, named without the `xdl_jobs_` prefix, created from Engine's catalog with the same column names, types, NOT NULLs and primary key: `users`, `applications`, `screenings`, `jobs`, `saved`, `files`, `interviews`, `assessments`, `assessment_attempts`, `notifications`, `projects`, `project_members`, `timesheets`, `earnings`, `payouts`, `commissions`. New columns in Engine are added automatically. Rows are upserted on the key: changed rows are updated, rows that disappear from Engine are **kept** (and counted in the report), nothing is deleted except the rows of people deleted on request.
 
-Left out: on `users`, the login secrets (`password_hash`, `pw_version`, `failed_logins`, `locked_until`, `otp_sent_at`, `reset_sent_at`, `phone_code_hash`, `phone_code_exp`, `phone_code_tries`, `phone_sends_day`, `phone_sends_count`, `phone_sent_at`); on `files`, the bytes (`data`): they are stored once, in `hub.expert_files`, and `engine_copy.files.hub_file_id` says which. Never read at all: `neon_auth.*`, `xdl_jobs_settings`, `xdl_jobs_admin_invites`, `xdl_jobs_bundle*`, `xdl_crm_*` and Engine's non-expert tables.
+Left out: on `users`, the login secrets (`password_hash`, `pw_version`, `failed_logins`, `locked_until`, `otp_sent_at`, `reset_sent_at`, `phone_code_hash`, `phone_code_exp`, `phone_code_tries`, `phone_sends_day`, `phone_sends_count`, `phone_sent_at`: experts sign up again on the hub with the same email and land on their copied profile); on `files`, the bytes (`data`): they are stored once, in `hub.expert_files`, and `engine_copy.files.hub_file_id` says which. Never read at all: `neon_auth.*`, `xdl_jobs_settings`, `xdl_jobs_admin_invites`, `xdl_jobs_bundle*`, `xdl_crm_*` and Engine's non-expert tables.
 
 ### Into `hub`
 
@@ -111,11 +119,10 @@ Set in **Settings → Team & access** (admins), enforced on the server for every
 
 | Variable | What it does |
 |---|---|
-| `ADMIN_EMAILS` | Comma-separated addresses that are always admins (the first admin, and a way back in). They can't be demoted or turned off from the app. |
-| `DEFAULT_ROLE` | Role for `@ALLOWED_DOMAIN` people who aren't on the team list yet. Default `viewer` (they see a "view-only access" bar). Outside addresses from `ALLOWED_EMAILS` always start as viewer. |
-| `DEV_ROLE` | Local development only (auto sign-in without Google keys): the role you start as. Default `admin`. The top bar's **Preview as** menu switches it with a cookie. Ignored in production builds. |
+| `ADMIN_EMAILS` | Comma-separated addresses that are always admins (`prashant@xocket.sh`: a way back in). They can't be demoted or turned off from the app. Their login comes from `npm run admin:create`. |
+| `DEFAULT_ROLE` | Role for `@ALLOWED_DOMAIN` people who sign in with Google but aren't on the team list yet. Default `viewer` (they see a "view-only access" bar). Outside addresses from `ALLOWED_EMAILS` always start as viewer. |
 
-A team member whose access is turned off can still pass Google sign-in but gets only a "your access is turned off" page. Admins can't demote or turn off themselves, and the last admin can't be removed. Every team change is in the activity log.
+A team member whose access is turned off is signed out at once and can't sign in (with a password or Google) until it's turned back on. Admins can't demote, turn off or reset the password of themselves on Team & access (they use Change password), and the last admin can't be removed. Every team change is in the activity log, without any password.
 
 ## Rules for personal data
 
@@ -123,7 +130,7 @@ A team member whose access is turned off can still pass Google sign-in but gets 
 2. **CVs and details go to a partner only with consent.** Record the expert's answer on their profile (CV consent: yes / no). The app blocks moving a submission to *Submitted* (or later) without consent = yes, and the roster CSV and CV ZIP include only people with consent = yes.
 3. **Rates are internal.** Rate expectations, rate notes and placement money never appear in partner exports, public job posts or messages to other experts.
 4. **Partner names stay internal.** Don't put them in public material.
-5. **Need to know.** Only the core team can open the admin (`@xocket.sh`, `ADMIN_EMAILS`, `ALLOWED_EMAILS` and Team & access); experts who sign in only get their own portal. Each team member's role limits what they see (table above): viewers get masked contact details, only admins and finance see money, pod leads only their partners' submissions and placements. Exports (Experts → Export CSV) contain contact details: keep them in the team's drive, delete copies you no longer need, never forward them.
+5. **Need to know.** Only team logins (created by an admin) can open the admin; experts who sign in only get their own portal, and only after confirming their email. Each team member's role limits what they see (table above): viewers get masked contact details, only admins and finance see money, pod leads only their partners' submissions and placements. Exports (Experts → Export CSV) contain contact details: keep them in the team's drive, delete copies you no longer need, never forward them.
 6. **The activity log** records who changed what and when, without the values, so it can be kept.
 
 ## Delete on request
@@ -131,7 +138,7 @@ A team member whose access is turned off can still pass Google sign-in but gets 
 When someone asks us to remove their data (by email, or with **Delete my data** in the portal, which records a request: the dashboard and their profile then show a notice):
 
 1. An admin opens their profile → **Edit** → *Delete on request* → types `DELETE` → **Delete permanently**.
-   This removes their profile, sources, uploaded CVs and tax forms, details, payout details, job applications and answers, invites, submissions and their activity history, and their rows in `engine_copy` (the copy of the jobs site) and `legacy_map`. Placement money rows stay (for accounting) without the person. Only a one-way hash of their email (and their jobs-site / register ids) is kept, so future imports and copies skip them.
+   This removes their profile, their expert login (`accounts`), sources, uploaded CVs and tax forms, details, payout details, job applications and answers, invites, submissions and their activity history, and their rows in `engine_copy` (the copy of the jobs site) and `legacy_map`. Placement money rows stay (for accounting) without the person. Only a one-way hash of their email (and their jobs-site / register ids) is kept, so future imports and copies skip them.
 2. Remove them from the other places too: the jobs site (jobs.fynolabs.si admin), the admin CRM (fynolabs.si/admin), the Talent register spreadsheet, the ops sheet, local CV folders and any exported CSVs.
 3. Reply to the person confirming it's done (within 30 days of the request).
 

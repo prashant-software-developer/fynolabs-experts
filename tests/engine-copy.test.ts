@@ -9,7 +9,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { MIGRATIONS, openLocalDbWithClient } from "@/db/local/open";
+import { MIGRATIONS } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { JOBS_STUB_SQL } from "@/db/local/jobs-stub";
 import { rowsOf, type DB } from "@/db/client";
 import { applications, expertDetails, expertFiles, expertPayout, experts, jobFormFields, jobs, legacyMap } from "@/db/schema";
@@ -77,7 +78,7 @@ const expertByEmail = async (email: string) => (await hub.select().from(experts)
 
 beforeAll(async () => {
   engine = await newEngine();
-  ({ db: hub, client: hubClient } = await openLocalDbWithClient({ seed: false, jobsStub: false }));
+  ({ db: hub, client: hubClient } = await openTestDb({ jobsStub: false }));
 });
 afterAll(async () => {
   await engine.close();
@@ -378,7 +379,7 @@ describe("copy from Engine", () => {
     expect((await listPublicJobs(hub)).filter((j) => j.createdBy === "jobs-site import")).toEqual([]);
     // Its public page is a 404 for visitors and experts; the team sees a preview.
     expect(await jobForPage(hub, "maths-reviewer", null)).toBeNull();
-    expect(await jobForPage(hub, "maths-reviewer", { kind: "expert", email: "x@example.org", name: "X", devPreview: false })).toBeNull();
+    expect(await jobForPage(hub, "maths-reviewer", { kind: "expert", accountId: "00000000-0000-4000-8000-000000000002", email: "x@example.org", name: "X", verified: true, expertId: null, mustChangePassword: false })).toBeNull();
     const fields = await hub.select().from(jobFormFields).where(eq(jobFormFields.jobId, maths.id));
     expect(fields.map((f) => f.label)).toContain("Why are you a good fit?");
     const m = await q(`select source_id from hub.legacy_map where source_table = 'jobs' order by 1`);

@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import type { PGlite } from "@electric-sql/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
 import { applications, erasures, expertFiles, experts, jobs, partners, submitAttempts, type Job } from "@/db/schema";
 import { emptyJobValues } from "@/lib/forms/job";
@@ -62,7 +62,7 @@ async function newJob(title: string, status = "open"): Promise<Job> {
 }
 
 beforeAll(async () => {
-  ({ db, client } = await openLocalDbWithClient({ seed: false }));
+  ({ db, client } = await openTestDb());
   await db.insert(partners).values({ name: "Apply Test Partner" });
   job = await newJob("Scientific Coding Expert - Mathematics");
   fields = await jobFields(db, job.id);

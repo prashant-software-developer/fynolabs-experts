@@ -2,7 +2,7 @@ import { desc, eq, and } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { activity } from "@/db/schema";
 
-export type EntityType = "expert" | "requirement" | "submission" | "placement" | "partner" | "import" | "team_member" | "saved_view" | "job" | "application" | "data_request";
+export type EntityType = "expert" | "requirement" | "submission" | "placement" | "partner" | "import" | "team_member" | "saved_view" | "job" | "application" | "data_request" | "account";
 
 /** Who did it: an email (scripts, imports) or the signed-in user with their role. */
 export type Actor = string | { email: string; role?: string | null };

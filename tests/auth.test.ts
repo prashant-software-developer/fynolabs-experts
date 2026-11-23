@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { authSettings, devBypassFor, isAllowedEmail } from "@/lib/auth/allow";
+import { authSettings, isAllowedEmail } from "@/lib/auth/allow";
+import { oauthMethods } from "@/auth.config";
+import { databaseConfigured, testDbDir } from "@/db/env";
 
 describe("who may sign in", () => {
   const s = authSettings({ ALLOWED_DOMAIN: "xocket.sh", ALLOWED_EMAILS: "Contractor@Example.com, ops@example.org" });
@@ -24,19 +26,23 @@ describe("who may sign in", () => {
     expect(authSettings({ ALLOWED_DOMAIN: "@Example.com" }).domain).toBe("example.com");
   });
 
-  it("dev bypass only in development without Google keys, never on Vercel or in production", () => {
-    expect(devBypassFor({ NODE_ENV: "development" })).toBe(true);
-    expect(devBypassFor({ NODE_ENV: "development", AUTH_GOOGLE_ID: "x", AUTH_GOOGLE_SECRET: "y" })).toBe(false);
-    expect(devBypassFor({ NODE_ENV: "production" })).toBe(false);
-    expect(devBypassFor({ NODE_ENV: "test" })).toBe(false);
-    expect(devBypassFor({ NODE_ENV: "development", VERCEL: "1" })).toBe(false);
-  });
 });
 
-describe("dev sign-in bypass is localhost-only", () => {
-  it("accepts only this computer's addresses", async () => {
-    const { isLocalHost } = await import("@/lib/auth/allow");
-    for (const h of ["localhost:3000", "127.0.0.1:3000", "[::1]:3000", "LOCALHOST"]) expect(isLocalHost(h), h).toBe(true);
-    for (const h of ["192.168.1.20:3000", "hub.fynolabs.si", "localhost.evil.example", "", null]) expect(isLocalHost(h), String(h)).toBe(false);
+describe("sign-in methods and the database switch", () => {
+  it("Google and LinkedIn only when their keys are set; email + password always", () => {
+    expect(oauthMethods({})).toEqual([]);
+    expect(oauthMethods({ AUTH_GOOGLE_ID: "x" })).toEqual([]);
+    expect(oauthMethods({ AUTH_GOOGLE_ID: "x", AUTH_GOOGLE_SECRET: "y" })).toEqual(["google"]);
+    expect(oauthMethods({ AUTH_LINKEDIN_ID: "id", AUTH_LINKEDIN_SECRET: "s" })).toEqual(["linkedin"]);
+  });
+
+  it("the app needs DATABASE_URL; the PGlite test switch never counts on Vercel", () => {
+    expect(databaseConfigured({})).toBe(false);
+    expect(databaseConfigured({ DATABASE_URL: "  " })).toBe(false);
+    expect(databaseConfigured({ DATABASE_URL: "postgresql://u:p@ep-x.neon.tech/db" })).toBe(true);
+    // Tests run with NODE_ENV=test: the switch works here, never with Vercel set (and production builds drop it).
+    expect(testDbDir({ HUB_TEST_DB: "pglite" })).toBe(".data/test-pglite");
+    expect(testDbDir({ HUB_TEST_DB: "pglite", VERCEL: "1" })).toBeNull();
+    expect(testDbDir({ HUB_TEST_DB: "yes" })).toBeNull();
   });
 });

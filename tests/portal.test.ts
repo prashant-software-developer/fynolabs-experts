@@ -1,17 +1,25 @@
-// The expert portal's database side: linking a sign-in to the expert record, onboarding steps,
+// The expert portal's database side: linking a verified login to the expert record, onboarding steps,
 // completeness, their applications (expert-facing wording, no internal notes) and deletion requests.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import type { PGlite } from "@electric-sql/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
-import { applications, dataRequests, erasures, experts, jobs } from "@/db/schema";
+import { accounts, applications, dataRequests, erasures, experts, jobs } from "@/db/schema";
+import { linkExpertForAccount } from "@/lib/server/accounts";
 import { deleteExpertOnRequest } from "@/lib/server/experts";
 import { emailHash } from "@/lib/normalize";
-import { completeness, linkExpertAccount, ownApplications, ownProfile, requestDeletion, saveStep } from "@/lib/server/portal";
+import { completeness, ownApplications, ownProfile, requestDeletion, saveStep } from "@/lib/server/portal";
 
 let db: DB;
 let client: PGlite;
+/** A verified expert login (as after sign-up and the emailed code), linked to its record. */
+async function linkExpertAccount(db: DB, a: { email: string; name: string }) {
+  const email = a.email.toLowerCase();
+  let [row] = await db.select().from(accounts).where(eq(accounts.email, email));
+  if (!row) [row] = await db.insert(accounts).values({ email, name: a.name, accountType: "expert", emailVerifiedAt: new Date() }).returning();
+  return linkExpertForAccount(db, row);
+}
 const fd = (o: Record<string, string>) => {
   const f = new FormData();
   for (const [k, v] of Object.entries(o)) f.set(k, v);
@@ -19,7 +27,7 @@ const fd = (o: Record<string, string>) => {
 };
 
 beforeAll(async () => {
-  ({ db, client } = await openLocalDbWithClient({ seed: true }));
+  ({ db, client } = await openTestDb({ demo: true }));
 });
 afterAll(async () => {
   await client.close();

@@ -1,44 +1,43 @@
 // The first gate for every request (the server checks again on every page, action and route):
-// public job board and job pages for anyone, /me for anyone signed in, /admin and admin APIs for
-// the team only. Experts who open /admin get a 403 page; admin APIs answer 401 / 403 JSON.
+// public job board and job pages for anyone, /me for signed-in experts with a verified email,
+// /admin and admin APIs for the team only. Experts who open /admin get a 403 page; admin APIs
+// answer 401 / 403 JSON. Someone signed in with a temporary password only reaches
+// /account/password until they change it. Without a database the app shows one page that says so.
 import NextAuth from "next-auth";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
-import { authConfig } from "@/auth.config";
-import { accessFor, isTeamByEnv, type Who } from "@/lib/auth/account";
-import { isDevBypass, isLocalHost } from "@/lib/auth/allow";
-import { DEV_PREVIEW_EXPERT, DEV_PREVIEW_GUEST, DEV_ROLE_COOKIE } from "@/lib/auth/roles";
+import { authConfig, type SessionUser } from "@/auth.config";
+import { databaseConfigured } from "@/db/env";
+import { accessFor, type Flags, type Who } from "@/lib/auth/account";
 
 const { auth } = NextAuth(authConfig);
 
-function decide(req: NextRequest, who: Who): Response {
+function decide(req: NextRequest, who: Who, flags: Flags): Response {
   const { pathname, search } = req.nextUrl;
-  const access = accessFor(pathname, who);
+  const access = accessFor(pathname, who, flags);
   if (access.kind === "next") return NextResponse.next();
   if (access.kind === "unauthorized") return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   if (access.kind === "forbidden") {
-    if (pathname.startsWith("/api/")) return NextResponse.json({ error: "This is for the FynoLabs team only." }, { status: 403 });
+    if (pathname.startsWith("/api/")) return NextResponse.json({ error: flags.mustChangePassword ? "Change your password first." : "This is for the FynoLabs team only." }, { status: 403 });
     return NextResponse.rewrite(new URL("/team-only", req.nextUrl.origin), { status: 403 });
   }
+  if (access.kind === "redirect") return NextResponse.redirect(new URL(access.to, req.nextUrl.origin));
   const url = new URL(access.to, req.nextUrl.origin);
   url.searchParams.set("callbackUrl", pathname + search);
   return NextResponse.redirect(url);
 }
 
 const guarded = auth((req) => {
-  const user = req.auth?.user as { email?: string | null; kind?: string } | undefined;
-  const email = user?.email ?? null;
-  const who: Who = !email ? "guest" : isTeamByEnv(email) || user?.kind === "team" ? "team" : "expert";
-  return decide(req, who);
+  const user = req.auth?.user as Partial<SessionUser> | undefined;
+  const who: Who = !user?.accountId ? "guest" : user.kind === "team" ? "team" : "expert";
+  return decide(req, who, { mustChangePassword: Boolean(user?.mustChangePassword), verified: user?.verified });
 });
 
 export default function middleware(req: NextRequest, ev: NextFetchEvent) {
-  if (isDevBypass()) {
-    // The automatic dev sign-in is for this computer only (npm run dev also listens on 127.0.0.1 only).
-    if (!isLocalHost(req.headers.get("host"))) return new NextResponse("Local development only: open http://localhost:3000 on this computer.", { status: 403 });
-    const preview = req.cookies.get(DEV_ROLE_COOKIE)?.value;
-    // The demo expert preview only exists with the demo database (no DATABASE_URL).
-    const expert = preview === DEV_PREVIEW_EXPERT && !process.env.DATABASE_URL;
-    return decide(req, preview === DEV_PREVIEW_GUEST ? "guest" : expert ? "expert" : "team");
+  if (!databaseConfigured()) {
+    const p = req.nextUrl.pathname;
+    if (p === "/db-not-set-up") return NextResponse.next();
+    if (p.startsWith("/api/")) return NextResponse.json({ error: "The database isn't set up (DATABASE_URL)." }, { status: 503 });
+    return NextResponse.rewrite(new URL("/db-not-set-up", req.nextUrl.origin), { status: 503 });
   }
   return (guarded as unknown as (r: NextRequest, e: NextFetchEvent) => Promise<Response>)(req, ev);
 }

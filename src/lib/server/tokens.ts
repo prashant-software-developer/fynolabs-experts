@@ -4,7 +4,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 function secret(): string {
   const s = process.env.AUTH_SECRET;
   if (s) return s;
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_LOCAL_DB !== "yes") throw new Error("AUTH_SECRET is not set.");
+  if (process.env.NODE_ENV === "production") throw new Error("AUTH_SECRET is not set.");
   return "local-development-only-secret";
 }
 

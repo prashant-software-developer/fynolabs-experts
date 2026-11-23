@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { JOBS_STUB_SQL } from "@/db/local/jobs-stub";
 import { rowsOf, type DB } from "@/db/client";
 import { expertFiles, experts } from "@/db/schema";
@@ -28,7 +28,7 @@ async function engineFingerprint() {
 }
 
 beforeAll(async () => {
-  ({ db: hub, client: hubClient } = await openLocalDbWithClient({ seed: false, jobsStub: false }));
+  ({ db: hub, client: hubClient } = await openTestDb({ jobsStub: false }));
   engineClient = new PGlite();
   await engineClient.waitReady;
   await engineClient.exec(JOBS_STUB_SQL);

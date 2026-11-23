@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { adminEmails, defaultRole, devRole, resolveRole } from "@/lib/auth/roles";
+import { adminEmails, defaultRole, resolveRole } from "@/lib/auth/roles";
 
 const env = { ALLOWED_DOMAIN: "xocket.sh", ADMIN_EMAILS: "Prashant@Xocket.sh, ops@example.com" };
+
+it("ADMIN_EMAILS=prashant@xocket.sh forces admin for the owner, whatever the team list says", () => {
+  const own = { ADMIN_EMAILS: "prashant@xocket.sh", ALLOWED_DOMAIN: "xocket.sh" };
+  expect(resolveRole({ email: "prashant@xocket.sh", member: null, env: own })).toMatchObject({ status: "ok", role: "admin", source: "admin_emails" });
+  expect(resolveRole({ email: "prashant@xocket.sh", member: { role: "viewer", active: true, partnerIds: [] }, env: own })).toMatchObject({ role: "admin" });
+});
 
 describe("role resolution", () => {
   it("ADMIN_EMAILS are always admins (case-insensitive), even over a team row or an inactive one", () => {
@@ -38,12 +44,4 @@ describe("role resolution", () => {
     expect(resolveRole({ email: "contractor@gmail.com", member: { role: "recruiter", active: true, partnerIds: [] }, env })).toMatchObject({ role: "recruiter", source: "team" });
   });
 
-  it("dev auto sign-in: preview cookie, else DEV_ROLE, else admin", () => {
-    expect(devRole({})).toBe("admin");
-    expect(resolveRole({ email: "dev@xocket.sh", member: null, env: {}, dev: {} })).toEqual({ status: "ok", role: "admin", partnerIds: [], source: "dev" });
-    expect(resolveRole({ email: "dev@xocket.sh", member: null, env: { DEV_ROLE: "viewer" }, dev: {} })).toMatchObject({ role: "viewer", source: "dev" });
-    expect(resolveRole({ email: "dev@xocket.sh", member: null, env: { DEV_ROLE: "viewer" }, dev: { cookieRole: "finance" } })).toMatchObject({ role: "finance" });
-    expect(resolveRole({ email: "dev@xocket.sh", member: null, env: { DEV_ROLE: "nope" }, dev: { cookieRole: "hacker" } })).toMatchObject({ role: "admin" });
-    expect(resolveRole({ email: "dev@xocket.sh", member: null, env: {}, dev: { cookieRole: "pod_lead", partnerIds: ["p1"] } })).toEqual({ status: "ok", role: "pod_lead", partnerIds: ["p1"], source: "dev" });
-  });
 });

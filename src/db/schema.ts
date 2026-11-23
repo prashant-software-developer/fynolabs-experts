@@ -536,17 +536,70 @@ export const dataRequests = hub.table(
 );
 
 /**
- * Auth.js email sign-in links (only used when the email provider is configured). Auth.js stores
- * a hash of the token, never the link itself. Users are identified by email; there is no user table.
+ * One row per login (team member or expert), whatever the sign-in method: email + password,
+ * Google or LinkedIn. Passwords are only ever stored as a salted scrypt hash (src/lib/auth/password.ts).
+ * token_version goes up when the password changes, is reset or the account is turned off: every
+ * session carries the version it was issued with, so all other sessions end at once.
+ * Team accounts link to their hub.team_members row (the role); expert accounts link to their
+ * hub.experts row, but only after the email has been verified.
  */
-export const authVerificationTokens = hub.table(
-  "auth_verification_tokens",
+export const accounts = hub.table(
+  "accounts",
   {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: ts("expires").notNull(),
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    name: text("name"),
+    accountType: text("account_type").notNull(),
+    passwordHash: text("password_hash"),
+    passwordSetAt: ts("password_set_at"),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
+    emailVerifiedAt: ts("email_verified_at"),
+    failedAttempts: integer("failed_attempts").notNull().default(0),
+    lockedUntil: ts("locked_until"),
+    disabledAt: ts("disabled_at"),
+    lastLoginAt: ts("last_login_at"),
+    tokenVersion: integer("token_version").notNull().default(0),
+    teamMemberId: uuid("team_member_id").references(() => teamMembers.id, { onDelete: "set null" }),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "set null" }),
+    // When they ticked the consent box at sign-up (copied to the expert record once verified).
+    consentAt: ts("consent_at"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("auth_verification_tokens_key").on(t.identifier, t.token)],
+  (t) => [
+    uniqueIndex("accounts_email_key").on(t.email),
+    uniqueIndex("accounts_expert_key").on(t.expertId),
+    uniqueIndex("accounts_team_member_key").on(t.teamMemberId),
+    check("accounts_email_lower", sql`${t.email} = lower(${t.email})`),
+    check("accounts_type_check", inList("account_type", ["team", "expert"])),
+  ],
+);
+
+/**
+ * One-time codes and links: email verification (a 6-digit code and a link, 30 minutes, 5 tries)
+ * and password resets (a link, 30 minutes, single use). Only keyed hashes are stored.
+ */
+export const accountTokens = hub.table(
+  "account_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    codeHash: text("code_hash"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: ts("expires_at").notNull(),
+    usedAt: ts("used_at"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("account_tokens_token_key").on(t.tokenHash),
+    index("account_tokens_account_idx").on(t.accountId, t.kind),
+    check("account_tokens_kind_check", inList("kind", ["verify_email", "reset_password"])),
+  ],
 );
 
 export type ExperienceItem = { title: string | null; company: string | null; location?: string | null; start?: string | null; end?: string | null; current?: boolean; description?: string | null };
@@ -622,6 +675,7 @@ export type Placement = typeof placements.$inferSelect;
 export type ExpertFile = Omit<typeof expertFiles.$inferSelect, "data">;
 export type Activity = typeof activity.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
+export type AccountRow = typeof accounts.$inferSelect;
 export type SavedView = typeof savedViews.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type JobFormField = typeof jobFormFields.$inferSelect;

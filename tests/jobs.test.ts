@@ -1,4 +1,4 @@
-// Jobs end to end on the demo database, called the way Next.js calls them, as each role and as an
+// Jobs end to end on the test database (fictional data), called the way Next.js calls them, as each role and as an
 // expert: public listing rules, nothing internal in public HTML, job-from-requirement, the builder,
 // matches and invites, who may change what, and experts kept to their own data.
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,9 +49,9 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ host: "jobs.example.test" }), cookies: async () => ({ get: () => undefined, set: () => undefined }) }));
 
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import { rowsOf, type DB } from "@/db/client";
-import { applications, dataRequests, experts, jobFormFields, jobInvites, jobs, partners, requirements, type Job } from "@/db/schema";
+import { accounts, applications, dataRequests, experts, jobFormFields, jobInvites, jobs, partners, requirements, type Job } from "@/db/schema";
 import type { Role } from "@/lib/auth/permissions";
 import { jobPrefillFromRequirement } from "@/lib/forms/job";
 import { isListed, jobPostingJsonLd, publicState, toPublicJob } from "@/lib/jobs-public";
@@ -70,10 +70,13 @@ let db: DB;
 let client: PGlite;
 
 const as = (role: Role) => {
-  state.user = { email: `${role}@xocket.sh`, name: role, devBypass: false, role, partnerIds: [], roleSource: "team", blocked: false };
+  state.user = { accountId: "00000000-0000-4000-8000-000000000001", email: `${role}@xocket.sh`, name: role, role, partnerIds: [], roleSource: "team", blocked: false, mustChangePassword: false };
 };
-const asExpert = (email: string, name = "Expert") => {
-  state.user = { kind: "expert", email, name, devPreview: false };
+/** Signs in as a verified expert account (created in the test database, as sign-up + verification would). */
+const asExpert = async (email: string, name = "Expert") => {
+  const e = email.toLowerCase();
+  const [row] = await db.insert(accounts).values({ email: e, name, accountType: "expert", emailVerifiedAt: new Date() }).onConflictDoUpdate({ target: accounts.email, set: { name } }).returning();
+  state.user = { kind: "expert", accountId: row.id, email: e, name, verified: true, expertId: row.expertId, mustChangePassword: false };
 };
 const form = (fields: Record<string, string | string[]>) => {
   const fd = new FormData();
@@ -93,7 +96,7 @@ const bySlug = async (slug: string) => (await getJobBySlug(db, slug))!;
 const get = (url: string) => new NextRequest(new URL(url, "http://localhost"));
 
 beforeAll(async () => {
-  ({ db, client } = await openLocalDbWithClient({ seed: true }));
+  ({ db, client } = await openTestDb({ demo: true }));
   state.db = db;
 });
 afterAll(async () => {
@@ -123,8 +126,8 @@ describe("public listing rules", () => {
     expect(await jobForPage(db, "rust-systems-engineer", null)).toMatchObject({ state: "open", preview: false });
     expect(await jobForPage(db, "biology-reviewer", null)).toMatchObject({ state: "closed" });
     expect(await jobForPage(db, "physics-problem-writer", null)).toBeNull();
-    expect(await jobForPage(db, "physics-problem-writer", { kind: "expert", email: "x@example.org", name: "X", devPreview: false })).toBeNull();
-    const team = { kind: "team" as const, user: { email: "v@xocket.sh", name: "v", devBypass: false, role: "viewer" as Role, partnerIds: [], roleSource: "team" as const, blocked: false } };
+    expect(await jobForPage(db, "physics-problem-writer", { kind: "expert", accountId: "00000000-0000-4000-8000-000000000002", email: "x@example.org", name: "X", verified: true, expertId: null, mustChangePassword: false })).toBeNull();
+    const team = { kind: "team" as const, user: { accountId: "00000000-0000-4000-8000-000000000003", email: "v@xocket.sh", name: "v", role: "viewer" as Role, partnerIds: [], roleSource: "team" as const, blocked: false, mustChangePassword: false } };
     expect(await jobForPage(db, "physics-problem-writer", team)).toMatchObject({ state: "hidden", preview: true });
   });
 
@@ -270,7 +273,7 @@ describe("who may change jobs and applicants", () => {
 describe("experts stay out of the admin and in their own data", () => {
   it("admin actions and admin APIs refuse an expert", async () => {
     const job = await bySlug("scientific-coding-expert-mathematics");
-    asExpert("riya.other@example.org");
+    await asExpert("riya.other@example.org");
     await expect(saveJob({}, form({ title: "Hacked", openings: "1" }))).rejects.toThrow(/REDIRECT \/team-only/);
     expect(await landing(setJobSharing(form({ id: job.id, status: "closed" })))).toBe("/team-only");
     const denied = await exportApplicants(get(`/api/jobs/${job.id}/applicants`), { params: Promise.resolve({ id: job.id }) });
@@ -283,7 +286,7 @@ describe("experts stay out of the admin and in their own data", () => {
   it("portal actions only ever change the signed-in expert's record, whatever the form says", async () => {
     const [other] = await db.select().from(experts).where(eq(experts.email, "asha-example@example.com"));
     const otherBefore = { consent: other.cvConsent, skills: other.skills, name: other.fullName };
-    asExpert("new.expert@example.org", "New Expert");
+    await asExpert("new.expert@example.org", "New Expert");
     expect(await landing(setMyConsent(form({ id: other.id, expertId: other.id, consent: "no" })))).toMatch(/^\/me\?ok=/);
     const res = await landing(saveOnboarding({}, form({ step: "expertise", id: other.id, expertId: other.id, skills: "Rust, Go", headline: "Systems person" })));
     expect(res).toBe("/me/onboarding?step=experience&saved=expertise");
@@ -298,7 +301,7 @@ describe("experts stay out of the admin and in their own data", () => {
   });
 
   it("'Download my data' returns only their own record, without internal notes, status or rates", async () => {
-    asExpert("demo.expert@example.com", "Riya Portaldemo");
+    await asExpert("demo.expert@example.com", "Riya Portaldemo");
     const res = await exportMine();
     expect(res.status).toBe(200);
     const data = await res.json();

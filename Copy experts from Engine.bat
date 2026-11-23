@@ -18,12 +18,13 @@ if errorlevel 1 (
 echo Node version:
 node -v
 
-if not exist node_modules (
+node -e "const f=require('fs');try{process.exit(f.statSync('node_modules/.package-lock.json').mtimeMs>=f.statSync('package-lock.json').mtimeMs?0:1)}catch(e){process.exit(1)}"
+if errorlevel 1 (
   echo.
-  echo First run: installing packages, this takes a few minutes...
+  echo Installing packages ^(first run, or after an update^). This takes a few minutes...
   call npm ci
   if errorlevel 1 (
-    echo Installing packages failed. Send Claude the text above.
+    echo Installing packages failed. Close any other Expert Hub window and try again, or send Claude the text above.
     pause
     exit /b 1
   )

@@ -20,13 +20,18 @@ const VERBS: Record<string, string> = {
   jobs_site_sync: "ran the jobs-site sync",
   csv_import: "imported a CSV",
   roster_exported: "exported a roster",
-  demo_data_loaded: "loaded demo data",
   experts_exported: "exported experts",
   placements_exported: "exported placements",
   role_changed: "changed role",
   scope_changed: "changed partner scope",
   deactivated: "turned access off",
   reactivated: "turned access back on",
+  signed_up: "signed up",
+  email_verified: "confirmed the email",
+  locked: "locked after too many wrong passwords",
+  password_changed: "changed the password",
+  password_reset: "had the password reset",
+  temporary_password_set: "got a temporary password",
 };
 
 function hrefFor(a: Activity): string | null {

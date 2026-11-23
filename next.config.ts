@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // PGlite (the local dev database) ships WebAssembly; load it from node_modules, don't bundle it.
+  // PGlite (tests and local smoke tests only) ships WebAssembly; load it from node_modules, don't bundle it.
   serverExternalPackages: ["@electric-sql/pglite"],
   poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },
@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
         ],
       },
       // Only the job board and job pages are for search engines.
-      ...["/admin/:path*", "/admin", "/me/:path*", "/me", "/api/:path*", "/signin", "/no-access", "/team-only", "/auth/:path*"].map((source) => ({ source, headers: [noindex] })),
+      ...["/admin/:path*", "/admin", "/me/:path*", "/me", "/api/:path*", "/signin", "/verify-email", "/forgot-password", "/reset-password", "/account/:path*", "/db-not-set-up", "/no-access", "/team-only", "/auth/:path*"].map((source) => ({ source, headers: [noindex] })),
     ];
   },
 };

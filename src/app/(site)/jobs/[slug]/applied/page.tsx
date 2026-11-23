@@ -2,15 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
-import { signIn } from "@/auth";
-import { signInMethods } from "@/auth.config";
+import { oauthMethods } from "@/auth.config";
 import { getDb } from "@/db/client";
 import { getAccount } from "@/lib/auth/session";
-import { isDevBypass } from "@/lib/auth/allow";
+import { emailConfigured } from "@/lib/server/email";
 import { jobForPage } from "@/lib/server/public-jobs";
 import { buttonClass } from "@/components/ui/button";
-import { GoogleButton } from "@/components/site/sign-in-buttons";
-import { setDevRole } from "@/app/dev-actions";
+import { ProviderButtons } from "@/components/auth/provider-buttons";
 
 export const metadata: Metadata = { title: "Application received", robots: { index: false, follow: false } };
 
@@ -22,7 +20,8 @@ export default async function AppliedPage({ params }: { params: Promise<{ slug: 
   if (!found) notFound();
   const { job } = found;
   const next = "/me/onboarding";
-  const methods = signInMethods();
+  const methods = oauthMethods();
+  const canSignUp = emailConfigured() || methods.length > 0;
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       <section className="space-y-4 text-center">
@@ -47,7 +46,7 @@ export default async function AppliedPage({ params }: { params: Promise<{ slug: 
             </Link>
           </div>
         </section>
-      ) : (
+      ) : canSignUp && !account ? (
         <section className="space-y-5 rounded-md border border-border bg-card px-6 py-7 sm:px-8">
           <div className="space-y-1.5 text-center">
             <h2 className="text-lg font-light text-foreground">Create your expert account</h2>
@@ -56,31 +55,15 @@ export default async function AppliedPage({ params }: { params: Promise<{ slug: 
             </p>
           </div>
           <div className="mx-auto max-w-sm space-y-3">
-            {isDevBypass() ? (
-              // Local development has no Google keys: the button previews the portal as the demo expert.
-              <form action={setDevRole}>
-                <input type="hidden" name="role" value="expert" />
-                <GoogleButton />
-                <p className="mt-2 text-center text-xs text-muted-foreground">Local development: opens the portal as the demo expert.</p>
-              </form>
-            ) : (
-              <form
-                action={async () => {
-                  "use server";
-                  await signIn("google", { redirectTo: `/auth/continue?next=${encodeURIComponent(next)}` });
-                }}
-              >
-                <GoogleButton />
-              </form>
-            )}
-            {methods.length > 1 ? (
-              <Link href={`/join?mode=signup&callbackUrl=${encodeURIComponent(next)}`} className="block text-center text-[13px] text-primary hover:underline">
-                Other ways to sign up
+            <ProviderButtons methods={methods} callbackUrl={next} verb="Sign up" />
+            {emailConfigured() ? (
+              <Link href={`/join?callbackUrl=${encodeURIComponent(next)}`} className={buttonClass(methods.length ? "secondary" : "primary", "md", "h-11 w-full")}>
+                Sign up with your email
               </Link>
             ) : null}
           </div>
         </section>
-      )}
+      ) : null}
 
       <p className="text-center text-[13px] text-muted-foreground">
         <Link href="/" className="hover:text-foreground">

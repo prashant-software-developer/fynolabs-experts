@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
-import { openLocalDbWithClient } from "@/db/local/open";
+import { openTestDb } from "./fixtures/db";
 import type { DB } from "@/db/client";
 import { ForbiddenError, type Role } from "@/lib/auth/permissions";
 import { createView, deleteView, getView, listViews, updateView } from "@/lib/server/views";
@@ -70,7 +70,7 @@ describe("saved views in the database", () => {
   const cfg = configFromParams({ domain: "Mathematics", status: "bench" });
 
   beforeAll(async () => {
-    ({ db, client } = await openLocalDbWithClient({ seed: false }));
+    ({ db, client } = await openTestDb());
   });
   afterAll(async () => {
     await client.close();

@@ -24,7 +24,7 @@ export function payProblem(text: string | null | undefined): string | null {
 
 const STOP = new Set(["the", "and", "labs", "lab", "data", "ai", "inc", "ltd", "llc", "group", "global", "experts", "expert", "partners", "partner", "technologies", "tech", "solutions", "services", "company", "co"]);
 
-/** The words of a partner's name worth looking for: the full name without "(demo)" and its first distinctive word. */
+/** The words of a partner's name worth looking for: the full name without any bracketed note and its first distinctive word. */
 export function partnerNameTerms(name: string | null | undefined): string[] {
   if (!name) return [];
   const core = name.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
