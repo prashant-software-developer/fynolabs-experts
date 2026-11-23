@@ -10,7 +10,7 @@ echo  changed records come across, nothing is copied twice, nothing is deleted.
 echo.
 
 where node >nul 2>nul
-if errorlevel 1 (
+if not "%ERRORLEVEL%"=="0" (
   echo Node.js is not installed. Install the LTS version from https://nodejs.org and run this again.
   pause
   exit /b 1
@@ -19,7 +19,7 @@ echo Node version:
 node -v
 
 node -e "const f=require('fs');try{process.exit(f.statSync('node_modules/.package-lock.json').mtimeMs>=f.statSync('package-lock.json').mtimeMs?0:1)}catch(e){process.exit(1)}"
-if errorlevel 1 (
+if not "%ERRORLEVEL%"=="0" (
   echo.
   echo Installing packages ^(first run, or after an update^). This takes a few minutes...
   call npm ci
@@ -31,7 +31,7 @@ if errorlevel 1 (
 )
 
 node -e "try{process.loadEnvFile('.env.local')}catch{};process.exit((process.env.DATABASE_URL||'').trim()?0:1)"
-if errorlevel 1 (
+if not "%ERRORLEVEL%"=="0" (
   echo.
   echo The new database isn't set up on this computer yet. Do this once:
   echo   1. Open https://neon.tech with the FynoLabs admin account and open the project "expert-hub".
@@ -61,7 +61,7 @@ echo Step 1 of 2: a dry run. It reads Engine and the new database, and changes n
 echo.
 set CONFIRM_DB=
 call npm run copy:engine -- --dry-run --source-env "..\Jobs - FynoLabs\.env" --source-key JOBS_DATABASE_URL --log-file "logs\copy-engine-latest.log"
-if errorlevel 1 (
+if not "%ERRORLEVEL%"=="0" (
   echo.
   echo The dry run stopped, so nothing was copied. Send Claude the file logs\copy-engine-latest.log
   echo ^(it has no passwords^).

@@ -16,6 +16,7 @@ import path from "node:path";
 import { loadEnv } from "./_env";
 import { describeDb } from "../src/lib/import/engine/env";
 import { DEFAULT_SYNC_URL, parseSyncArgs, scrub } from "../src/lib/import/fynolabs/runner";
+import { finish } from "./_exit";
 
 loadEnv();
 
@@ -130,10 +131,10 @@ for (const ev of ["uncaughtException", "unhandledRejection"] as const) {
 
 {
   main().then(
-    (code) => process.exit(code),
+    (code) => finish(code),
     () => {
       console.error("The sync stopped with an unexpected error (details hidden: they could include a secret).");
-      process.exit(1);
+      finish(1);
     },
   );
 }

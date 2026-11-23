@@ -18,6 +18,7 @@ import os from "node:os";
 import path from "node:path";
 import { loadEnv } from "./_env";
 import { describeDb, directUrl, parseArgs, preflight, resolveSourceUrl } from "../src/lib/import/engine/env";
+import { finish } from "./_exit";
 
 loadEnv();
 
@@ -164,9 +165,9 @@ for (const ev of ["uncaughtException", "unhandledRejection"] as const) {
 }
 
 main().then(
-  (code) => process.exit(code),
+  (code) => finish(code),
   (err) => {
     console.error("The copy stopped with an unexpected error.", err instanceof Error ? err.name : "");
-    process.exit(1);
+    finish(1);
   },
 );

@@ -3,6 +3,7 @@
 // outside `hub` (the guard in src/lib/migration-guard.ts).
 import { loadEnv, requireConfirm } from "./_env";
 import { MigrationGuardError, migrateNeon } from "../src/lib/server/migrate";
+import { finish } from "./_exit";
 
 loadEnv();
 
@@ -18,15 +19,15 @@ async function main() {
   } catch (e) {
     if (e instanceof MigrationGuardError) {
       console.error(e.message);
-      process.exit(1);
+      return finish(1);
     }
     const { describeError, scrubSecrets } = await import("../src/lib/server/db-connect");
     console.error(`Stopped: ${scrubSecrets(describeError(e), [url])}`);
-    process.exit(1);
+    return finish(1);
   }
 }
 
 main().catch(() => {
   console.error("Stopped with an unexpected error (details hidden: they could include the database address).");
-  process.exit(1);
+  finish(1);
 });

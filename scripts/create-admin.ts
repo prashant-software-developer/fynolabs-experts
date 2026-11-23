@@ -12,6 +12,7 @@ import os from "node:os";
 import readline from "node:readline";
 import { loadEnv } from "./_env";
 import { describeDb } from "../src/lib/import/engine/env";
+import { finish } from "./_exit";
 
 loadEnv();
 
@@ -221,12 +222,12 @@ async function main(): Promise<number> {
 }
 
 main().then(
-  (code) => process.exit(code),
+  (code) => finish(code),
   async (err) => {
     // Never print a connection string or a password: describe the error, then scrub it.
     const { describeError, scrubSecrets } = await import("../src/lib/server/db-connect");
     const msg = scrubSecrets(describeError(err), [process.env.DATABASE_URL ?? ""]);
     console.error(`\nStopped: ${msg}\nNothing secret was printed. Check the database address in .env.local and try again.`);
-    process.exit(1);
+    finish(1);
   },
 );
