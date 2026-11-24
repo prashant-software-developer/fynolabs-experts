@@ -431,7 +431,7 @@ const KIND_CLASS: Record<StatusKind, string> = {
 /** One badge style for every status: an uppercase label in a square 1px outline. */
 export function StatusBadge({ status, label, kind, title }: { status: string; label?: ReactNode; kind?: StatusKind; title?: string }) {
   return (
-    <span title={title} className={cn("eyebrow inline-flex shrink-0 items-center border px-2.5 py-1 leading-none whitespace-nowrap", KIND_CLASS[kind ?? statusKind(status)])}>
+    <span title={title} className={cn("eyebrow inline-flex shrink-0 items-center border px-2.5 py-1 whitespace-nowrap", KIND_CLASS[kind ?? statusKind(status)])}>
       {label ?? status.replace(/_/g, " ")}
     </span>
   );
@@ -487,10 +487,16 @@ export function AdminSheetSection({ label, info, actions, children }: { label: s
   );
 }
 
-/** Sticky bar on detail pages: Back on the left; Unsaved, other actions and Save on the right. */
+/**
+ * Sticky bar on detail pages: Back on the left; Unsaved, other actions and Save on the right. Its line and
+ * frosted background run the full width of the column (the ::before); its content lines up with the page.
+ */
 export function AdminDetailBar({ backHref, backLabel = "Back", dirty, children }: { backHref: string; backLabel?: string; dirty?: boolean; children?: ReactNode }) {
   return (
-    <div data-detail className="sticky top-0 z-20 -mx-5 mb-10 border-b border-border bg-background/80 backdrop-blur-xl md:-mx-10 lg:-mt-12 lg:mb-14">
+    <div
+      data-detail
+      className="sticky top-0 z-20 -mx-5 mb-[41px] before:absolute before:top-0 before:-bottom-px before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:border-b before:border-border before:bg-background/80 before:backdrop-blur-xl before:content-[''] md:-mx-10 md:mb-[57px] lg:-mt-12"
+    >
       <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-2 px-5 py-2.5 sm:gap-4 sm:py-4 md:px-10">
         <Link href={backHref} className="inline-flex h-10 shrink-0 items-center gap-2 border border-input bg-background px-4 text-small text-foreground transition-colors hover:border-foreground/40 max-[369px]:px-3">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" /> <span className="max-[369px]:sr-only">{backLabel}</span>
@@ -516,7 +522,7 @@ export function AdminDetailHeading({ eyebrow, title, badge, media, info, meta }:
       <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 sm:mt-6 sm:gap-x-4">
         <span className="flex min-w-0 items-center gap-3 sm:gap-4">
           {media}
-          <h1 className="min-w-0 text-[2rem] leading-tight font-light text-foreground [overflow-wrap:anywhere]">{title}</h1>
+          <h1 className="min-w-0 text-[2rem] leading-tight font-light text-foreground [overflow-wrap:anywhere] sm:text-heading">{title}</h1>
           {info ? <AdminInfo label="About this page">{info}</AdminInfo> : null}
         </span>
         {badge ? <span className="flex shrink-0 flex-wrap items-center gap-2">{badge}</span> : null}

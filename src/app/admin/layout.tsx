@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: { default: "FynoLabs admin", template
 
 /**
  * The admin frame (FynoLabs AdminPage): the sidebar on the left, the page beside it in a 1600px column
- * (1680px on detail pages), 20 → 40px gutters, 48px from the top. Phones: the sticky bar and menu.
+ * (detail pages too; their sticky bar's line runs the full width), 20 → 40px gutters, 48px from the top.
+ * Phones: the sticky bar and menu.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -24,8 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AdminThemeSync />
       <div data-admin className="min-h-screen bg-background text-foreground lg:flex">
         <Sidebar access={access} user={navUser} signOut={signOutNow} />
-        <div className="min-w-0 flex-1 px-5 pb-24 md:px-10 lg:pt-12">
-          <div className="mx-auto max-w-[1600px] has-[[data-detail]]:max-w-[1680px]">
+        <div className="min-w-0 flex-1 overflow-x-clip px-5 pb-24 md:px-10 lg:pt-12">
+          <div className="mx-auto max-w-[1600px]">
             <MobileBar access={access} user={navUser} signOut={signOutNow} />
             {user.role === "viewer" ? (
               <p className="mb-6 flex items-center gap-2 border-l-2 border-primary px-4 py-2 text-small text-muted-foreground">
