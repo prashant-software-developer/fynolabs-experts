@@ -51,11 +51,54 @@ Sign-up with a password needs email to be set up (Resend or SMTP, see [DEPLOY.md
 | Roles | Sign in as the recruiter you added: no money, no Team & access; jobs yes |
 | Phone width | Shrink the window on the sign-in page, a job page and the admin: everything stacks; the menu button opens the admin navigation |
 
+### CRM and operations (Phase 3b)
+
+| Page | Try this |
+|---|---|
+| Dashboard `/admin` | The tiles (accounts in pipeline, next steps due, open messages, visitors), **Coming up** (the next 7 days), **Overdue next steps**, accounts and applications by stage, new messages, recent account activity |
+| My work `/admin/my-work` | Your follow-ups due today or late, today's calendar, applicants to screen, prospects (press **Contacted**: a follow-up 3 days out appears on the expert). As admin, pick a teammate or Everyone |
+| Accounts `/admin/accounts` | Pipeline / Due now / Parked / All; filter by owner (Mine, a teammate, "Common (team)"), type, line, tag; click a row: the side panel, change the stage there; **Board**; **New account**. On an account: edit the next step and change the stage (Activity shows "Talking → Pilot"), **Log activity**, **Add person** (new or a lead you have), Calendar, Jobs & projects. `/admin/partners` opens Accounts |
+| Leads `/admin/leads` | Open / Won / Lost; filters (stage, type, source, account, follow-up due); click a row: edit, link to an account (its name becomes the company), set a follow-up date (it shows on the calendar and My work) |
+| Calendar `/admin/calendar` | Agenda, Week, Month (India time); **New event** with a time, an account, their side (or someone new: they join Leads at Call booked) and ours; **Mark done** on a call with an account: it's logged on the account's Activity; an event with no date shows under Unscheduled; next steps, follow-ups and job closing dates show read only |
+| Platforms `/admin/platforms` | Tabs; open one: referral link (Copy), jobs page, logo, reference links, the accounts and projects linked, referrals by outcome |
+| Projects `/admin/projects` | **New project** (code, partner, target, countries); on a project: Pipeline, People, Roles (link a job), Team, Tracks, Documents, Partner reports, Details (status, owner, rules). **Fee rules** only for admins and finance |
+| Messages `/admin/messages` | Open / Handled; open one: **Mark as handled**, write a reply and **Save draft** (it's there when you come back), **Open in email app** or **Copy reply**, then **I sent it** (recorded under Previous replies). With email set up, **Send** sends it |
+| Analytics `/admin/analytics` | 7 / 30 / 90 days and a date range: visitors by source per day, applications and messages, sources, top landing pages, pages and referrers |
+| Settings `/admin/settings` | Email replies: change the sign-off and save; a new reply on Messages starts with it |
+| Roles | As a viewer: everything reads, no New / Edit buttons, emails masked (`a•••@example.com`), no fee rules, no Settings. As an expert: every one of these pages is "This part is for the team" |
+
+### Smoke test on your computer without the real database
+
+For Claude or a developer: a throwaway PGlite folder with the fictional test data (never `DATABASE_URL`):
+
+```
+HUB_TEST_DB_DIR=.data/smoke SMOKE_PASSWORD=<10+ characters> npx tsx tests/smoke/seed-local.ts
+HUB_TEST_DB=pglite HUB_TEST_DB_DIR=.data/smoke AUTH_SECRET=<anything long> npm run dev
+```
+
+Sign in as `smoke.admin@example.com`, `smoke.viewer@example.com` or `smoke.expert@example.com` with that password. The seed fills both the CRM and the talent fixtures. The screenshots in `docs/screenshots/` come from this data at 1280 px (24 Nov 2026, the FynoLabs admin look): dashboard, dashboard-dark, experts, expert-detail, accounts, account-detail, leads, calendar, platforms, projects, campaigns, send-referrals, fees, job-radar, jobs, messages, analytics, settings-team, signin and job-board.
+
+The look to check against the FynoLabs admin: square corners, 1px hairlines and no shadows, light 40px page titles, uppercase outline badges, KPI tiles with the small line glyphs, the 282px sidebar with Search (Ctrl K), and the sun / moon switch in the profile menu (dark admin; the public pages stay light).
+
 Write down anything that looks off (a screenshot and the page name is enough) and send it to Claude.
+
+### Talent and outreach screens
+
+| Page | Try this |
+|---|---|
+| Experts → Pipelines | Switch the layout to **Pipelines**; change a card's stage; pick Rejected: it asks why first. The person's Timeline tab shows the change. |
+| One expert | **Pipelines** tab: add them to a job, set owner, track, next action; **Timeline**: add a note (the first line is the title); **Profile**: change outreach (writes the timeline) or tick Do not contact. |
+| Applications | Talent call tab, New: open one (side panel), Mark as handled; it moves to Handled. |
+| Send emails | New campaign → a group → Check who gets it (skipped people and why) → write it → Prepare draft → Approve → Send: "Email isn't set up yet". |
+| Send referrals | Pick a platform (the link fills in), Profile shared, tick someone without consent: refused unless "They agreed" is ticked. Then Sent referrals: change the outcome. |
+| Groups, Fees, Job radar | Add people by pasting emails; as admin or finance mark a fee invoiced (needs the number); publish a radar role: a draft, internal job opens. |
+| Roles | As a viewer everything is read-only with masked emails and no Fees; a member whose Team & access sections don't include a module sees "You don't have access to …". |
+
+To look at these screens without the real database, use the smoke test above (`HUB_TEST_DB=pglite`, never in production).
 
 ## The automated tests
 
-`npm test` runs everything on PGlite (a real Postgres inside Node), nothing on the network. The FynoLabs part: `tests/hub-sync-edge.test.ts` runs the edge function's logic (`tests/edge/hub-sync-logic.ts`, checked to be the same file as the main site's `supabase/functions/hub-sync/logic.ts`) against a copy of the FynoLabs schema (`tests/fixtures/fynolabs-schema.ts`, the live column lists of 23 Nov 2026) with fictional data; `tests/fynolabs-sync.test.ts` folds it into the hub after an Engine copy (one person in both, FynoLabs wins over Engine, hub edits kept, pipelines, companies, everything else, money, a second and third run, delete on request); `tests/fynolabs-runner.test.ts` runs `npm run sync:fynolabs`'s runner against a fake edge function over HTTP (dry run, real run, cursors, errors, the token never printed); `tests/pipeline.test.ts` checks that new public applications and sign-ups get a pipeline and a timeline.
+`npm test` runs everything on PGlite (a real Postgres inside Node), nothing on the network. The FynoLabs part: `tests/hub-sync-edge.test.ts` runs the edge function's logic (`tests/edge/hub-sync-logic.ts`, checked to be the same file as the main site's `supabase/functions/hub-sync/logic.ts`) against a copy of the FynoLabs schema (`tests/fixtures/fynolabs-schema.ts`, the live column lists of 23 Nov 2026) with fictional data; `tests/fynolabs-sync.test.ts` folds it into the hub after an Engine copy (one person in both, FynoLabs wins over Engine, hub edits kept, pipelines, companies, everything else, money, a second and third run, delete on request); `tests/fynolabs-runner.test.ts` runs `npm run sync:fynolabs`'s runner against a fake edge function over HTTP (dry run, real run, cursors, errors, the token never printed); `tests/pipeline.test.ts` checks that new public applications and sign-ups get a pipeline and a timeline. The CRM screens: `tests/crm-logic.test.ts` (India-time dates, due dates, stage order and lanes, filters, the project funnel, analytics series, per-section access) and `tests/crm-actions.test.ts` (every server action as each role on the fixtures in `tests/fixtures/crm-data.ts`: stage changes logged, contacts, calendar and mark done, platforms, projects and money-only fee rules, messages and drafts, my work, settings, viewer masking). The talent and outreach screens: `tests/talent.test.ts` (stage changes and the timeline, reject reasons, inbound, campaign recipients, referrals and consent, groups, fees, radar), `tests/talent-actions.test.ts` (the server actions as each role: viewers read-only, money, per-section access) and `tests/talent-rules.test.ts` (the pure rules).
 
 ## If something goes wrong
 

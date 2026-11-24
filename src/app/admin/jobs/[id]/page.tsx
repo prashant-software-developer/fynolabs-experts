@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
+import { canOpenSection } from "@/lib/auth/sections";
 import { requireUser } from "@/lib/auth/session";
+import { SectionBlocked } from "@/components/talent/bits";
 import { label } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";
 import { fmtDate } from "@/lib/format";
@@ -32,6 +34,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser();
+  if (!canOpenSection(user, "posted-jobs")) return <SectionBlocked title="Jobs" section="posted-jobs" />;
   const db = await getDb();
   const found = await getJob(db, id);
   if (!found) notFound();

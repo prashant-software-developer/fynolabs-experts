@@ -29,6 +29,7 @@ import { listPartners, listRequirements } from "@/lib/server/requirements";
 import { inviteToken } from "@/lib/server/tokens";
 import { siteUrl, utmLink } from "@/lib/site";
 import { ActivityList } from "@/components/activity-list";
+import { PostingSection } from "./posting";
 import { ApplyForm } from "@/components/jobs/apply-form";
 import { JobForm } from "@/components/jobs/job-form";
 import { ReasonChips, ScoreBar } from "@/components/match-bits";
@@ -85,6 +86,7 @@ export async function DetailsTab({ job, user, partnerName, requirementTitle }: {
             canSeeRateNote={money}
           />
         </Section>
+        <PostingSection jobId={job.id} user={user} />
         <Section title="Activity">
           <ActivityList items={activity} showEntity={false} />
         </Section>
@@ -114,6 +116,7 @@ export async function DetailsTab({ job, user, partnerName, requirementTitle }: {
         {job.summary ? <p className="mt-6 text-sm text-foreground/80">{job.summary}</p> : null}
         {job.description ? <pre className="prose-box mt-4">{job.description}</pre> : null}
       </Section>
+      <PostingSection jobId={job.id} user={user} />
       <Section title="Activity">
         <ActivityList items={activity} showEntity={false} />
       </Section>
@@ -139,7 +142,7 @@ function FieldCard({ f, i, last, jobId, open, manage }: { f: FieldDef; i: number
             {f.required ? <Badge tone="warning">Required</Badge> : null}
             {f.mapsTo ? <Badge tone="info">Fills: {PROFILE_KEY_INFO[f.mapsTo].label}</Badge> : null}
           </div>
-          <p className={cn("text-sm text-foreground", f.type === "section" && "font-medium", f.type === "consent" && "line-clamp-2 text-foreground/80")}>{f.label}</p>
+          <p className={cn("text-sm text-foreground", f.type === "section" && "font-normal", f.type === "consent" && "line-clamp-2 text-foreground/80")}>{f.label}</p>
           {f.helpText ? <p className="line-clamp-2 text-xs text-muted-foreground">{f.helpText}</p> : null}
           {f.options?.choices?.length ? <p className="text-xs text-muted-foreground">Choices: {f.options.choices.join(" · ")}</p> : null}
         </div>
@@ -174,7 +177,7 @@ function FieldCard({ f, i, last, jobId, open, manage }: { f: FieldDef; i: number
       </div>
       {manage ? (
         <details open={open} className="group border-t border-border">
-          <summary className="cursor-pointer list-none px-4 py-2 text-[13px] font-medium text-primary [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none px-4 py-2 text-small font-normal text-primary [&::-webkit-details-marker]:hidden">
             <span className="group-open:hidden">Edit question</span>
             <span className="hidden group-open:inline">Editing</span>
           </summary>
@@ -241,12 +244,12 @@ export async function FormTab({ job, user, fields, sp }: { job: Job; user: Curre
               { id: "edit", label: "Edit questions", href: base },
               { id: "preview", label: "Preview", href: `${base}&view=preview` },
             ].map((t) => (
-              <Link key={t.id} href={t.href} aria-current={view === t.id ? "page" : undefined} className={cn("inline-flex h-7 items-center rounded-[3px] px-3 text-[13px] transition-colors", view === t.id ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}>
+              <Link key={t.id} href={t.href} aria-current={view === t.id ? "page" : undefined} className={cn("inline-flex h-7 items-center px-3 text-small transition-colors", view === t.id ? "bg-foreground/[0.06] text-foreground" : "text-muted-foreground hover:text-foreground")}>
                 {t.label}
               </Link>
             ))}
           </div>
-          <p className="text-[13px] text-muted-foreground">Answers are saved on each application. Questions that fill a profile field also update the expert record.</p>
+          <p className="text-small text-muted-foreground">Answers are saved on each application. Questions that fill a profile field also update the expert record.</p>
         </div>
       ) : null}
       {view === "edit" ? (
@@ -334,7 +337,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
           <Link
             key={t.id}
             href={hrefWith(base, sp, { tab: "applicants", status: t.id || null, app: null, ok: null, error: null })}
-            className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors", status === t.id ? "border-foreground bg-foreground text-background" : "border-border text-foreground/75 hover:bg-secondary")}
+            className={cn("inline-flex h-8 items-center gap-1.5 border px-3 text-small transition-colors", status === t.id ? "border-foreground bg-foreground text-background" : "border-border text-foreground/75 hover:bg-secondary")}
           >
             {t.label}
             <span className="tabular text-xs opacity-70">{t.n}</span>
@@ -349,14 +352,14 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
           {manage && rows.length ? (
             <>
-              <span className="text-[13px] text-muted-foreground">Ticked:</span>
-              <Select form="bulk-apps" name="status" defaultValue="" options={APPLICATION_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Set status to..." className="h-8 w-auto text-[13px]" aria-label="New status" />
+              <span className="text-small text-muted-foreground">Ticked:</span>
+              <Select form="bulk-apps" name="status" defaultValue="" options={APPLICATION_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Set status to..." className="h-8 w-auto text-small" aria-label="New status" />
               <SubmitButton form="bulk-apps" size="sm" variant="secondary" pendingText="Saving...">
                 Apply
               </SubmitButton>
             </>
           ) : (
-            <span className="text-[13px] text-muted-foreground">{rows.length} shown</span>
+            <span className="text-small text-muted-foreground">{rows.length} shown</span>
           )}
           {can(user.role, "applications.export") && rows.length ? (
             <ButtonLink href={`/api/jobs/${job.id}/applicants${status ? `?status=${status}` : ""}`} size="sm" variant="secondary" className="ml-auto">
@@ -390,14 +393,14 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                 const cv = fileOf(fields, answers);
                 const src = r.app.source;
                 return (
-                  <Tr key={r.app.id} className={panel?.app.id === r.app.id ? "bg-secondary/60" : undefined}>
+                  <Tr key={r.app.id} className={panel?.app.id === r.app.id ? "bg-foreground/[0.06]" : undefined}>
                     {manage ? (
                       <Td>
                         <input form="bulk-apps" type="checkbox" name="ids" value={r.app.id} aria-label={`Select ${r.expertName}`} className="h-4 w-4 rounded-sm align-middle" />
                       </Td>
                     ) : null}
                     <Td className="max-w-52 min-w-40">
-                      <Link href={hrefWith(base, sp, { tab: "applicants", app: r.app.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
+                      <Link href={hrefWith(base, sp, { tab: "applicants", app: r.app.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
                         {r.expertName}
                       </Link>
                       <div className="truncate text-xs text-muted-foreground">{contact ? r.expertEmail : maskEmail(r.expertEmail)}</div>
@@ -411,7 +414,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                     ))}
                     <Td className="whitespace-nowrap">
                       {cv && canCv && r.cvConsent !== "no" ? (
-                        <a href={`/api/files/${cv.fileId}`} className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline">
+                        <a href={`/api/files/${cv.fileId}`} className="inline-flex items-center gap-1 text-small text-primary hover:underline">
                           <FileText className="h-3.5 w-3.5" /> CV
                         </a>
                       ) : cv ? (
@@ -428,7 +431,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                           <input type="hidden" name="jobId" value={job.id} />
                           <input type="hidden" name="one" value={r.app.id} />
                           <input type="hidden" name="returnTo" value={here} />
-                          <AutoSubmitSelect name="status" defaultValue={r.app.status} className="control h-8 w-32 text-[13px]" aria-label={`Status of ${r.expertName}`}>
+                          <AutoSubmitSelect name="status" defaultValue={r.app.status} className="control h-8 w-32 text-small" aria-label={`Status of ${r.expertName}`}>
                             {APPLICATION_STATUSES.map((s) => (
                               <option key={s} value={s}>
                                 {label(s)}
@@ -490,8 +493,8 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
               <input type="hidden" name="jobId" value={job.id} />
               <input type="hidden" name="one" value={a.app.id} />
               <input type="hidden" name="returnTo" value={here} />
-              <span className="text-[13px] text-muted-foreground">Status</span>
-              <AutoSubmitSelect name="status" defaultValue={a.app.status} className="control h-8 w-auto text-[13px]" aria-label="Status">
+              <span className="text-small text-muted-foreground">Status</span>
+              <AutoSubmitSelect name="status" defaultValue={a.app.status} className="control h-8 w-auto text-small" aria-label="Status">
                 {APPLICATION_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {label(s)}
@@ -502,9 +505,9 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
           ) : (
             <StatusBadge value={a.app.status} />
           )}
-          <span className="text-[13px] text-muted-foreground">CV consent:</span>
+          <span className="text-small text-muted-foreground">CV consent:</span>
           <StatusBadge value={a.cvConsent} />
-          <span className="text-[13px] text-muted-foreground">· Expert status:</span>
+          <span className="text-small text-muted-foreground">· Expert status:</span>
           <StatusBadge value={a.expertStatus} />
         </div>
         <DefinitionList
@@ -622,7 +625,7 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
                         </Td>
                       ) : null}
                       <Td className="min-w-48">
-                        <Link href={`/admin/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
+                        <Link href={`/admin/experts/${m.expertId}`} className="font-normal text-foreground hover:text-primary">
                           {m.expert.fullName}
                         </Link>
                         <div className="text-xs text-muted-foreground">{[m.expert.domain, m.expert.country].filter(Boolean).join(" · ") || "–"}</div>
@@ -700,7 +703,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
     <Stack>
       <Section title="Public link" description={job.visibility === "internal" ? "Internal: only the team can open this page." : job.visibility === "unlisted" ? "Unlisted: not on the job board, but anyone with the link can apply." : "Public: listed on the job board while the job is open."}>
         <div className="flex flex-wrap items-center gap-2">
-          <Input value={url} readOnly aria-label="Public link" className="min-w-0 flex-1 font-mono text-[13px]" />
+          <Input value={url} readOnly aria-label="Public link" className="min-w-0 flex-1 font-mono text-small" />
           <CopyButton value={url} label="Copy link" />
           <a href={`/jobs/${job.slug}`} target="_blank" rel="noreferrer" className={buttonClass("ghost", "sm")}>
             <ExternalLink className="h-3.5 w-3.5" /> Open
@@ -712,7 +715,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
         <Section title="Status" description="Open takes applications. Paused shows the page without the form. Closed says it no longer accepts applications.">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] text-muted-foreground">Now:</span>
+              <span className="text-small text-muted-foreground">Now:</span>
               <StatusBadge value={job.status} />
               <span className="mx-2 h-4 w-px bg-border" />
               {statusBtn("open", job.status === "draft" ? "Open (publish)" : "Open", "primary")}
@@ -740,12 +743,12 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
             <input type="hidden" name="returnTo" value={here} />
             <input type="hidden" name="featuredSet" value="1" />
             <fieldset className="space-y-2">
-              <legend className="mb-1 text-[13px] font-medium text-foreground/80">Who can see it</legend>
+              <legend className="mb-1 eyebrow text-muted-foreground">Who can see it</legend>
               {JOB_VISIBILITY.map((v) => (
                 <label key={v} className="flex cursor-pointer items-start gap-2.5 text-sm text-foreground/85">
                   <input type="radio" name="visibility" value={v} defaultChecked={job.visibility === v} className="mt-0.5 h-4 w-4" />
                   <span>
-                    <span className="font-medium text-foreground">{label(v)}</span>{" "}
+                    <span className="font-normal text-foreground">{label(v)}</span>{" "}
                     <span className="text-muted-foreground">{v === "public" ? "on the job board and in Google Jobs" : v === "unlisted" ? "only people with the link" : "only the team (preview)"}</span>
                   </span>
                 </label>
@@ -812,7 +815,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
         </Table>
         <form method="get" className="space-y-3 border-t border-border px-5 py-4">
           <input type="hidden" name="tab" value="share" />
-          <div className="text-[13px] font-medium text-foreground/80">Custom link</div>
+          <div className="eyebrow text-muted-foreground">Custom link</div>
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
             <Input name="us" defaultValue={custom.source} placeholder="Source, e.g. reddit" aria-label="utm_source" />
             <Input name="um" defaultValue={custom.medium} placeholder="Medium, e.g. community" aria-label="utm_medium" />
@@ -821,7 +824,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
           </div>
           {customLink ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Input value={customLink} readOnly aria-label="Custom link" className="min-w-0 flex-1 font-mono text-[13px]" />
+              <Input value={customLink} readOnly aria-label="Custom link" className="min-w-0 flex-1 font-mono text-small" />
               <CopyButton value={customLink} />
             </div>
           ) : null}

@@ -24,13 +24,13 @@ export default function DatabaseNotSetUpPage() {
           <li className="flex gap-3">
             <span className="tabular w-5 shrink-0 text-primary">2.</span>
             <span>
-              Press <span className="text-foreground">Connect</span>, keep the main branch, and copy the connection string. It starts with <code className="text-[13px]">postgresql://</code>
+              Press <span className="text-foreground">Connect</span>, keep the main branch, and copy the connection string. It starts with <code className="text-small">postgresql://</code>
             </span>
           </li>
           <li className="flex gap-3">
             <span className="tabular w-5 shrink-0 text-primary">3.</span>
             <span>
-              In the Expert Hub folder, open <code className="text-[13px]">.env.local</code> in Notepad (or create it) and add one line: <code className="text-[13px] break-all">DATABASE_URL=the string you copied</code>
+              In the Expert Hub folder, open <code className="text-small">.env.local</code> in Notepad (or create it) and add one line: <code className="text-small break-all">DATABASE_URL=the string you copied</code>
             </span>
           </li>
           <li className="flex gap-3">

@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ExternalLink, Plus, Star } from "lucide-react";
+import { ExternalLink, Plus, Radar, Star } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
+import { canOpenSection } from "@/lib/auth/sections";
 import { requireUser } from "@/lib/auth/session";
+import { SectionBlocked } from "@/components/talent/bits";
 import { JOB_VISIBILITY, label } from "@/lib/constants";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { fmtDate } from "@/lib/format";
@@ -30,6 +32,7 @@ const VIEWS = [
 export default async function JobsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
   const user = await requireUser();
+  if (!canOpenSection(user, "posted-jobs")) return <SectionBlocked title="Jobs" section="posted-jobs" />;
   const db = await getDb();
   const view = one(sp.view);
   const q = one(sp.q).slice(0, 100);
@@ -50,6 +53,11 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         subtitle="Job openings with their own application form and public link. Applicants land in the hub as experts."
         actions={
           <>
+            {canOpenSection(user, "job-radar") ? (
+              <ButtonLink href="/admin/jobs/radar" variant="secondary">
+                <Radar className="h-4 w-4" /> Job radar
+              </ButtonLink>
+            ) : null}
             <ButtonLink href="/" variant="secondary" target="_blank">
               <ExternalLink className="h-4 w-4" /> Job board
             </ButtonLink>
@@ -115,7 +123,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 return (
                   <Tr key={job.id}>
                     <Td className="min-w-64">
-                      <Link href={`/admin/jobs/${job.id}`} className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary">
+                      <Link href={`/admin/jobs/${job.id}`} className="inline-flex items-center gap-1.5 font-normal text-foreground hover:text-primary">
                         {job.featured ? <Star className="h-3.5 w-3.5 fill-current text-warning" aria-label="Featured" /> : null}
                         {job.title}
                       </Link>

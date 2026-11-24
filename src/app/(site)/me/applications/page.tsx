@@ -40,11 +40,11 @@ export default async function MyApplicationsPage() {
               <Tr key={a.id}>
                 <Td className="min-w-56">
                   {a.linkable ? (
-                    <Link href={`/jobs/${a.slug}`} className="font-medium text-foreground hover:text-primary">
+                    <Link href={`/jobs/${a.slug}`} className="font-normal text-foreground hover:text-primary">
                       {a.title}
                     </Link>
                   ) : (
-                    <span className="font-medium text-foreground">{a.title}</span>
+                    <span className="font-normal text-foreground">{a.title}</span>
                   )}
                 </Td>
                 <Td className="whitespace-nowrap">{fmtDate(a.createdAt)}</Td>

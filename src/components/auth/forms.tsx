@@ -22,7 +22,9 @@ function Submit({ children, pending: pendingText, variant = "primary" }: { child
 
 function EmailInput({ defaultValue, invalid, autoFocus, describedBy }: { defaultValue?: string; invalid?: boolean; autoFocus?: boolean; describedBy?: string }) {
   return (
+    // Password managers and browser autofill add inline styles before React hydrates.
     <input
+      suppressHydrationWarning
       id="email"
       name="email"
       type="email"
@@ -55,10 +57,10 @@ export function SignInForm({ callbackUrl, email }: { callbackUrl: string | null;
       </Field>
       <div className="space-y-1.5">
         <div className="flex items-baseline justify-between gap-3">
-          <label htmlFor="password" className="block text-[13px] font-medium text-foreground/80">
+          <label htmlFor="password" className="eyebrow block text-muted-foreground">
             Password
           </label>
-          <Link href="/forgot-password" className="text-[13px] text-primary underline-offset-4 hover:underline">
+          <Link href="/forgot-password" className="text-small text-primary underline-offset-4 hover:underline">
             Forgot password?
           </Link>
         </div>
@@ -89,7 +91,7 @@ export function SignUpForm({ callbackUrl, consentText }: { callbackUrl: string |
         <PasswordInput id="password2" name="password2" autoComplete="new-password" invalid={Boolean(e.password2)} />
       </Field>
       <div className="space-y-1.5">
-        <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed text-foreground/85">
+        <label className="flex cursor-pointer items-start gap-3 text-small leading-relaxed text-foreground/85">
           <input type="checkbox" name="consent" value="yes" required className="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-input" aria-invalid={e.consent ? true : undefined} />
           <span>{consentText}</span>
         </label>
@@ -144,7 +146,7 @@ export function VerifyForm({ email, next }: { email: string | null; next: string
 function ResendButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className="text-[13px] text-primary underline-offset-4 hover:underline disabled:opacity-50">
+    <button type="submit" disabled={pending} className="text-small text-primary underline-offset-4 hover:underline disabled:opacity-50">
       {pending ? "Sending..." : "Send a new code"}
     </button>
   );

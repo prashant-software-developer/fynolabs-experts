@@ -22,12 +22,12 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="space-y-5 text-sm leading-relaxed text-foreground/85">
             <div className="space-y-1">
-              <p className="font-medium text-foreground">On the FynoLabs team?</p>
+              <p className="font-normal text-foreground">On the FynoLabs team?</p>
               <p className="text-muted-foreground">Ask your FynoLabs admin to reset it. They'll give you a temporary password.</p>
             </div>
             <div className="space-y-3">
               <div className="space-y-1">
-                <p className="font-medium text-foreground">An expert?</p>
+                <p className="font-normal text-foreground">An expert?</p>
                 <p className="text-muted-foreground">{google ? "Sign in with Google using the same email." : `Write to ${contactEmail()} from the email you signed up with.`}</p>
               </div>
               {google ? <ProviderButtons methods={["google"]} callbackUrl={null} /> : null}

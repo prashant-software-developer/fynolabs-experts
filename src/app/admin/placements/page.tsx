@@ -112,7 +112,7 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
                       <Tr key={r.p.id}>
                         <Td>
                           {r.p.expertId ? (
-                            <Link href={`/admin/experts/${r.p.expertId}`} className="font-medium text-foreground hover:text-primary">
+                            <Link href={`/admin/experts/${r.p.expertId}`} className="font-normal text-foreground hover:text-primary">
                               {r.expertName}
                             </Link>
                           ) : (
@@ -165,7 +165,7 @@ function TotalsTable({ rows, first, money }: { rows: { key: string; label: strin
       <TBody>
         {rows.map((r) => (
           <Tr key={r.key}>
-            <Td className="font-medium text-foreground">
+            <Td className="font-normal text-foreground">
               {r.label} {money ? <span className="text-xs font-normal text-muted-foreground/70">{r.currency}</span> : null}
             </Td>
             <Td className="tabular text-right">{r.count}</Td>

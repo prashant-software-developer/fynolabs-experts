@@ -59,7 +59,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               Clear
             </Link>
           ) : null}
-          <span className="ml-auto text-[13px] text-muted-foreground">{rows.length} shown</span>
+          <span className="ml-auto text-small text-muted-foreground">{rows.length} shown</span>
         </form>
         {rows.length ? (
           <Table>
@@ -77,7 +77,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                 return (
                   <Tr key={s.sub.id}>
                     <Td className="min-w-40">
-                      <Link href={`/admin/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
+                      <Link href={`/admin/experts/${s.sub.expertId}`} className="font-normal text-foreground hover:text-primary">
                         {s.expertName}
                       </Link>
                       <div className="mt-0.5">

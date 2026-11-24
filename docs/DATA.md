@@ -163,7 +163,7 @@ People deleted on request in the hub are left out of every copy table (their pro
 
 ## Roles: who sees what
 
-Set in **Settings → Team & access** (admins), enforced on the server for every page, action and download (`src/lib/auth/permissions.ts`).
+Set in **Settings → Team & access** (admins), enforced on the server for every page, action and download (`src/lib/auth/permissions.ts`). On top of the role, a team member's `sections` (copied from the FynoLabs admin) limit which modules they open when the list is filled in (`src/lib/auth/sections.ts`; empty = the role decides; admins open everything).
 
 | | Admin | Recruiter | Pod lead | Finance | Viewer |
 |---|---|---|---|---|---|
@@ -183,7 +183,13 @@ Set in **Settings → Team & access** (admins), enforced on the server for every
 | Address lines (from the jobs site) | yes | yes | yes | yes | no |
 | Placements CSV export | yes | no | no | yes | no |
 | Imports | jobs sync + CSV | CSV (with preview) | no | no | no |
-| Partners: add, edit | yes | no | no | no | no |
+| Partners: add, edit (the old Partners form) | yes | no | no | no | no |
+| Accounts, leads, calendar: add, edit, stages, log activity | yes | yes | no | no | no |
+| Platforms, projects (tracks, team, documents): add, edit | yes | yes | no | no | no |
+| Project fee rules (money) | yes, edit | no | no | yes, edit | no |
+| Messages: handled, reply drafts, replies | yes | yes | no | no | no (sender email masked) |
+| Leads' email addresses | yes | yes | yes | yes | masked |
+| Delete accounts, leads, events, platforms, projects, messages | yes | no | no | no | no |
 | Team & access | yes | no | no | no | no |
 | Saved views | save, share, change anyone's | save, share | save, share | save, share | save personal |
 | Jobs: read, applicants, matches | yes | yes | yes | yes | yes (email and phone masked) |

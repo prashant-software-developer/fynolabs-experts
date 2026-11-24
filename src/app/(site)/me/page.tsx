@@ -49,11 +49,11 @@ export default async function MePage({ searchParams }: { searchParams: Promise<S
             <Badge tone="success">Ready for matching</Badge>
           )}
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={score.percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completeness">
-          <div className="h-1.5 rounded-full bg-primary" style={{ width: `${score.percent}%` }} />
+        <div className="h-1.5 overflow-hidden bg-secondary" role="progressbar" aria-valuenow={score.percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completeness">
+          <div className="h-1.5 bg-primary" style={{ width: `${score.percent}%` }} />
         </div>
         {score.missing.length ? (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             Still missing:{" "}
             {score.missing.map((m, i) => (
               <span key={m.label}>
@@ -66,7 +66,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<S
             .
           </p>
         ) : null}
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           {apps.length ? (
             <>
               {apps.length} {apps.length === 1 ? "application" : "applications"} ·{" "}
@@ -175,7 +175,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<S
             </Notice>
           ) : (
             <form action={requestMyDeletion} className="space-y-2">
-              <label htmlFor="del-note" className="block text-[13px] text-muted-foreground">
+              <label htmlFor="del-note" className="block text-small text-muted-foreground">
                 Anything we should know? (optional)
               </label>
               <textarea id="del-note" name="note" rows={2} maxLength={500} className="control" />

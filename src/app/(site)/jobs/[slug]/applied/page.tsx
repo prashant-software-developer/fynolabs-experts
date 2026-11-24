@@ -65,7 +65,7 @@ export default async function AppliedPage({ params }: { params: Promise<{ slug: 
         </section>
       ) : null}
 
-      <p className="text-center text-[13px] text-muted-foreground">
+      <p className="text-center text-small text-muted-foreground">
         <Link href="/" className="hover:text-foreground">
           Back to all open roles
         </Link>

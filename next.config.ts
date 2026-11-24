@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // PGlite (tests and local smoke tests only) ships WebAssembly; load it from node_modules, don't bundle it.
+  devIndicators: false,
   serverExternalPackages: ["@electric-sql/pglite"],
   poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },

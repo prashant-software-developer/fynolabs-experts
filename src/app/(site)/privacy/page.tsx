@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       <dl className="divide-y divide-border rounded-md border border-border bg-card">
         {items.map(([t, d]) => (
           <div key={t} className="space-y-1.5 px-6 py-5">
-            <dt className="text-[15px] font-medium text-foreground">{t}</dt>
+            <dt className="text-[15px] font-normal text-foreground">{t}</dt>
             <dd className="text-sm leading-relaxed text-foreground/75">{d}</dd>
           </div>
         ))}

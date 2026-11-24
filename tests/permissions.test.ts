@@ -48,6 +48,20 @@ const EXPECTED: Record<Role, Action[]> = {
     "applications.export",
     "views.save",
     "views.share",
+    // Talent and outreach screens: campaigns, referrals, groups, job radar (no fees, no group delete).
+    "campaigns.manage",
+    "campaigns.approve",
+    "referrals.manage",
+    "groups.manage",
+    "radar.manage",
+    // CRM and operations (Phase 3b)
+    "crm.read",
+    "crm.edit",
+    "platforms.manage",
+    "projects.manage",
+    "messages.read",
+    "messages.manage",
+    "analytics.read",
   ],
   pod_lead: [
     "experts.read",
@@ -63,6 +77,9 @@ const EXPECTED: Record<Role, Action[]> = {
     "applications.read",
     "views.save",
     "views.share",
+    "crm.read",
+    "messages.read",
+    "analytics.read",
   ],
   finance: [
     "experts.read",
@@ -80,10 +97,15 @@ const EXPECTED: Record<Role, Action[]> = {
     "jobs.read",
     "jobs.rate_note",
     "applications.read",
+    "fees.manage",
     "views.save",
     "views.share",
+    "crm.read",
+    "projects.fees",
+    "messages.read",
+    "analytics.read",
   ],
-  viewer: ["experts.read", "requirements.read", "submissions.read", "placements.read", "partners.read", "jobs.read", "applications.read", "views.save"],
+  viewer: ["experts.read", "requirements.read", "submissions.read", "placements.read", "partners.read", "jobs.read", "applications.read", "views.save", "crm.read", "messages.read", "analytics.read"],
 };
 
 describe("permissions matrix", () => {

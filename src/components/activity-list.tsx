@@ -32,7 +32,28 @@ const VERBS: Record<string, string> = {
   password_changed: "changed the password",
   password_reset: "had the password reset",
   temporary_password_set: "got a temporary password",
+  // CRM and operations (Phase 3b)
+  stage_changed: "moved stage",
+  activity_logged: "logged an activity",
+  deleted: "deleted",
+  marked_done: "marked done",
+  handled: "marked handled",
+  reopened: "marked open",
+  draft_saved: "saved a reply draft",
+  draft_discarded: "discarded a reply draft",
+  reply_sent: "replied",
+  reply_logged: "recorded a reply",
+  reply_failed: "reply failed",
+  tracks_saved: "changed tracks",
+  team_saved: "changed the team",
+  documents_saved: "changed required documents",
+  fee_rules_saved: "changed fee rules",
+  linked_to_project: "linked to a project",
+  unlinked_from_project: "unlinked from its project",
 };
+
+/** Entity names that read differently from the value lists in constants (companies are "Accounts" since Phase 3b). */
+const ENTITY_LABELS: Record<string, string> = { partner: "Account", calendar_event: "Calendar event", setting: "Setting" };
 
 function hrefFor(a: Activity): string | null {
   const d = (a.detail ?? {}) as Record<string, unknown>;
@@ -46,7 +67,19 @@ function hrefFor(a: Activity): string | null {
     case "placement":
       return `/admin/placements/${a.entityId}`;
     case "partner":
-      return `/admin/partners`;
+      return a.action === "deleted" ? null : `/admin/accounts/${a.entityId}`;
+    case "contact":
+      return a.action === "deleted" ? null : `/admin/leads?view=${a.entityId}`;
+    case "calendar_event":
+      return a.action === "deleted" ? null : `/admin/calendar?event=${a.entityId}`;
+    case "platform":
+      return a.action === "deleted" ? null : `/admin/platforms/${a.entityId}`;
+    case "project":
+      return a.action === "deleted" ? null : `/admin/projects/${a.entityId}`;
+    case "message":
+      return a.action === "deleted" ? null : `/admin/messages?view=${a.entityId}`;
+    case "setting":
+      return "/admin/settings";
     case "team_member":
       return `/admin/settings/team`;
     default:
@@ -57,7 +90,7 @@ function hrefFor(a: Activity): string | null {
 function describe(a: Activity): string {
   const d = (a.detail ?? {}) as Record<string, unknown>;
   const verb = VERBS[a.action] ?? a.action.replace(/_/g, " ");
-  const bits: string[] = [`${label(a.entityType)} ${verb}`];
+  const bits: string[] = [`${ENTITY_LABELS[a.entityType] ?? label(a.entityType)} ${verb}`];
   if (d.from && d.to) bits.push(`${label(String(d.from))} → ${label(String(d.to))}`);
   else if (d.to) bits.push(label(String(d.to)));
   if (Array.isArray(d.fields) && d.fields.length) bits.push(`(${(d.fields as string[]).slice(0, 6).join(", ")}${d.fields.length > 6 ? ", ..." : ""})`);

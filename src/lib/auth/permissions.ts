@@ -64,7 +64,25 @@ export type Action =
   | "applications.export"
   | "views.save"
   | "views.share"
-  | "views.manage_any";
+  | "views.manage_any"
+  // Talent and outreach screens (Phase 3b): campaigns, referrals, groups, fees, job radar.
+  | "campaigns.manage"
+  | "campaigns.approve"
+  | "referrals.manage"
+  | "groups.manage"
+  | "groups.delete"
+  | "fees.manage"
+  | "radar.manage"
+  // CRM and operations (Phase 3b): companies, contacts, calendar, platforms, projects, messages, analytics.
+  | "crm.read"
+  | "crm.edit"
+  | "crm.delete"
+  | "platforms.manage"
+  | "projects.manage"
+  | "projects.fees"
+  | "messages.read"
+  | "messages.manage"
+  | "analytics.read";
 
 const ALL = ROLES;
 const A: Role[] = ["admin"];
@@ -111,6 +129,24 @@ export const MATRIX: Record<Action, readonly Role[]> = {
   "views.save": ALL, // personal saved views are a preference, not a record change
   "views.share": ["admin", "recruiter", "pod_lead", "finance"],
   "views.manage_any": A,
+  // Reading these screens needs no extra right (experts.read / jobs.read; fees need money.read).
+  "campaigns.manage": AR, // templates, prepare a campaign, cancel it
+  "campaigns.approve": AR, // approve a prepared draft (as in the FynoLabs admin: whoever may send)
+  "referrals.manage": AR, // record referrals, change outcomes
+  "groups.manage": AR, // create, rename, add and remove members
+  "groups.delete": A,
+  "fees.manage": AF, // mark fees invoiced / paid / void, fee rules
+  "radar.manage": AR, // approve, discard, restore; publishing also needs jobs.manage
+  // CRM and operations (Phase 3b). Contact details stay masked for viewers; fee rules are money.
+  "crm.read": ALL, // companies, contacts, calendar, my work
+  "crm.edit": AR, // add and edit companies and contacts, change stages, log activity, calendar events
+  "crm.delete": A, // delete companies, contacts, events, platforms, projects, messages
+  "platforms.manage": AR,
+  "projects.manage": AR, // projects, tracks, team, required documents
+  "projects.fees": AF, // a project's fee rules (money)
+  "messages.read": ALL, // sender email masked for viewers
+  "messages.manage": AR, // mark handled, reply drafts, replies
+  "analytics.read": ALL,
 };
 
 /** Actions a pod lead only has for the partners in their scope. */
@@ -155,6 +191,22 @@ export const ACTION_LABELS: Record<Action, string> = {
   "views.save": "save views",
   "views.share": "share views",
   "views.manage_any": "change other people's views",
+  "campaigns.manage": "prepare emails to experts",
+  "campaigns.approve": "approve emails to experts",
+  "referrals.manage": "record referrals",
+  "groups.manage": "change groups",
+  "groups.delete": "delete groups",
+  "fees.manage": "change fees",
+  "radar.manage": "change job radar roles",
+  "crm.read": "see accounts and contacts",
+  "crm.edit": "change accounts, contacts or the calendar",
+  "crm.delete": "delete records",
+  "platforms.manage": "add or edit platforms",
+  "projects.manage": "add or edit projects",
+  "projects.fees": "change fee rules",
+  "messages.read": "see messages",
+  "messages.manage": "handle or answer messages",
+  "analytics.read": "see analytics",
 };
 
 export type PermissionCtx = {

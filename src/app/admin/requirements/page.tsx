@@ -70,7 +70,7 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
               {rows.map((r) => (
                 <Tr key={r.req.id}>
                   <Td className="min-w-56">
-                    <Link href={`/admin/requirements/${r.req.id}`} className="font-medium text-foreground hover:text-primary">
+                    <Link href={`/admin/requirements/${r.req.id}`} className="font-normal text-foreground hover:text-primary">
                       {r.req.title}
                     </Link>
                     {r.req.externalRef ? <div className="text-xs text-muted-foreground">{r.req.externalRef}</div> : null}

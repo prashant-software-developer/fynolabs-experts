@@ -21,7 +21,7 @@ export function ExpertSummary({ e, compact, money = false, contact = true }: { e
           <StatusBadge value={e.cvConsent} prefix="CV consent:" />
           {e.domain ? <span className="text-xs text-muted-foreground">{e.domain}</span> : null}
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-small text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <MapPin className="h-3.5 w-3.5" />
             {place(e)}

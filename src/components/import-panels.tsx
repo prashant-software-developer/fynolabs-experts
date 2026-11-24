@@ -40,7 +40,7 @@ export function JobsSyncPanel({ available }: { available: boolean }) {
               </ul>
             ) : null}
             {!result.dryRun ? (
-              <Link href="/admin/experts?source=jobs_site" className="mt-2 inline-block font-medium underline">
+              <Link href="/admin/experts?source=jobs_site" className="mt-2 inline-block font-normal underline">
                 See jobs-site experts
               </Link>
             ) : null}
@@ -128,7 +128,7 @@ export function CsvImportPanel() {
         done.ok ? (
           <Notice tone="success" title="Import finished">
             {done.created} created · {done.updated} filled in · {done.unchanged} unchanged · {done.duplicates} left for review · {done.skipped} skipped.{" "}
-            <Link href={`/admin/experts?source=${done.kind}`} className="font-medium underline">
+            <Link href={`/admin/experts?source=${done.kind}`} className="font-normal underline">
               See them
             </Link>
           </Notice>
@@ -171,7 +171,7 @@ export function CsvImportPanel() {
                     <tr key={r.row}>
                       <td className="tabular px-3 py-2 text-muted-foreground">{r.row}</td>
                       <td className="px-3 py-2">
-                        <div className="font-medium text-foreground">{r.name}</div>
+                        <div className="font-normal text-foreground">{r.name}</div>
                         {r.email ? <div className="text-xs text-muted-foreground">{r.email}</div> : null}
                       </td>
                       <td className="px-3 py-2">

@@ -27,7 +27,7 @@ export function ColumnPicker({ selected }: { selected: string[] }) {
         <Columns3 className="h-3.5 w-3.5" aria-hidden /> Columns
         <span className="tabular text-muted-foreground">{selected.length + 1}</span>
       </summary>
-      <div className="absolute left-0 z-40 mt-1 w-56 rounded-md border border-border bg-popover p-2 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)]" aria-busy={pending}>
+      <div className="absolute left-0 z-40 mt-1 w-56 border border-border bg-popover p-2" aria-busy={pending}>
         <p className="eyebrow px-2 pt-1 pb-2 text-muted-foreground">Show columns</p>
         <label className="flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground">
           <input type="checkbox" checked disabled className="h-4 w-4" /> Name (always)
@@ -38,7 +38,7 @@ export function ColumnPicker({ selected }: { selected: string[] }) {
             {c.label}
           </label>
         ))}
-        <div className="mt-1 flex justify-between border-t border-border px-2 pt-2 text-[13px]">
+        <div className="mt-1 flex justify-between border-t border-border px-2 pt-2 text-small">
           <button type="button" onClick={() => apply([...DEFAULT_COLUMNS])} className="text-muted-foreground hover:text-foreground">
             Reset
           </button>

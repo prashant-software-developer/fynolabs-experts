@@ -37,7 +37,7 @@ export function Pagination({
       </Link>
     );
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-[13px] text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-small text-muted-foreground">
       <div className="flex items-center gap-4">
         <span className="tabular">
           {from}–{to} of {total}
@@ -47,7 +47,7 @@ export function Pagination({
             <span className="mr-1 hidden sm:inline">Rows</span>
             {sizes.map((s) =>
               s === pageSize ? (
-                <span key={s} className="tabular inline-flex h-7 min-w-8 items-center justify-center rounded-md bg-secondary px-2 font-medium text-foreground" aria-current="true">
+                <span key={s} className="tabular inline-flex h-7 min-w-8 items-center justify-center rounded-md bg-secondary px-2 font-normal text-foreground" aria-current="true">
                   {s}
                 </span>
               ) : (

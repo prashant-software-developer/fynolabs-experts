@@ -22,7 +22,7 @@ export default async function NoAccessPage() {
           </p>
         </div>
         <form action={signOutNow}>
-          <button className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary/70">
+          <button className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-normal text-foreground transition-colors hover:bg-secondary/70">
             Sign out
           </button>
         </form>

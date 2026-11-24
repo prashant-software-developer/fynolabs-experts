@@ -1,42 +1,62 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
 import { cn } from "./cn";
+import { AdminDetailBar, AdminDetailHeading, AdminInfo, AdminPageHeader, AdminStat, AdminStatGrid, type AdminGlyphName } from "@/components/admin/kit";
 
-/** Page title (light, as on the website admin) with the page's actions on the right. */
+/**
+ * The page header, in the FynoLabs admin look. A list page: the 40px light title, the explanation
+ * behind an (i), the main action on the right. A detail page (`back`): the sticky bar (Back on the
+ * left, the page's actions on the right), then the section as an eyebrow and the 32px light title.
+ */
 export function PageHeader({
   title,
   subtitle,
   actions,
   back,
   meta,
+  media,
+  badge,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   back?: { href: string; label: string };
   meta?: ReactNode;
+  media?: ReactNode;
+  badge?: ReactNode;
 }) {
+  if (back) {
+    return (
+      <>
+        <AdminDetailBar backHref={back.href}>{actions}</AdminDetailBar>
+        <AdminDetailHeading
+          eyebrow={back.label === "Back" ? "Back" : back.label}
+          title={title}
+          media={media}
+          badge={badge}
+          meta={
+            subtitle || meta ? (
+              <>
+                {subtitle ? <span>{subtitle}</span> : null}
+                {meta}
+              </>
+            ) : undefined
+          }
+        />
+      </>
+    );
+  }
   return (
-    <header className="mb-8 space-y-3">
-      {back ? (
-        <Link href={back.href} className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> {back.label}
-        </Link>
-      ) : null}
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0 space-y-1.5">
-          <h1 className="text-title text-foreground">{title}</h1>
-          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
-        </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      {meta ? <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/75">{meta}</div> : null}
-    </header>
+    <>
+      <AdminPageHeader title={title} info={subtitle} actions={actions} addon={badge} />
+      {meta ? <div className="-mt-6 mb-10 flex flex-wrap items-center gap-x-4 gap-y-2 text-small text-muted-foreground lg:-mt-8">{meta}</div> : null}
+    </>
   );
 }
 
-/** A bordered block with an optional title bar. `flush` removes the inner padding (tables, lists). */
+/**
+ * A block of a page: a hairline above, an eyebrow title (its explanation behind an (i)) and its
+ * actions on the right. No box, no tint. `flush`: tables and lists that bring their own lines.
+ */
 export function Section({
   title,
   description,
@@ -53,56 +73,43 @@ export function Section({
   flush?: boolean;
 }) {
   return (
-    <section className={cn("rounded-md border border-border bg-card", className)}>
+    // Titled: a hairline above. Untitled filter forms: a hairline below (the toolbar line). Untitled flush blocks: none.
+    <section className={cn("min-w-0", title || actions ? "border-t border-border pt-6" : flush ? "" : "border-b border-border pb-6", className)}>
       {title || actions ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="min-w-0 space-y-0.5">
-            {title ? <h2 className="text-[15px] font-medium text-foreground">{title}</h2> : null}
-            {description ? <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p> : null}
+        <div className={cn("flex min-h-10 flex-wrap items-center justify-between gap-3", flush ? "mb-2" : "mb-5")}>
+          <div className="flex min-w-0 items-center gap-1.5">
+            {title ? <h2 className="eyebrow text-foreground">{title}</h2> : null}
+            {description ? <AdminInfo label="About this section">{description}</AdminInfo> : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
       ) : null}
-      <div className={flush ? "" : "p-5"}>{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
 
 export function Stack({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("space-y-6", className)}>{children}</div>;
+  return <div className={cn("space-y-10", className)}>{children}</div>;
 }
 
-/** A number tile: small letter-spaced label, large light figure (website AdminStat). */
-export function Stat({ label, value, hint, href }: { label: string; value: ReactNode; hint?: ReactNode; href?: string }) {
-  const body = (
-    <>
-      <div className="eyebrow text-muted-foreground">{label}</div>
-      <div className="tabular mt-2 truncate text-stat text-foreground">{value}</div>
-      {hint ? <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div> : null}
-    </>
-  );
-  const box = "block min-w-0 border-r border-b border-border bg-card px-5 py-5";
-  return href ? (
-    <Link href={href} className={cn(box, "row-hover focus-visible:relative")}>
-      {body}
-    </Link>
-  ) : (
-    <div className={box}>{body}</div>
-  );
+/** A number tile (AdminStat): small letter-spaced label, large light figure, optional glyph and link. */
+export function Stat({ label, value, hint, href, glyph }: { label: string; value: ReactNode; hint?: ReactNode; href?: string; glyph?: AdminGlyphName }) {
+  return <AdminStat label={label} value={value} hint={hint} href={href} glyph={glyph} />;
 }
 
-/** Tiles share their borders, like the website's stat grid. */
-export function StatGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 overflow-hidden rounded-md border-t border-l border-border md:grid-cols-4">{children}</div>;
+/** Tiles share their hairlines (AdminStatGrid). */
+export function StatGrid({ children, columns = 4 }: { children: ReactNode; columns?: 2 | 3 | 4 | "many" }) {
+  return <AdminStatGrid columns={columns}>{children}</AdminStatGrid>;
 }
 
 export function DefinitionList({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-3">
       {items.map((i) => (
-        <div key={i.label} className="min-w-0">
+        <div key={i.label} className="min-w-0 border-r border-b border-border p-4">
           <dt className="eyebrow text-muted-foreground">{i.label}</dt>
-          <dd className="mt-1 text-sm break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
+          <dd className="mt-1 text-small break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
         </div>
       ))}
     </dl>

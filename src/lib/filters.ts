@@ -1,5 +1,5 @@
 // Reading list filters from the URL (?q=...&domain=...) and writing them back.
-import { AVAILABILITY, CV_CONSENT, EXPERT_STATUSES, SOURCES, isOneOf } from "@/lib/constants";
+import { AVAILABILITY, CV_CONSENT, EXPERT_STATUSES, OUTREACH_STATUSES, PIPELINE_STAGES, SOURCE_CHANNELS, SOURCES, isOneOf } from "@/lib/constants";
 import { splitSkills } from "@/lib/match/dictionary";
 
 export type SearchParams = Record<string, string | string[] | undefined>;
@@ -20,9 +20,26 @@ export type ExpertFilters = {
   sort: string;
   dir: "asc" | "desc";
   page: number;
+  // The FynoLabs admin's workflow filters (owner, outreach, pipelines, next action, how they came in).
+  /** "me", "none" or a team member id (the expert's owner). */
+  owner?: string;
+  outreach?: string;
+  /** Has a pipeline on this job / a job of this project / this track / at this stage. */
+  job?: string;
+  project?: string;
+  track?: string;
+  stage?: string;
+  /** Next action due: overdue, today, week (the next 7 days). */
+  due?: string;
+  /** How they first reached FynoLabs (source_channel). */
+  channel?: string;
 };
 
-export const EXPERT_SORTS = ["name", "domain", "country", "years", "status", "updated", "created", "rank"] as const;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidOr = (v: string) => (UUID_RE.test(v) ? v.toLowerCase() : "");
+export const DUE_FILTERS = ["overdue", "today", "week"] as const;
+
+export const EXPERT_SORTS = ["name", "domain", "country", "years", "status", "updated", "created", "rank", "next", "activity"] as const;
 
 export function parseExpertFilters(sp: SearchParams): ExpertFilters {
   const minYears = Number(one(sp.minYears));
@@ -42,7 +59,20 @@ export function parseExpertFilters(sp: SearchParams): ExpertFilters {
     sort: (EXPERT_SORTS as readonly string[]).includes(sort) ? sort : q ? "rank" : "updated",
     dir: one(sp.dir) === "asc" ? "asc" : one(sp.dir) === "desc" ? "desc" : sort === "name" ? "asc" : "desc",
     page: Math.max(1, Math.floor(Number(one(sp.page)) || 1)),
+    owner: one(sp.owner) === "me" || one(sp.owner) === "none" ? one(sp.owner) : uuidOr(one(sp.owner)),
+    outreach: isOneOf(OUTREACH_STATUSES, one(sp.outreach)) ? one(sp.outreach) : "",
+    job: uuidOr(one(sp.job)),
+    project: uuidOr(one(sp.project)),
+    track: uuidOr(one(sp.track)),
+    stage: isOneOf(PIPELINE_STAGES, one(sp.stage)) ? one(sp.stage) : "",
+    due: isOneOf(DUE_FILTERS, one(sp.due)) ? one(sp.due) : "",
+    channel: isOneOf(SOURCE_CHANNELS, one(sp.channel)) ? one(sp.channel) : "",
   };
+}
+
+/** True when any filter (not sort or page) is set. */
+export function hasExpertFilters(f: ExpertFilters): boolean {
+  return Boolean(f.q || f.domain || f.skills.length || f.country || f.status || f.availability || f.consent || f.source || f.tag || f.minYears != null || f.owner || f.outreach || f.job || f.project || f.track || f.stage || f.due || f.channel);
 }
 
 export function expertFiltersToParams(f: Partial<ExpertFilters>): URLSearchParams {
@@ -57,6 +87,7 @@ export function expertFiltersToParams(f: Partial<ExpertFilters>): URLSearchParam
   if (f.source) p.set("source", f.source);
   if (f.tag) p.set("tag", f.tag);
   if (f.minYears != null) p.set("minYears", String(f.minYears));
+  for (const k of ["owner", "outreach", "job", "project", "track", "stage", "due", "channel"] as const) if (f[k]) p.set(k, f[k] as string);
   if (f.sort) p.set("sort", f.sort);
   if (f.dir) p.set("dir", f.dir);
   if (f.page && f.page > 1) p.set("page", String(f.page));

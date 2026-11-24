@@ -44,7 +44,7 @@ export function JobForm({
 
       <fieldset className="space-y-4">
         <legend className="eyebrow mb-1 text-muted-foreground">What the public sees</legend>
-        <p className="text-[13px] text-muted-foreground">Never mention pay, a pay basis (per hour, per task) or the client&apos;s name here. Saving checks for it.</p>
+        <p className="text-small text-muted-foreground">Never mention pay, a pay basis (per hour, per task) or the client&apos;s name here. Saving checks for it.</p>
         <Field label="Title" error={err.title} htmlFor="title">
           <Input id="title" name="title" value={v.title} onChange={(e) => set("title", e.target.value)} placeholder="Scientific Coding Expert - Mathematics" />
         </Field>
@@ -60,7 +60,7 @@ export function JobForm({
           <Input id="summary" name="summary" value={v.summary} onChange={(e) => set("summary", e.target.value)} maxLength={400} />
         </Field>
         <Field label="Description" error={err.description} htmlFor="description" hint="Markdown: ## headings, - bullets, **bold**, [links](https://...).">
-          <Textarea id="description" name="description" rows={12} value={v.description} onChange={(e) => set("description", e.target.value)} className="font-mono text-[13px]" />
+          <Textarea id="description" name="description" rows={12} value={v.description} onChange={(e) => set("description", e.target.value)} className="font-mono text-small" />
         </Field>
         <FieldRow>
           <Field label="Type" htmlFor="employmentType">
@@ -78,7 +78,7 @@ export function JobForm({
           <Input id="skills" name="skills" value={v.skills} onChange={(e) => set("skills", e.target.value)} />
         </Field>
         <div className="space-y-1.5">
-          <div className="text-[13px] font-medium text-foreground/80">Fields</div>
+          <div className="eyebrow text-muted-foreground">Fields</div>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {DOMAINS.map((d) => (
               <Checkbox key={d} name="domains" value={d} checked={v.domains.includes(d)} onChange={() => toggle(d)} label={d} />
@@ -126,7 +126,7 @@ export function JobForm({
             <Input id="internalRateNote" name="internalRateNote" value={v.internalRateNote} onChange={(e) => set("internalRateNote", e.target.value)} />
           </Field>
         ) : (
-          <p className="text-[13px] text-muted-foreground">The internal rate note is visible to admins and finance only.</p>
+          <p className="text-small text-muted-foreground">The internal rate note is visible to admins and finance only.</p>
         )}
       </fieldset>
 

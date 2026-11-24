@@ -150,7 +150,7 @@ export function RequirementForm({
             <Input id="niceSkills" name="niceSkills" value={v.niceSkills} onChange={(e) => set("niceSkills", e.target.value)} />
           </Field>
           <div className="space-y-1.5">
-            <div className="text-[13px] font-medium text-foreground/80">Domains</div>
+            <div className="eyebrow text-muted-foreground">Domains</div>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {DOMAINS.map((d) => (
                 <Checkbox key={d} name="domains" value={d} checked={v.domains.includes(d)} onChange={() => toggle("domains", d)} label={d} />
@@ -158,7 +158,7 @@ export function RequirementForm({
             </div>
           </div>
           <div className="space-y-1.5">
-            <div className="text-[13px] font-medium text-foreground/80">Degree (any of)</div>
+            <div className="eyebrow text-muted-foreground">Degree (any of)</div>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {DEGREE_LEVELS.map((d) => (
                 <Checkbox key={d} name="degrees" value={d} checked={v.degrees.includes(d)} onChange={() => toggle("degrees", d)} label={label(d)} />

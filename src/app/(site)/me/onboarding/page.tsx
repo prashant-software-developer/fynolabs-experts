@@ -53,8 +53,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           </p>
           <p className="tabular text-sm text-muted-foreground">Profile {score.percent}% complete</p>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={score.percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completeness">
-          <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${score.percent}%` }} />
+        <div className="h-1.5 overflow-hidden bg-secondary" role="progressbar" aria-valuenow={score.percent} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completeness">
+          <div className="h-1.5 bg-primary transition-all" style={{ width: `${score.percent}%` }} />
         </div>
         <ol className="flex flex-wrap gap-2 pt-1">
           {ONBOARDING_STEPS.map((s, n) => {
@@ -66,8 +66,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                   href={`/me/onboarding?step=${s.id}`}
                   aria-current={current ? "step" : undefined}
                   className={cn(
-                    "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[13px] transition-colors",
-                    current ? "border-foreground bg-foreground text-background" : isDone ? "border-border bg-success-soft text-success" : "border-border text-muted-foreground hover:text-foreground",
+                    "inline-flex h-8 items-center gap-2 border px-3 text-small transition-colors",
+                    current ? "border-foreground bg-foreground text-background" : isDone ? "border-border text-primary" : "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {isDone && !current ? <Check className="h-3.5 w-3.5" aria-hidden /> : <span className="tabular text-xs opacity-70">{n + 1}</span>}
@@ -81,8 +81,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       {saved && isStep(saved) ? <Notice tone="success">Saved {ONBOARDING_STEPS.find((s) => s.id === saved)?.title.toLowerCase()}.</Notice> : null}
       <section className="rounded-md border border-border bg-card">
         <div className="border-b border-border px-5 py-4 sm:px-6">
-          <h2 className="text-[15px] font-medium text-foreground">{meta.title}</h2>
-          <p className="text-[13px] text-muted-foreground">{meta.blurb}</p>
+          <h2 className="text-[15px] font-normal text-foreground">{meta.title}</h2>
+          <p className="text-small text-muted-foreground">{meta.blurb}</p>
         </div>
         <div className="px-5 py-5 sm:px-6">
           <OnboardingForm key={step} step={step} initial={initial} nextHref={next ? `/me/onboarding?step=${next.id}` : null} cvFilename={cv?.filename ?? null} />

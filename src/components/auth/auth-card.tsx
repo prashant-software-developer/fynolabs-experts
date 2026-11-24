@@ -27,5 +27,5 @@ export function OrDivider({ label = "or with your email" }: { label?: string }) 
 
 /** A line of links under the card. */
 export function AuthFootnote({ children }: { children: ReactNode }) {
-  return <div className="text-center text-[13px] leading-relaxed text-muted-foreground">{children}</div>;
+  return <div className="text-center text-small leading-relaxed text-muted-foreground">{children}</div>;
 }

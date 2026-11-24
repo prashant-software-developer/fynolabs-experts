@@ -12,14 +12,14 @@ export function Table({ children, className, sticky, dense }: { children: ReactN
     <div
       className={cn(
         sticky
-          ? "max-h-[calc(100vh-15rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-card [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]"
+          ? "max-h-[calc(100vh-15rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-background [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]"
           : "overflow-x-auto",
         // dense: tighter cells (the first and last keep their wider edge padding).
-        dense && "[&_td]:px-2 [&_th]:px-2",
+        dense && "[&_td]:px-2 [&_td]:py-3 [&_th]:px-2",
         className,
       )}
     >
-      <table className="w-full border-collapse text-left text-sm">{children}</table>
+      <table className="w-full border-collapse text-left text-small">{children}</table>
     </div>
   );
 }
@@ -33,7 +33,7 @@ export function THead({ children }: { children: ReactNode }) {
 }
 
 export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn("eyebrow h-10 px-3 align-middle whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4", className)} {...props} />;
+  return <th className={cn("eyebrow h-14 px-3 align-middle font-normal whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4", className)} {...props} />;
 }
 
 export function SortTh({ label, sortKey, current, dir, hrefFor, className }: { label: string; sortKey: string; current: string; dir: "asc" | "desc"; hrefFor: (sort: string, dir: "asc" | "desc") => string; className?: string }) {
@@ -50,13 +50,13 @@ export function SortTh({ label, sortKey, current, dir, hrefFor, className }: { l
 }
 
 export function TBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-border">{children}</tbody>;
+  return <tbody className="divide-y divide-border border-b border-border">{children}</tbody>;
 }
 
 export function Tr({ children, className }: { children: ReactNode; className?: string }) {
-  return <tr className={cn("row-hover", className)}>{children}</tr>;
+  return <tr className={cn("admin-hover", className)}>{children}</tr>;
 }
 
 export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-3 py-3 align-middle text-foreground/85 first:pl-4 last:pr-4", className)} {...props} />;
+  return <td className={cn("px-3 py-4 align-middle text-foreground first:pl-4 last:pr-4", className)} {...props} />;
 }

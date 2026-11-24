@@ -1,53 +1,43 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Eye, LogOut } from "lucide-react";
+import { Eye } from "lucide-react";
 import { signOutNow } from "@/app/(auth)/actions";
-import { Brand, CurrentSection, MobileNav, Sidebar, type NavAccess } from "@/components/nav";
-import { can, ROLE_LABELS } from "@/lib/auth/permissions";
+import { CommandPalette, MobileBar, Sidebar, type NavAccess } from "@/components/nav";
+import { AdminThemeSync, THEME_SCRIPT } from "@/components/admin/kit-client";
+import { can, canSeeMoney, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { openSections } from "@/lib/auth/sections";
 
-export const metadata: Metadata = { title: { default: "Expert Hub", template: "%s · Expert Hub" }, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { default: "FynoLabs admin", template: "%s | FynoLabs admin" }, robots: { index: false, follow: false } };
 
+/**
+ * The admin frame (FynoLabs AdminPage): the sidebar on the left, the page beside it in a 1600px column
+ * (1680px on detail pages), 20 → 40px gutters, 48px from the top. Phones: the sticky bar and menu.
+ */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const access: NavAccess = { import: can(user.role, "imports.csv"), team: can(user.role, "team.manage") };
+  const access: NavAccess = { import: can(user.role, "imports.csv"), team: can(user.role, "team.manage"), money: canSeeMoney(user.role), settings: can(user.role, "settings.manage"), open: openSections(user) };
+  const navUser = { name: user.name || user.email, email: user.email, role: ROLE_LABELS[user.role] ?? user.role };
   return (
-    <div className="min-h-screen bg-background lg:flex">
-      <Sidebar access={access} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {user.role === "viewer" ? (
-          <div className="flex items-center justify-center gap-2 border-b border-border bg-info-soft px-6 py-1.5 text-center text-xs text-info">
-            <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            You have view-only access. Ask an admin to change your role.
+    <>
+      {/* Applied before the first paint so a dark admin never flashes white (admin pages only). */}
+      <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      <AdminThemeSync />
+      <div data-admin className="min-h-screen bg-background text-foreground lg:flex">
+        <Sidebar access={access} user={navUser} signOut={signOutNow} />
+        <div className="min-w-0 flex-1 px-5 pb-24 md:px-10 lg:pt-12">
+          <div className="mx-auto max-w-[1600px] has-[[data-detail]]:max-w-[1680px]">
+            <MobileBar access={access} user={navUser} signOut={signOutNow} />
+            {user.role === "viewer" ? (
+              <p className="mb-6 flex items-center gap-2 border-l-2 border-primary px-4 py-2 text-small text-muted-foreground">
+                <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                You have view-only access. Ask an admin to change your role.
+              </p>
+            ) : null}
+            <main className="animate-page-in">{children}</main>
           </div>
-        ) : null}
-        <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
-          <div className="flex h-14 items-center gap-3 px-5 md:px-8">
-            <MobileNav access={access} />
-            <div className="lg:hidden">
-              <Brand compact />
-            </div>
-            <div className="hidden min-w-0 lg:block">
-              <CurrentSection access={access} />
-            </div>
-            <div className="ml-auto flex shrink-0 items-center gap-2.5 text-[13px] text-muted-foreground">
-              <Link href="/account/password" className="hidden underline-offset-4 hover:text-foreground hover:underline md:inline" title="Change password">
-                {user.email}
-              </Link>
-              <span className="inline-flex h-5 items-center rounded-full border border-border bg-secondary px-2 text-[11px] font-medium text-foreground/80" title={`Your role: ${ROLE_LABELS[user.role]}`}>
-                {ROLE_LABELS[user.role]}
-              </span>
-              <form action={signOutNow}>
-                <button className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-foreground/75 transition-colors hover:bg-accent hover:text-foreground">
-                  <LogOut className="h-3.5 w-3.5" aria-hidden />
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-8 md:px-8 lg:py-10">{children}</main>
+        </div>
       </div>
-    </div>
+      <CommandPalette access={access} />
+    </>
   );
 }

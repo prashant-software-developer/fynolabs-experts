@@ -33,7 +33,7 @@ export function FileDrop({ name, accept, label, hint, submitLabel, pendingText =
           setFile(f);
         }}
         className={cn(
-          "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md border border-dashed border-input bg-background px-3 py-2.5 transition-colors hover:border-foreground/25 hover:bg-secondary/40 focus-within:border-ring",
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md border border-dashed border-input bg-background px-3 py-2.5 transition-colors hover:border-foreground/25 hover: focus-within:border-ring",
           over && "border-primary bg-primary/[0.04]",
         )}
       >
@@ -42,7 +42,7 @@ export function FileDrop({ name, accept, label, hint, submitLabel, pendingText =
           <Upload className="h-4 w-4 text-foreground/70" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-foreground">{file ? file.name : label}</span>
+          <span className="block truncate text-sm font-normal text-foreground">{file ? file.name : label}</span>
           <span className="block truncate text-xs text-muted-foreground">{file ? `${bytes(file.size)} · ready to upload` : hint}</span>
         </span>
         <span className={buttonClass("ghost", "sm", "hidden sm:inline-flex")}>{file ? "Change" : "Choose file"}</span>

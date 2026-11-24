@@ -1,6 +1,6 @@
 import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { accounts, activity, applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, expertSources, experts, legacyMap, placements, submissions, type Expert, type ExpertDetails, type ExpertPayout } from "@/db/schema";
+import { accounts, activity, applications, dataRequests, erasures, expertDetails, expertFiles, expertPayout, expertSources, experts, jobs, legacyMap, placements, submissions, teamMembers, type Expert, type ExpertDetails, type ExpertPayout } from "@/db/schema";
 import { canSeeContact, canSeeMoney, type Role } from "@/lib/auth/permissions";
 import { rowsOf } from "@/db/client";
 import { EXPERT_STATUSES } from "@/lib/constants";
@@ -39,8 +39,24 @@ export const expertListColumns = {
   createdAt: experts.createdAt,
   updatedAt: experts.updatedAt,
   lastContactedAt: experts.lastContactedAt,
+  // The FynoLabs admin's workflow fields.
+  ownerTeamMemberId: experts.ownerTeamMemberId,
+  ownerName: experts.ownerName,
+  outreachStatus: experts.outreachStatus,
+  nextAction: experts.nextAction,
+  nextActionDue: experts.nextActionDue,
+  lastActivityAt: experts.lastActivityAt,
+  sourceChannel: experts.sourceChannel,
+  sourceDetail: experts.sourceDetail,
+  emailOptOut: experts.emailOptOut,
+  dncReason: experts.dncReason,
 };
 export type ExpertRow = Omit<Expert, "search">;
+
+/** The stage of someone's leading pipeline: the most advanced open one, else the most advanced of all. */
+export const leadingStageSql = sql<string | null>`(select a.stage from ${applications} a where a.expert_id = "hub"."experts"."id" order by (a.stage in ('ended', 'rejected')) asc, array_position(array['new','shortlisted','referred','selected','documents','signed','active','ended','rejected']::text[], a.stage) desc, a.stage_changed_at desc limit 1)`;
+/** The owner's name (team member), for lists. */
+export const ownerNameSql = sql<string | null>`(select coalesce(t.name, t.email) from ${teamMembers} t where t.id = "hub"."experts"."owner_team_member_id")`;
 
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
@@ -50,8 +66,22 @@ export function toTsQuery(q: string): string | null {
   return words.length ? words.map((w) => `${w}:*`).join(" & ") : null;
 }
 
-/** `contact: false` (roles that see masked contact details): search can't match email or phone. */
-export function expertConditions(f: ExpertFilters, opts: { contact?: boolean } = {}): SQL[] {
+/** Has a pipeline matching the job / project / track / stage filters (all of them on the same pipeline). */
+function pipelineCondition(f: ExpertFilters): SQL | null {
+  const parts: SQL[] = [];
+  if (f.job) parts.push(sql`a.job_id = ${f.job}::uuid`);
+  if (f.track) parts.push(sql`a.track_id = ${f.track}::uuid`);
+  if (f.stage) parts.push(sql`a.stage = ${f.stage}`);
+  if (f.project) parts.push(sql`exists (select 1 from ${jobs} j where j.id = a.job_id and j.project_id = ${f.project}::uuid)`);
+  if (!parts.length) return null;
+  return sql`exists (select 1 from ${applications} a where a.expert_id = ${experts.id} and ${sql.join(parts, sql` and `)})`;
+}
+
+/**
+ * `contact: false` (roles that see masked contact details): search can't match email or phone.
+ * `meEmail`: who "owner = me" means.
+ */
+export function expertConditions(f: ExpertFilters, opts: { contact?: boolean; meEmail?: string; today?: string } = {}): SQL[] {
   const conds: SQL[] = [];
   if (f.q) {
     const tsq = toTsQuery(f.q);
@@ -76,6 +106,19 @@ export function expertConditions(f: ExpertFilters, opts: { contact?: boolean } =
       )!,
     );
   }
+  if (f.owner === "none") conds.push(sql`${experts.ownerTeamMemberId} is null`);
+  else if (f.owner === "me") conds.push(sql`${experts.ownerTeamMemberId} in (select t.id from ${teamMembers} t where t.email = ${(opts.meEmail ?? "").toLowerCase()})`);
+  else if (f.owner) conds.push(eq(experts.ownerTeamMemberId, f.owner));
+  if (f.outreach) conds.push(eq(experts.outreachStatus, f.outreach));
+  if (f.channel) conds.push(eq(experts.sourceChannel, f.channel));
+  if (f.due) {
+    const today = opts.today ?? new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+    if (f.due === "overdue") conds.push(sql`${experts.nextActionDue} < ${today}::date`);
+    if (f.due === "today") conds.push(sql`${experts.nextActionDue} <= ${today}::date`);
+    if (f.due === "week") conds.push(sql`${experts.nextActionDue} <= (${today}::date + 7)`);
+  }
+  const pipe = pipelineCondition(f);
+  if (pipe) conds.push(pipe);
   return conds;
 }
 
@@ -94,6 +137,10 @@ function orderFor(f: ExpertFilters): SQL[] {
       return [d(experts.status), asc(experts.fullName)];
     case "created":
       return [d(experts.createdAt)];
+    case "next":
+      return [f.dir === "asc" ? sql`${experts.nextActionDue} asc nulls last` : sql`${experts.nextActionDue} desc nulls last`, asc(experts.fullName)];
+    case "activity":
+      return [f.dir === "asc" ? sql`coalesce(${experts.lastActivityAt}, ${experts.updatedAt}) asc` : sql`coalesce(${experts.lastActivityAt}, ${experts.updatedAt}) desc`];
     case "rank": {
       const tsq = toTsQuery(f.q);
       if (tsq) return [sql`ts_rank(${experts.search}, to_tsquery('simple', ${tsq})) desc`, asc(experts.fullName)];
@@ -104,19 +151,25 @@ function orderFor(f: ExpertFilters): SQL[] {
   }
 }
 
-export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number; contact?: boolean }) {
-  const where = and(...expertConditions(f, { contact: opts.contact }));
+export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number; contact?: boolean; meEmail?: string }) {
+  const where = and(...expertConditions(f, { contact: opts.contact, meEmail: opts.meEmail }));
   const [rows, [{ n }]] = await Promise.all([
-    db.select(expertListColumns).from(experts).where(where).orderBy(...orderFor(f)).limit(opts.limit).offset(opts.offset),
+    db
+      .select({ ...expertListColumns, leadingStage: leadingStageSql, ownerMemberName: ownerNameSql })
+      .from(experts)
+      .where(where)
+      .orderBy(...orderFor(f))
+      .limit(opts.limit)
+      .offset(opts.offset),
     db.select({ n: count() }).from(experts).where(where),
   ]);
-  return { rows: rows as ExpertRow[], total: Number(n) };
+  return { rows: rows as (ExpertRow & { leadingStage: string | null; ownerMemberName: string | null })[], total: Number(n) };
 }
 
 /** Board layout: one column per status (the filters still apply), newest first, `perColumn` cards each. */
-export async function expertBoard(db: DB, f: ExpertFilters, opts: { perColumn: number; contact?: boolean }) {
+export async function expertBoard(db: DB, f: ExpertFilters, opts: { perColumn: number; contact?: boolean; meEmail?: string }) {
   const statuses = f.status ? [f.status] : [...EXPERT_STATUSES];
-  const base = and(...expertConditions({ ...f, status: "" }, { contact: opts.contact }));
+  const base = and(...expertConditions({ ...f, status: "" }, { contact: opts.contact, meEmail: opts.meEmail }));
   const counts = await db
     .select({ status: experts.status, n: count() })
     .from(experts)

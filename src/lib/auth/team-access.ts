@@ -19,14 +19,19 @@ export type CurrentUser = {
   blocked: boolean;
   /** Signed in with a temporary password: nothing else works until it's changed. */
   mustChangePassword: boolean;
+  /**
+   * The admin modules this member may open (hub.team_members.sections, the FynoLabs admin's keys).
+   * Empty or missing: every module their role allows. Admins always open everything (src/lib/auth/sections.ts).
+   */
+  sections?: string[];
 };
 
 /** Someone signed in who is not on the team: the expert portal (after verifying their email), never /admin. */
 export type ExpertAccount = { kind: "expert"; accountId: string; email: string; name: string; verified: boolean; expertId: string | null; mustChangePassword: boolean };
 export type Account = { kind: "team"; user: CurrentUser } | ExpertAccount;
 
-export async function memberForAccount(db: DB, row: Pick<AccountRow, "email" | "teamMemberId">): Promise<MemberRow | null> {
-  const cols = { role: teamMembers.role, active: teamMembers.active, partnerIds: teamMembers.partnerIds };
+export async function memberForAccount(db: DB, row: Pick<AccountRow, "email" | "teamMemberId">): Promise<(MemberRow & { sections: string[] }) | null> {
+  const cols = { role: teamMembers.role, active: teamMembers.active, partnerIds: teamMembers.partnerIds, sections: teamMembers.sections };
   if (row.teamMemberId) {
     const [m] = await db.select(cols).from(teamMembers).where(eq(teamMembers.id, row.teamMemberId)).limit(1);
     if (m) return m;
@@ -48,7 +53,7 @@ export async function accountFromRow(db: DB, row: AccountRow): Promise<Account> 
   if (accountKind({ email: row.email, hasTeamRow: Boolean(member) }) !== "team") return { kind: "team", user: blocked };
   const r = resolveRole({ email: row.email, member });
   if (r.status === "inactive") return { kind: "team", user: blocked };
-  return { kind: "team", user: { ...base, role: r.role, partnerIds: r.partnerIds, roleSource: r.source, blocked: false } };
+  return { kind: "team", user: { ...base, role: r.role, partnerIds: r.partnerIds, roleSource: r.source, blocked: false, sections: r.role === "admin" ? [] : [...(member?.sections ?? [])] } };
 }
 
 /** The role written into the session cookie (for information; the server re-checks every request). */

@@ -58,12 +58,12 @@ export default async function JobBoardPage({ searchParams }: { searchParams: Pro
 
       <section className="space-y-4" aria-label="Open roles">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 className="text-[15px] font-medium text-foreground">
+          <h2 className="text-[15px] font-normal text-foreground">
             {jobs.length} open {jobs.length === 1 ? "role" : "roles"}
             {filtered ? " matching" : ""}
           </h2>
           {filtered ? (
-            <Link href="/" className="text-[13px] text-muted-foreground hover:text-foreground">
+            <Link href="/" className="text-small text-muted-foreground hover:text-foreground">
               Clear search
             </Link>
           ) : null}
@@ -90,7 +90,7 @@ export default async function JobBoardPage({ searchParams }: { searchParams: Pro
         )}
       </section>
 
-      <section className="rounded-md border border-border bg-secondary/40 px-6 py-8 sm:px-8">
+      <section className="rounded-md border border-border px-6 py-8 sm:px-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1.5">
             <h2 className="text-lg font-light text-foreground">Not seeing your field?</h2>

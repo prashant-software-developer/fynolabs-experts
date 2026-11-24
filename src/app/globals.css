@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
+/* Dark mode is for the admin only (the sun/moon switch in the profile menu); public pages stay light. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
-  FynoLabs design system (light mode only), taken from the FynoLabs website
+  FynoLabs design system, taken from the FynoLabs website
   (Main Website - FyonLabs: src/index.css and tailwind.config.ts).
   Colours are HSL channels, as on the website, so values can be copied across as they are.
 */
@@ -36,25 +39,72 @@
   --input: 225 12% 89%;
   --ring: 222 90% 54%;
 
-  --radius: 0.25rem;
+  /* Square corners everywhere (buttons, inputs, cards, badges, menus, sheets). */
+  --radius: 0;
 
   --sidebar-background: 0 0% 98%;
   --sidebar-foreground: 0 0% 20%;
-  --sidebar-accent: 0 0% 94.5%;
+  --sidebar-accent: 0 0% 96%;
   --sidebar-accent-foreground: 225 19% 12%;
   --sidebar-border: 0 0% 90%;
 
-  /* Status tints for pills and notices: soft backgrounds, readable text. */
-  --success: 152 56% 28%;
-  --success-soft: 146 40% 94%;
-  --warning: 30 80% 32%;
-  --warning-soft: 43 85% 93%;
-  --danger: 0 65% 42%;
-  --danger-soft: 0 75% 96%;
-  --info: 222 38% 40%;
-  --info-soft: 222 45% 95.5%;
-  --progress: 262 32% 44%;
-  --progress-soft: 262 40% 95.5%;
+  /* One hue: status is shown with words, outlines and the brand blue, never green or red fills.
+     These names stay for older markup and resolve to the same system. Red is only for due / late. */
+  --success: 222 90% 54%;
+  --success-soft: 0 0% 100%;
+  --warning: 225 19% 12%;
+  --warning-soft: 0 0% 100%;
+  --danger: 0 72% 51%;
+  --danger-soft: 0 0% 100%;
+  --info: 225 19% 12%;
+  --info-soft: 0 0% 100%;
+  --progress: 225 19% 12%;
+  --progress-soft: 0 0% 100%;
+
+  /* Charts: the brand blue at falling strengths; Other in grey. */
+  --chart-1: 222 90% 54%;
+  --chart-2: 222 90% 54% / 0.7;
+  --chart-3: 222 90% 54% / 0.45;
+  --chart-4: 222 90% 54% / 0.25;
+}
+
+/* Admin dark theme (fyno.admin-theme = dark, applied before first paint on admin pages only). */
+.dark {
+  color-scheme: dark;
+  --background: 0 0% 3%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 5%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 222 90% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 12%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 222 90% 62%;
+  --sidebar-background: 0 0% 5%;
+  --sidebar-foreground: 0 0% 85%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 0 0% 15%;
+  --success: 222 90% 62%;
+  --success-soft: 0 0% 3%;
+  --warning: 0 0% 98%;
+  --warning-soft: 0 0% 3%;
+  --danger: 0 62% 45%;
+  --danger-soft: 0 0% 3%;
+  --info: 0 0% 98%;
+  --info-soft: 0 0% 3%;
+  --progress: 0 0% 98%;
+  --progress-soft: 0 0% 3%;
 }
 
 @theme inline {
@@ -97,21 +147,39 @@
   --color-progress: hsl(var(--progress));
   --color-progress-soft: hsl(var(--progress-soft));
 
-  /* One radius (4px) for every rounded box; rounded-full stays for dots. */
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
-  --radius-2xl: var(--radius);
+  /* Square: every rounded-* class is 0 (rounded-full too, so dots and pills are square marks). */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+  /* No shadows: borders, not shadows. */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
 
-  /* Type from the website: light page titles, small letter-spaced labels. */
+  /* Type from the website (tailwind.config.ts): light headings, body 16/1.6, small 14, 12px letter-spaced labels. */
+  --text-heading: clamp(1.875rem, 1.63rem + 1.09vw, 2.5rem);
+  --text-heading--line-height: 1.08;
+  --text-heading--font-weight: 300;
   --text-title: clamp(1.625rem, 1.45rem + 0.6vw, 2rem);
   --text-title--line-height: 1.15;
   --text-title--font-weight: 300;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
   --text-stat: clamp(1.625rem, 1.45rem + 0.6vw, 1.875rem);
   --text-stat--line-height: 1.2;
   --text-stat--font-weight: 300;
-  --text-eyebrow: 0.6875rem;
+  --text-eyebrow: 0.75rem;
   --text-eyebrow--line-height: 1.5;
   --text-eyebrow--letter-spacing: 0.1em;
 }
@@ -130,6 +198,7 @@
   body {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -158,7 +227,7 @@
   [tabindex]:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
-    border-radius: var(--radius);
+    border-radius: 0;
   }
 }
 
@@ -167,8 +236,8 @@
   .control {
     display: block;
     width: 100%;
-    height: 2.25rem;
-    border-radius: var(--radius);
+    height: 2.5rem;
+    border-radius: 0;
     border: 1px solid hsl(var(--input));
     background-color: hsl(var(--background));
     padding: 0 0.75rem;
@@ -181,12 +250,12 @@
       box-shadow 150ms;
   }
   .control:hover {
-    border-color: hsl(225 10% 80%);
+    border-color: hsl(var(--foreground) / 0.35);
   }
   .control:focus,
   .control:focus-visible {
     border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.12);
+    box-shadow: none;
     outline: none;
   }
   .control::placeholder {
@@ -227,7 +296,7 @@
   .file-control::file-selector-button {
     margin-right: 0.75rem;
     height: 2rem;
-    border-radius: var(--radius);
+    border-radius: 0;
     border: 1px solid hsl(var(--input));
     background: hsl(var(--background));
     padding: 0 0.75rem;
@@ -244,14 +313,21 @@
   /* Long-form text (notes, pasted requirement text). */
   .prose-box {
     white-space: pre-wrap;
-    border-radius: var(--radius);
-    background: hsl(var(--muted) / 0.6);
+    border-left: 2px solid hsl(var(--border));
     padding: 1rem;
     font-family: inherit;
     font-size: 0.875rem;
     line-height: 1.6;
     color: hsl(var(--foreground) / 0.85);
   }
+}
+
+/* A tab row already draws the line under it: the block right after it doesn't draw another. */
+.tabs-line + section,
+.tabs-line + div > section:first-child,
+.tabs-line + * > section:first-child {
+  border-top-width: 0;
+  padding-top: 0;
 }
 
 @utility tabular {
@@ -266,10 +342,39 @@
   font-weight: 400;
 }
 
+/* Admin: the one hover for everything clickable (rows, options, links, tiles, the sidebar): a light
+   foreground wash (4%), a little stronger while pressed. Static rows get none, so a wash means "clickable". */
+@utility admin-hover {
+  transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
+  &:hover,
+  &:focus-visible {
+    background-color: hsl(var(--foreground) / 0.04);
+  }
+  &:active {
+    background-color: hsl(var(--foreground) / 0.07);
+  }
+}
 @utility row-hover {
-  transition: background-color 150ms ease-out;
+  transition: background-color 200ms ease-out;
   &:hover {
-    background-color: hsl(var(--foreground) / 0.025);
+    background-color: hsl(var(--foreground) / 0.04);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility animate-page-in {
+  animation: page-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
 }
 

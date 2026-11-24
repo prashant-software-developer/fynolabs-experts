@@ -6,15 +6,16 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
 // Same recipe as the website's shadcn button: 4px radius, medium weight, blue only for the main action.
+// FynoLabs admin buttons: square, 40px (36px small), Inter 400; one solid (the main action), the rest outlines.
 const base =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+  "inline-flex shrink-0 items-center justify-center gap-2 font-normal whitespace-nowrap transition-[background-color,color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 const variants: Record<Variant, string> = {
   primary: "bg-primary text-primary-foreground hover:bg-primary/90",
-  secondary: "border border-input bg-background text-foreground hover:bg-secondary/70",
-  ghost: "text-foreground/75 hover:bg-accent hover:text-accent-foreground",
-  danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+  secondary: "border border-input bg-background text-foreground hover:border-foreground/40 hover:bg-foreground/[0.04]",
+  ghost: "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
+  danger: "border border-destructive/60 bg-background text-destructive hover:border-destructive hover:bg-destructive/[0.06]",
 };
-const sizes: Record<Size, string> = { sm: "h-8 px-3 text-[13px]", md: "h-9 px-4 text-sm" };
+const sizes: Record<Size, string> = { sm: "h-9 px-3 text-small", md: "h-10 px-5 text-small" };
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", className?: string) {
   return cn(base, variants[variant], sizes[size], className);

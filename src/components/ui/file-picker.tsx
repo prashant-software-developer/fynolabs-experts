@@ -28,7 +28,7 @@ export function FilePicker({ name, accept, label, hint, id, invalid, disabled }:
         setFile(f);
       }}
       className={cn(
-        "flex min-w-0 cursor-pointer items-center gap-3 rounded-md border border-dashed bg-background px-3 py-3 transition-colors hover:border-foreground/25 hover:bg-secondary/40 focus-within:border-ring",
+        "flex min-w-0 cursor-pointer items-center gap-3 rounded-md border border-dashed bg-background px-3 py-3 transition-colors hover:border-foreground/25 hover: focus-within:border-ring",
         invalid ? "border-destructive" : "border-input",
         over && "border-primary bg-primary/[0.04]",
         disabled && "pointer-events-none opacity-60",
@@ -39,10 +39,10 @@ export function FilePicker({ name, accept, label, hint, id, invalid, disabled }:
         <Upload className="h-4 w-4 text-foreground/70" aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-foreground">{file ? file.name : label}</span>
+        <span className="block truncate text-sm font-normal text-foreground">{file ? file.name : label}</span>
         <span className="block truncate text-xs text-muted-foreground">{file ? `${bytes(file.size)} · ready` : hint}</span>
       </span>
-      <span className="hidden shrink-0 text-[13px] font-medium text-primary sm:inline">{file ? "Change" : "Choose file"}</span>
+      <span className="hidden shrink-0 text-small font-normal text-primary sm:inline">{file ? "Change" : "Choose file"}</span>
     </label>
   );
 }

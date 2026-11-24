@@ -54,7 +54,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
     if (!m.login) return <span className="text-xs text-muted-foreground">No login yet</span>;
     return (
       <div className="text-xs text-muted-foreground">
-        <div className="text-[13px] text-foreground/80">{m.login.lastLoginAt ? fmtDate(m.login.lastLoginAt) : "Never"}</div>
+        <div className="text-small text-foreground/80">{m.login.lastLoginAt ? fmtDate(m.login.lastLoginAt) : "Never"}</div>
         {m.login.mustChangePassword ? <div>Temporary password</div> : null}
         {m.login.lockedUntil && m.login.lockedUntil > new Date() ? <div className="text-warning">Locked (too many wrong passwords)</div> : null}
       </div>
@@ -81,7 +81,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                 {bootstrap.map((email) => (
                   <Tr key={email}>
                     <Td className="min-w-56">
-                      <div className="font-medium text-foreground">{email}</div>
+                      <div className="font-normal text-foreground">{email}</div>
                       <div className="text-xs text-muted-foreground">{email === user.email ? "You · " : ""}set by ADMIN_EMAILS</div>
                     </Td>
                     <Td>
@@ -104,7 +104,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                   return (
                     <Tr key={m.id} className={m.active ? undefined : "opacity-60"}>
                       <Td className="min-w-56">
-                        <div className="font-medium text-foreground">{m.email}</div>
+                        <div className="font-normal text-foreground">{m.email}</div>
                         <div className="text-xs text-muted-foreground">
                           {[self ? "You" : null, m.name, envAdmin ? "admin via ADMIN_EMAILS" : null].filter(Boolean).join(" · ") || " "}
                           <div>
@@ -116,7 +116,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                       <Td>
                         <form action={changeTeamRole} className="flex items-center gap-2" title={lockedWhy}>
                           <input type="hidden" name="id" value={m.id} />
-                          <AutoSubmitSelect name="role" defaultValue={m.role} disabled={locked} className="control h-8 w-auto text-[13px]" aria-label={`Role for ${m.email}`}>
+                          <AutoSubmitSelect name="role" defaultValue={m.role} disabled={locked} className="control h-8 w-auto text-small" aria-label={`Role for ${m.email}`}>
                             {roleOptions.map((o) => (
                               <option key={o.value} value={o.value}>
                                 {o.label}
@@ -140,7 +140,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                             ) : (
                               <span className="text-xs text-warning">No partners yet: sees no submissions</span>
                             )}
-                            <Link href={hrefWith("/admin/settings/team", sp, { scope: m.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
+                            <Link href={hrefWith("/admin/settings/team", sp, { scope: m.id, ok: null, error: null })} scroll={false} className="text-small font-normal text-primary underline-offset-4 hover:underline">
                               Edit
                             </Link>
                           </div>
@@ -163,11 +163,11 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                       <Td className="whitespace-nowrap">{lastSignIn(m)}</Td>
                       <Td className="whitespace-nowrap">
                         {self ? (
-                          <Link href="/account/password" className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
+                          <Link href="/account/password" className="text-small font-normal text-primary underline-offset-4 hover:underline">
                             Change mine
                           </Link>
                         ) : m.active ? (
-                          <Link href={hrefWith("/admin/settings/team", sp, { reset: m.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
+                          <Link href={hrefWith("/admin/settings/team", sp, { reset: m.id, ok: null, error: null })} scroll={false} className="text-small font-normal text-primary underline-offset-4 hover:underline">
                             {m.login ? "Reset password" : "Create login"}
                           </Link>
                         ) : (
@@ -197,8 +197,8 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             <TBody>
               {ROLES.map((r) => (
                 <Tr key={r}>
-                  <Td className="font-medium whitespace-nowrap text-foreground">{ROLE_LABELS[r]}</Td>
-                  <Td className="text-[13px] text-foreground/80">{ROLE_SUMMARY[r]}</Td>
+                  <Td className="font-normal whitespace-nowrap text-foreground">{ROLE_LABELS[r]}</Td>
+                  <Td className="text-small text-foreground/80">{ROLE_SUMMARY[r]}</Td>
                 </Tr>
               ))}
             </TBody>

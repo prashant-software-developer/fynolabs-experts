@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import { experts } from "@/db/schema";
 import { authorize, bounce, isForbidden } from "@/lib/auth/guard";
+import { authorizeIn } from "@/lib/auth/section-guard";
 import { canSeeMoney } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { CV_CONSENT, EXPERT_STATUSES, isOneOf } from "@/lib/constants";
@@ -32,7 +33,7 @@ export async function saveExpert(_prev: ExpertFormState, fd: FormData): Promise<
   const { values, data, errors } = parseExpertForm(fd);
   let user;
   try {
-    user = await authorize(id ? "experts.edit" : "experts.create");
+    user = await authorizeIn("profiles", id ? "experts.edit" : "experts.create");
   } catch (e) {
     if (isForbidden(e)) return { values, message: e.message };
     throw e;
@@ -80,7 +81,7 @@ export async function saveExpert(_prev: ExpertFormState, fd: FormData): Promise<
 export async function uploadCv(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   await bounce(`/admin/experts/${isUuid(id) ? id : ""}`, async () => {
-    const user = await authorize("experts.cv_upload");
+    const user = await authorizeIn("profiles", "experts.cv_upload");
     const file = fd.get("file");
     if (!isUuid(id)) redirect("/admin/experts");
     if (!(file instanceof File)) redirect(back(`/admin/experts/${id}`, "error", "Choose a file first."));
@@ -96,7 +97,7 @@ export async function uploadCv(fd: FormData) {
 export async function recordConsent(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   await bounce(`/admin/experts/${isUuid(id) ? id : ""}`, async () => {
-    const user = await authorize("experts.edit");
+    const user = await authorizeIn("profiles", "experts.edit");
     const value = String(fd.get("consent") ?? "");
     if (!isUuid(id) || !isOneOf(CV_CONSENT, value)) redirect("/admin/experts");
     const db = await getDb();
@@ -115,7 +116,7 @@ export async function recordConsent(fd: FormData) {
 export async function setExpertStatus(fd: FormData) {
   const returnTo = safePath(String(fd.get("returnTo") ?? ""), "/admin/experts");
   await bounce(returnTo, async () => {
-    const user = await authorize("experts.edit");
+    const user = await authorizeIn("profiles", "experts.edit");
     const id = String(fd.get("id") ?? "");
     const status = String(fd.get("status") ?? "");
     if (!isUuid(id) || !isOneOf(EXPERT_STATUSES, status)) redirect(back(returnTo, "error", "Unknown expert or status."));
@@ -134,7 +135,7 @@ export async function setExpertStatus(fd: FormData) {
 export async function appendNote(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   await bounce(`/admin/experts/${isUuid(id) ? id : ""}`, async () => {
-    const user = await authorize("experts.notes");
+    const user = await authorizeIn("profiles", "experts.notes");
     const text = String(fd.get("note") ?? "").trim().slice(0, 2000);
     if (!isUuid(id)) redirect("/admin/experts");
     if (!text) redirect(back(`/admin/experts/${id}`, "error", "Write a note first."));
@@ -155,7 +156,7 @@ export async function appendNote(fd: FormData) {
 export async function deleteExpert(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   await bounce(`/admin/experts/${isUuid(id) ? id : ""}`, async () => {
-    const user = await authorize("experts.delete");
+    const user = await authorizeIn("profiles", "experts.delete");
     if (!isUuid(id)) redirect("/admin/experts");
     if (String(fd.get("confirm") ?? "").trim() !== "DELETE") redirect(back(`/admin/experts/${id}?tab=edit`, "error", "Type DELETE to confirm."));
     const db = await getDb();

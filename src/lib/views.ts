@@ -17,6 +17,13 @@ export const EXPERT_COLUMNS = [
   { id: "hours", label: "Hours / week" },
   { id: "updated", label: "Updated", sort: "updated" },
   { id: "added", label: "Added", sort: "created" },
+  // The FynoLabs admin's workflow columns.
+  { id: "stage", label: "Stage" },
+  { id: "owner", label: "Owner" },
+  { id: "outreach", label: "Outreach" },
+  { id: "next", label: "Next action", sort: "next" },
+  { id: "came", label: "Came from" },
+  { id: "activity", label: "Last activity", sort: "activity" },
 ] as const;
 export type ColumnId = (typeof EXPERT_COLUMNS)[number]["id"];
 const COLUMN_IDS = EXPERT_COLUMNS.map((c) => c.id) as readonly string[];
@@ -24,10 +31,11 @@ const COLUMN_IDS = EXPERT_COLUMNS.map((c) => c.id) as readonly string[];
 /** Name is always shown; these are on until someone changes the columns (they fit a 1280px screen). */
 export const DEFAULT_COLUMNS: ColumnId[] = ["domain", "skills", "country", "years", "status", "availability", "consent"];
 
-export const FILTER_KEYS = ["q", "domain", "skills", "country", "status", "availability", "consent", "source", "tag", "minYears"] as const;
+export const FILTER_KEYS = ["q", "domain", "skills", "country", "status", "availability", "consent", "source", "tag", "minYears", "owner", "outreach", "job", "project", "track", "stage", "due", "channel"] as const;
 export type FilterKey = (typeof FILTER_KEYS)[number];
 
-export const LAYOUTS = ["table", "board"] as const;
+/** table; board = one column per expert status; pipelines = one column per pipeline stage (a card per person and job). */
+export const LAYOUTS = ["table", "board", "pipelines"] as const;
 export type Layout = (typeof LAYOUTS)[number];
 
 export const PAGE_SIZES = [25, 50, 100] as const;
@@ -59,7 +67,7 @@ export function serializeColumns(cols: readonly string[]): string {
 const isDefaultColumns = (cols: readonly string[]) => serializeColumns(cols) === serializeColumns(DEFAULT_COLUMNS);
 
 export function parseLayout(raw: string | undefined | null): Layout {
-  return raw === "board" ? "board" : "table";
+  return raw === "board" ? "board" : raw === "pipelines" ? "pipelines" : "table";
 }
 
 export function parsePageSize(raw: string | undefined | null): number {

@@ -33,7 +33,15 @@ Three parts, one database:
 | **Jobs** `/admin/jobs` | Every job with status, visibility and applicants (views: open, drafts, closed, featured; search, visibility, partner). A job has five tabs: **Details** (public text, plus the internal partner, requirement and rate note), **Form** (the builder: add a question of any of 17 types, edit wording, help, required, choices and which profile field it fills, move, duplicate, delete, templates, live preview), **Applicants** (status filters, key answers as columns, side panel with every answer, status and bulk status, internal note, CSV export, CV download), **Matches** (experts already in the hub ranked for the job, with reasons; copy an invite link, mark invited, shortlist to the requirement) and **Share** (public link, open / pause / close, public / unlisted / internal, featured, closing date, tagged links for LinkedIn, WhatsApp, Slack and email). |
 | **Submissions** `/admin/submissions` | Everyone put forward, across partners. Change status (each change is logged). You **can't mark someone Submitted without their CV consent**: the app says why. |
 | **Placements** `/admin/placements` | Who is working where, hours or tasks, what the expert earned and what the partner paid, with totals per partner and per month. Start one from an approved submission. |
-| **Partners** `/admin/partners` | Companies: the partners that send requirements and every account of the FynoLabs admin (kind, stage, owner, next step and due date, route, platform, tags; one record per organisation). Their full CRM screens (activity, contacts, calendar) come in Phase 3b. |
+| **My work** `/admin/my-work` | Each person's list for today (India time): follow-ups due on their accounts, leads, experts and pipelines; calendar; applicants to screen; prospects to contact; no reply; referral links; documents. Admins can open anyone's list or everyone's. |
+| **Accounts** `/admin/accounts` | Companies (one per organisation: the partners that send requirements and every FynoLabs account): table by stage then due date, or a board; tabs Pipeline / Due now / Parked / All; filters by type, stage, owner, line and tag; a side panel, then the account page with the next step, details, people, the activity log (a stage change is logged), its calendar, jobs, projects, requirements and referrals. `/admin/partners` opens it. |
+| **Leads** `/admin/leads` | The people at accounts: role, stage, source, email / profile, next follow-up; link to an account. |
+| **Calendar** `/admin/calendar` | Calls, meetings, follow-ups, deadlines, tasks and posts in India time (agenda, week, month), with accounts' next steps, leads' follow-ups and job closing dates; mark done logs a call or meeting on its account. |
+| **Platforms** `/admin/platforms` | Expert platforms and agencies: referral link, jobs page, logo, status, notes, reference links; linked accounts and projects; referrals by outcome. |
+| **Projects** `/admin/projects` | P### projects: partner, platform, owner, target, countries, rules; the funnel of their jobs' pipelines; roles, team, tracks, required documents, partner reports; fee rules (admins and finance). |
+| **Messages** `/admin/messages` | The website's contact form: mark handled, reply drafts, replies (copy or open in the email app until email is set up). |
+| **Analytics** `/admin/analytics` | Visitors and page views of fynolabs.si by source per day, top pages and referrers, applications and messages. |
+| **Settings** `/admin/settings` | Admins: how replies read (context, style, links, sign-off). |
 | **Import** `/admin/import` | Pull people in from the old jobs site, or from a spreadsheet (Talent register, old admin CRM export) with a preview before anything changes. |
 | **Team & access** `/admin/settings/team` | Admins only: **Add team member** (email, name, role) creates their login with a temporary password **shown once** in a copy box; per member: change role (and a pod lead's partners), **Reset password** (a new temporary password, shown once), turn access off (signs them out at once) and on, last sign-in. Every change is logged. |
 
@@ -73,8 +81,8 @@ Everyone signs in on the same page (`/signin`). First the **account type**: team
 
 | Role | Can |
 |---|---|
-| **Admin** | Everything, plus Team & access, imports (jobs-site sync and CSV), delete on request, partners, settings. |
-| **Recruiter** | Add and edit experts, notes, CV upload (no delete), requirements, matching, shortlist, submissions, roster export, CSV import with preview (not the jobs-site sync). **No money.** |
+| **Admin** | Everything, plus Team & access, imports (jobs-site sync and CSV), delete on request, partners, settings, deleting accounts, leads, events, platforms, projects and messages. |
+| **Recruiter** | Add and edit experts, notes, CV upload (no delete), requirements, matching, shortlist, submissions, roster export, CSV import with preview (not the jobs-site sync); accounts, leads, the calendar, platforms, projects and messages. **No money.** |
 | **Pod lead** | Reads experts and requirements. Submissions and placements **only for the partners in their scope**; may change submission status and a placement's hours, tasks and status. **No money.** |
 | **Finance** | Reads experts, requirements and submissions. Placements in full, money included; creates and edits placements; placements CSV export. No imports, no team page. |
 | **Viewer** | Read only. Money hidden, expert email and phone masked (LinkedIn visible), no exports. |
@@ -151,7 +159,7 @@ Going live: [docs/DEPLOY.md](docs/DEPLOY.md). Settings: [.env.example](.env.exam
 
 ## How it's built
 
-- **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, a few small hand-made components (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (light mode only; colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; 4px radius; Inter, bundled, SIL Open Font License). Blue (`primary`) is kept for the main action and links; statuses use soft tints. Screenshots: `docs/screenshots/`.
+- **Next.js 15** (App Router, server components and server actions), **Tailwind CSS 4**, the FynoLabs admin's own kit ported to server components (`src/components/admin`: kit, crm-kit, trend-card with Recharts) under the older building blocks (`src/components/ui`), `lucide-react` icons. Look: the FynoLabs design system from the website admin (colour tokens as CSS variables in `src/app/globals.css`, mapped to Tailwind names such as `bg-primary`, `text-muted-foreground`, `border-border`, `bg-sidebar`; square corners, hairlines, no shadows; Inter, bundled, SIL Open Font License; a dark theme for the admin only). Blue (`primary`) is kept for the main action, links and positive statuses; statuses are uppercase outline labels, never green or red fills. Screenshots: `docs/screenshots/`.
 - **Postgres** through **Drizzle ORM**: the app's own Neon project, "expert-hub" (`@neondatabase/serverless`, HTTP driver), the one environment (`npm run dev` uses it too). The automated tests use PGlite (a real Postgres inside Node).
 - All of this app's tables live in the Postgres schema **`hub`** (it began on the shared "Engine" database; the guard stays). The old jobs site's tables are only ever read, by the copy and the import; the copy keeps its replica in the schema **`engine_copy`**, outside `hub`. The FynoLabs admin's copy is in **`fynolabs_copy`**, written by the main site's `hub-sync` edge function.
 - **Pipelines:** every application (public forms, the Engine copy, the FynoLabs admin) is one row per person per job with the FynoLabs admin's stages (Applied, Shortlisted, Proposed to client, Selected, Documents sent, Signed, Active, Ended, Rejected); a database trigger keeps the applicant status and the stage in step.
@@ -165,7 +173,8 @@ src/db/             schema.ts (hub tables), client.ts, env.ts, local/ (PGlite fo
 src/lib/forms/      job-fields (field types, validation, template, profile mapping), job, expert, requirement forms
 src/lib/match/      dictionary, paste reader, scorer
 src/lib/import/     register / CRM / jobs-site mapping, the import planner, engine/ (the copy from Engine: read-only source, replica, hub mapping, report), fynolabs/ (the FynoLabs admin: runner, merge rules, mapping)
-src/lib/auth/       access rules, passwords, the signed-in account, roles, permissions (can / masking), the guard
+src/lib/auth/       access rules, passwords, the signed-in account, roles, permissions (can / masking), per-section access, the guard
+src/lib/crm/        the CRM's lists and words (stages, lanes, due dates), India-time dates, the redirect-with-message helper
 src/lib/server/     database work (accounts, experts, requirements, jobs, applications, portal, submissions, placements, CVs, imports, team, saved views, email)
 drizzle/            SQL migrations (hub schema only)
 scripts/            migrate, create-admin, import-jobs, copy-from-engine, sync-fynolabs, token-new
@@ -175,7 +184,7 @@ docs/               DEPLOY.md, DATA.md, LOCAL_TESTING.md, PRODUCT_PLAN.md, scree
 
 ## Roadmap
 
-Done in Phase 2: jobs with a form builder, public applications, expert sign-up, onboarding and profile, the job board. Done in Phase 3a: the FynoLabs admin's structure and data (`npm run sync:fynolabs`). Next, Phase 3b: the admin screens for companies, contacts, calendar, pipelines, projects, referrals, campaigns, messages, job radar and analytics ([PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md#phase-3b-the-admin-screens)).
+Done in Phase 2: jobs with a form builder, public applications, expert sign-up, onboarding and profile, the job board. Done in Phase 3a: the FynoLabs admin's structure and data (`npm run sync:fynolabs`). Phase 3b: the CRM and operations screens are built (dashboard, my work, accounts, leads, calendar, platforms, projects, messages, analytics, settings); pipelines, referrals, campaigns, job radar and fees next ([PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md#phase-3b-the-admin-screens)).
 
 1. Screening per field (short assessments kept on the profile), interviews, and a job pipeline with more stages (onboarding, active).
 2. Uploads in object storage (Vercel Blob or R2): needed for CVs over 4.5 MB on Vercel.
