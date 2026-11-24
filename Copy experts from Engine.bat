@@ -18,7 +18,7 @@ if not "%ERRORLEVEL%"=="0" (
 echo Node version:
 node -v
 
-node -e "const f=require('fs');try{process.exit(f.statSync('node_modules/.package-lock.json').mtimeMs>=f.statSync('package-lock.json').mtimeMs?0:1)}catch(e){process.exit(1)}"
+node -e "const f=require('fs');try{process.exit(f.existsSync('node_modules/.bin/tsx.cmd')&&f.existsSync('node_modules/next/package.json')&&f.statSync('node_modules/.package-lock.json').mtimeMs>=f.statSync('package-lock.json').mtimeMs?0:1)}catch(e){process.exit(1)}"
 if not "%ERRORLEVEL%"=="0" (
   echo.
   echo Installing packages ^(first run, or after an update^). This takes a few minutes...
