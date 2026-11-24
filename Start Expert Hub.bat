@@ -46,10 +46,19 @@ if not "%ERRORLEVEL%"=="0" (
 )
 set CONFIRM_DB=
 echo.
-echo Starting Expert Hub with the database ^(production^): every change is live.
-echo Sign in at http://localhost:3000/signin ^(no login yet? run "Create my admin account.bat"^).
-echo Job board at http://localhost:3000 ^(this computer only^).
+echo Building the fast version ^(1 to 2 minutes; pages then open instantly^)...
+call npm run -s build
+if not "%ERRORLEVEL%"=="0" (
+  echo.
+  echo The build failed. Send Claude the text above.
+  pause
+  exit /b 1
+)
+echo.
+echo Starting Expert Hub. Sign in at http://localhost:3000/signin
+echo ^(no login yet? run "Create my admin account.bat"^). This computer only.
 echo Keep this window open while you use the app. Close it to stop.
-start "" cmd /c "timeout /t 8 >nul & start http://localhost:3000/signin"
-call npm run dev
+echo After Claude changes something, close this window and start it again.
+start "" cmd /c "timeout /t 4 >nul & start http://localhost:3000/signin"
+call npx next start --hostname 127.0.0.1 --port 3000
 pause
