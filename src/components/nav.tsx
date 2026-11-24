@@ -34,13 +34,14 @@ import {
   Send,
   Settings,
   Sun,
-  Upload,
   User,
   UserPlus,
   Users,
   Wallet,
   X,
   type LucideIcon,
+  BadgeCheck,
+  FileCheck2,
 } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 import { setAdminTheme, useAdminTheme } from "@/components/admin/kit-client";
@@ -128,11 +129,10 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
       links: [
         ...(can(access, "projects") ? [{ href: "/admin/projects", label: "Projects", icon: FolderKanban }] : []),
         // Groups live with Experts (the Profiles | Groups switch), as in the FynoLabs admin.
-        ...(can(access, "profiles") ? [{ href: "/admin/experts", label: "Experts", icon: Users, also: ["/admin/groups"] }] : []),
+        ...(can(access, "profiles") ? [{ href: "/admin/experts", label: "Experts", icon: Users, also: ["/admin/groups", "/admin/import"] }] : []),
         ...(can(access, "referrals") ? [{ href: "/admin/campaigns/new", label: "Send emails", icon: Send }] : []),
         ...(can(access, "referrals") ? [{ href: "/admin/campaigns", label: "Campaigns", icon: Megaphone }] : []),
         ...(can(access, "send-referrals") ? [{ href: "/admin/send-referrals", label: "Send referrals", icon: UserPlus, also: ["/admin/referrals"] }] : []),
-        ...(access.import ? [{ href: "/admin/import", label: "Import", icon: Upload }] : []),
       ],
     },
     {
@@ -141,8 +141,8 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
         ...(can(access, "posted-jobs") ? [{ href: "/admin/jobs", label: "Posted jobs", icon: Briefcase }] : []),
         ...(can(access, "job-radar") ? [{ href: "/admin/jobs/radar", label: "Job radar", icon: Radar }] : []),
         { href: "/admin/requirements", label: "Requirements", icon: ClipboardList },
-        { href: "/admin/submissions", label: "Submissions", icon: Send },
-        { href: "/admin/placements", label: "Placements", icon: Briefcase },
+        { href: "/admin/submissions", label: "Submissions", icon: FileCheck2 },
+        { href: "/admin/placements", label: "Placements", icon: BadgeCheck },
       ],
     },
     { label: "Money", links: access.money && can(access, "fees") ? [{ href: "/admin/fees", label: "Referral fees", icon: Wallet }] : [] },
@@ -183,7 +183,7 @@ function currentLink(path: string, access: NavAccess): NavLink | null {
 
 const rowClass = (active: boolean) =>
   cn(
-    "admin-hover flex h-11 w-full items-center gap-3 border-l-2 pr-3 pl-2.5 text-left text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+    "admin-hover flex h-11 w-full items-center gap-3 border-l-2 pr-3 pl-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
     active ? "border-foreground bg-foreground/[0.06] text-foreground" : "border-transparent text-foreground/75 hover:text-foreground",
   );
 
@@ -597,6 +597,11 @@ function ProfileMenu({ user, signOut, onNavigate, size = "default" }: { user: Na
 export function Sidebar({ access, user, signOut }: { access: NavAccess; user: NavUser; signOut: () => Promise<void> }) {
   const path = usePathname();
   const settings = settingsLink(access);
+  // On a short window the list scrolls; keep the current page in view instead of leaving it off-screen.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+  }, [path]);
   return (
     <aside className="sticky hidden h-screen w-[282px] shrink-0 flex-col border-r border-border lg:flex" style={{ top: "env(safe-area-inset-top, 0px)" }}>
       <div className="px-5 pt-9 pb-6">
@@ -614,7 +619,7 @@ export function Sidebar({ access, user, signOut }: { access: NavAccess; user: Na
         </button>
       </div>
       {/* On short windows the list scrolls on its own, without a visible scrollbar, rather than squeezing the spacing. */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Admin sections">
+      <nav ref={navRef} className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Admin sections">
         <NavGroups path={path} access={access} />
       </nav>
       <div className="border-t border-border px-5 py-4">

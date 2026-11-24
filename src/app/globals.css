@@ -356,16 +356,21 @@
    foreground wash (4%), a little stronger while pressed. Static rows get none, so a wash means "clickable". */
 @utility admin-hover {
   transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
-  &:hover,
+  /* Mouse only, as on the FynoLabs admin: on touch a tapped row would keep its wash. */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background-color: hsl(var(--foreground) / 0.04);
+    }
+    /* The current page keeps its own highlight under the pointer. */
+    &[aria-current="page"]:hover {
+      background-color: hsl(var(--foreground) / 0.06);
+    }
+  }
   &:focus-visible {
     background-color: hsl(var(--foreground) / 0.04);
   }
   &:active {
     background-color: hsl(var(--foreground) / 0.07);
-  }
-  /* The current page keeps its own highlight under the pointer. */
-  &[aria-current="page"]:hover {
-    background-color: hsl(var(--foreground) / 0.06);
   }
   @media (prefers-reduced-motion: reduce) {
     transition: none;
