@@ -34,8 +34,11 @@ export function getDb(): Promise<DB> {
 async function createDb(): Promise<DB> {
   const url = (process.env.DATABASE_URL ?? "").trim();
   if (url) {
-    const { neon } = await import("@neondatabase/serverless");
+    const { neon, neonConfig } = await import("@neondatabase/serverless");
     const { drizzle } = await import("drizzle-orm/neon-http");
+    // Survives a PC whose address lookup can't find Neon (falls back to Cloudflare/Google).
+    const { dnsSafeFetch } = await import("./dns-safe-fetch");
+    neonConfig.fetchFunction = dnsSafeFetch;
     return drizzle({ client: neon(url), schema }) as unknown as DB;
   }
   const dir = testDbDir();

@@ -17,6 +17,7 @@ import {
   FolderKanban,
   Globe,
   Handshake,
+  ChevronsUpDown,
   Inbox,
   KeyRound,
   LayoutDashboard,
@@ -345,7 +346,7 @@ export function CommandPalette({ access }: { access: NavAccess }) {
 
 /* ---------- Profile menu ---------- */
 
-function ProfileMenu({ user, signOut, onNavigate }: { user: NavUser; signOut: () => Promise<void>; onNavigate?: () => void }) {
+function ProfileMenu({ user, signOut, onNavigate }: { user: NavUser & { settingsHref?: string }; signOut: () => Promise<void>; onNavigate?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -359,40 +360,44 @@ function ProfileMenu({ user, signOut, onNavigate }: { user: NavUser; signOut: ()
       document.removeEventListener("keydown", key);
     };
   }, [open]);
-  const initials =
-    user.name
-      .replace(/[^\p{L}\p{N}\s]/gu, " ")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0])
-      .join("")
-      .toUpperCase() || "?";
+  const settings = user.settingsHref;
+  const item = "admin-hover flex h-10 w-full items-center gap-3 px-3 text-left text-small text-foreground";
   return (
     <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className="admin-hover -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 px-2 py-2 text-left">
-        <span className="eyebrow flex h-9 w-9 shrink-0 items-center justify-center border border-border text-foreground" aria-hidden>
-          {initials}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-small text-foreground">{user.name}</span>
-          <span className="block truncate text-small text-muted-foreground">{user.role}</span>
-        </span>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`Account: ${user.email}`}
+        className="flex w-full items-center gap-3 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+      >
+        <span className="min-w-0 flex-1 truncate text-small text-foreground">{user.email}</span>
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
       {open ? (
         <div role="menu" className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-[220px] border border-border bg-background p-1">
-          <p className="truncate px-3 py-2 text-small text-muted-foreground">{user.email}</p>
+          <div className="px-3 py-2.5">
+            <p className="truncate text-small text-foreground">{user.email}</p>
+            <p className="eyebrow mt-0.5 text-muted-foreground">{user.role}</p>
+          </div>
+          <div className="my-1 border-t border-border" />
+          {settings ? (
+            <Link href={settings} onClick={() => { setOpen(false); onNavigate?.(); }} className={item}>
+              <Settings className="h-4 w-4 text-muted-foreground" aria-hidden /> Settings
+            </Link>
+          ) : null}
           <AdminThemeToggle withLabel />
-          <Link href="/account/password" onClick={onNavigate} className="admin-hover flex h-10 items-center gap-3 px-3 text-small text-foreground">
-            <KeyRound className="h-4 w-4" aria-hidden /> Change password
+          <Link href="/account/password" onClick={() => { setOpen(false); onNavigate?.(); }} className={item}>
+            <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden /> Change password
           </Link>
-          <a href="/" target="_blank" rel="noreferrer" className="admin-hover flex h-10 items-center gap-3 px-3 text-small text-foreground">
-            <ExternalLink className="h-4 w-4" aria-hidden /> Public job board
+          <a href="/" target="_blank" rel="noreferrer" className={item}>
+            <ExternalLink className="h-4 w-4 text-muted-foreground" aria-hidden /> Public job board
           </a>
+          <div className="my-1 border-t border-border" />
           <form action={signOut}>
-            <button type="submit" className="admin-hover flex h-10 w-full items-center gap-3 px-3 text-left text-small text-foreground">
-              <LogOut className="h-4 w-4" aria-hidden /> Sign out
+            <button type="submit" className={item}>
+              <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden /> Sign out
             </button>
           </form>
         </div>
@@ -426,14 +431,9 @@ export function Sidebar({ access, user, signOut }: { access: NavAccess; user: Na
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Admin sections">
         <NavGroups path={path} access={access} />
-        {settings ? (
-          <div className="mt-6 flex flex-col gap-1">
-            <NavItem link={settings} active={active === settings.href} />
-          </div>
-        ) : null}
       </nav>
       <div className="border-t border-border px-5 py-4">
-        <ProfileMenu user={user} signOut={signOut} />
+        <ProfileMenu user={{ ...user, settingsHref: settings?.href }} signOut={signOut} />
       </div>
     </aside>
   );
