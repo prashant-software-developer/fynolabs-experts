@@ -4,7 +4,6 @@
 // Cloudflare/Google over HTTPS (resolveHost in db-connect). TLS still uses the real name, so the
 // certificate is checked as usual. On Vercel the normal lookup works and nothing changes.
 import dns from "node:dns";
-import { Agent, fetch as undiciFetch } from "undici";
 import { resolveHost } from "@/lib/server/db-connect";
 
 type LookupCb = (err: NodeJS.ErrnoException | null, address?: string | dns.LookupAddress[], family?: number) => void;
@@ -23,9 +22,25 @@ function lookup(hostname: string, options: dns.LookupOptions, cb: LookupCb) {
   });
 }
 
-let agent: Agent | null = null;
+// undici is loaded at run time and only if it is installed; without it the normal fetch is used,
+// so a half-finished package install can never stop the app from starting.
+type Undici = { Agent: new (o: unknown) => unknown; fetch: (i: unknown, o?: unknown) => Promise<Response> };
+let loaded: Promise<{ u: Undici; agent: unknown } | null> | null = null;
+function load() {
+  loaded ??= (async () => {
+    try {
+      const name = "undici";
+      const u = (await import(/* webpackIgnore: true */ name)) as Undici;
+      return { u, agent: new u.Agent({ connect: { lookup } }) };
+    } catch {
+      return null;
+    }
+  })();
+  return loaded;
+}
 
-export const dnsSafeFetch = ((input: Parameters<typeof undiciFetch>[0], init?: Parameters<typeof undiciFetch>[1]) => {
-  agent ??= new Agent({ connect: { lookup: lookup as never } });
-  return undiciFetch(input, { ...(init ?? {}), dispatcher: agent });
-}) as unknown as typeof fetch;
+export const dnsSafeFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const l = await load();
+  if (!l) return fetch(input, init);
+  return l.u.fetch(input, { ...(init ?? {}), dispatcher: l.agent });
+}) as typeof fetch;
