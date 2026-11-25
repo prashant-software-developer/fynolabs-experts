@@ -54,6 +54,7 @@ You need [Node.js 22](https://nodejs.org) (the LTS installer is fine) and the da
 3. **`Copy FynoLabs data.bat`**: brings the FynoLabs admin across (experts, pipelines, companies, contacts, calendar, referrals, projects, emails, messages, analytics). One-time setup the first time: two secrets in Lovable and a push of the main site ([DEPLOY.md step 3b](docs/DEPLOY.md#3b-copy-the-fynolabs-admin)).
 4. **`Create my admin account.bat`**: your admin login (email `prashant@xocket.sh` by default). Type a password twice (nothing shows while you type), or press Enter to get a strong one printed once.
 5. **`Start Expert Hub.bat`**, then sign in at http://localhost:3000/signin.
+6. Optional: **`Create a test expert account.bat`**: an expert login (default `test.expert@example.com`, email marked confirmed, record "Test Expert" tagged `test`) to try the portal before sign-up email is set up. Use it in a private window. Details in [LOCAL_TESTING.md](docs/LOCAL_TESTING.md#experts).
 
 The same from a terminal: `npm ci`, `CONFIRM_DB=yes npm run admin:create -- --email you@xocket.sh`, `npm run dev`.
 
@@ -150,6 +151,7 @@ Full rules in [docs/DATA.md](docs/DATA.md).
 | `npm run db:generate` | After changing `src/db/schema.ts`: writes a new migration into `drizzle/`. |
 | `npm run db:migrate` | Applies migrations to `DATABASE_URL` (the app's own Neon project). Refuses unless `CONFIRM_DB=yes` is also set, prints which database it targets, and refuses anything outside the `hub` schema. |
 | `npm run admin:create` | Creates or updates your admin login in `DATABASE_URL` (`-- --email you@xocket.sh [--name "Your Name"]`): runs the migrations, makes the team member an admin, marks the email verified, and asks for a password (hidden, twice) or makes one (printed once, to be changed at the first sign-in). Asks before resetting an existing password. Needs `CONFIRM_DB=yes`. On Windows: `Create my admin account.bat`. |
+| `npm run expert:create` | A test expert login in `DATABASE_URL` (`-- --email test.expert@example.com [--name "Test Expert"]`): an expert account with the email marked verified, linked to an expert record tagged `test`; the password as in `admin:create`. Refuses team emails, a real expert's email, a login someone else made and people deleted on request. Needs `CONFIRM_DB=yes`. On Windows: `Create a test expert account.bat`. |
 | `npm run import:jobs` | Jobs-site sync from the command line (`-- --dry-run` to preview). Reads `JOBS_DATABASE_URL` when set. Needs `CONFIRM_DB=yes`. |
 | `npm run sync:fynolabs` | Copy everything from the FynoLabs admin into `DATABASE_URL` and fold it into the hub (`-- --dry-run` first: counts only). Needs `FYNOLABS_SYNC_TOKEN` (equal to Lovable's `HUB_SYNC_TOKEN` secret) and `CONFIRM_DB=yes`. On Windows: `Copy FynoLabs data.bat`. |
 | `npm run token:new` | Adds a fresh random `FYNOLABS_SYNC_TOKEN` to `.env.local` if there is none (never prints it). |

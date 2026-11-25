@@ -30,6 +30,8 @@ The launchers install packages the first time (and again after an update), which
 
 Sign-up with a password needs email to be set up (Resend or SMTP, see [DEPLOY.md step 5](DEPLOY.md#5-email-resend-or-smtp)). Without it `/join` says sign-up opens soon (or offers Google when that's set up), and the job forms still work without an account.
 
+**A test expert login (works without email).** Double-click `Create a test expert account.bat`: press Enter to keep `test.expert@example.com` and the name Test Expert (no real mailbox is needed: the email is marked confirmed), then choose a password as for your admin login, or press Enter for one shown once. Sign in with it in a **private window** (your admin sign-in stays in the normal one): you land on **My profile** (`/me`) and can try onboarding, CV upload, consent, applying to a job (your profile fills the form) and **Applications**. The record shows in Admin → Experts as "Test Expert", tagged `test`, and its applications appear on the jobs like anyone's. Run the launcher again to reset the password. It refuses team emails, a real expert's email and anyone else's login. To remove it: Admin → Experts → search its email → **Delete on request** (that email can't be used again afterwards; pick a new one, e.g. `test.expert2@example.com`).
+
 | Step | Try this |
 |---|---|
 | Sign up | In a private window: http://localhost:3000/join with your own personal email: name, email, password twice, tick the consent box, **Create account**. |
