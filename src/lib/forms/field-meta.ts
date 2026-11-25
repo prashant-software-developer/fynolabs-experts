@@ -37,7 +37,7 @@ export const FIELD_TYPE_INFO: Record<FieldType, { label: string; hint: string; c
   country: { label: "Country", hint: "From the country list" },
   years: { label: "Years of experience", hint: "0 to 70" },
   skills: { label: "Skills (tags)", hint: "Comma-separated" },
-  file: { label: "File upload", hint: "PDF or Word, up to 10 MB" },
+  file: { label: "File upload", hint: "PDF or Word, up to 4 MB" },
   consent: { label: "Consent checkbox", hint: "Must be ticked if required" },
   section: { label: "Section heading", hint: "A title and text, no answer" },
 };

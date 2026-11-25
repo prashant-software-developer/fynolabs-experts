@@ -82,13 +82,14 @@ describe("validation per field type", () => {
     expect(one(field("skills"), Array.from({ length: 41 }, (_, i) => `skill${i}`).join(",")).errors["id-skills"]).toMatch(/40/);
   });
 
-  it("file upload: PDF or Word up to 10 MB; required files must be attached", () => {
+  it("file upload: PDF or Word up to 4 MB (Vercel's standard request limit); required files must be attached", () => {
     const f = field("file", { required: true, mapsTo: "cv" });
     expect(one(f, file("cv.pdf", "application/pdf")).files[f.id].name).toBe("cv.pdf");
     expect(one(f, file("cv.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")).errors[f.id]).toBeUndefined();
     expect(one(f, file("cv.exe", "application/x-msdownload")).errors[f.id]).toMatch(/PDF or Word/);
     expect(one(f, file("cv.pdf", "text/html")).errors[f.id]).toMatch(/PDF or Word/);
-    expect(one(f, file("big.pdf", "application/pdf", 10 * 1024 * 1024 + 1)).errors[f.id]).toMatch(/10 MB/);
+    expect(one(f, file("max.pdf", "application/pdf", 4 * 1024 * 1024)).errors[f.id]).toBeUndefined();
+    expect(one(f, file("big.pdf", "application/pdf", 4 * 1024 * 1024 + 1)).errors[f.id]).toMatch(/4 MB/);
     expect(one(f, undefined).errors[f.id]).toBe("Please attach a file.");
     expect(checkFile({ name: "x.pdf", type: "application/pdf", size: 0 })).toMatch(/empty/);
     // A signed-in expert's CV on file satisfies the required question.

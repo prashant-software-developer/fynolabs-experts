@@ -240,7 +240,7 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
           {can(user.role, "experts.cv_upload") ? (
             <form action={uploadCv}>
               <input type="hidden" name="id" value={e.id} />
-              <FileDrop name="file" accept=".pdf,.doc,.docx,.txt,.rtf" label="Upload CV" hint="PDF or Word, up to 10 MB. Click or drop a file; it becomes the current CV." submitLabel="Upload" />
+              <FileDrop name="file" accept=".pdf,.doc,.docx,.txt,.rtf" label="Upload CV" hint="PDF or Word, up to 4 MB. Click or drop a file; it becomes the current CV." submitLabel="Upload" />
             </form>
           ) : null}
         </div>

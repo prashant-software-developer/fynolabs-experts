@@ -139,7 +139,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<S
             <p className="text-sm text-muted-foreground">No CV yet.</p>
           )}
           <form action={uploadMyCv}>
-            <FileDrop name="file" accept=".pdf,.doc,.docx" label={cv ? "Replace your CV" : "Upload your CV"} hint="PDF or Word, up to 10 MB." submitLabel="Upload" />
+            <FileDrop name="file" accept=".pdf,.doc,.docx" label={cv ? "Replace your CV" : "Upload your CV"} hint="PDF or Word, up to 4 MB." submitLabel="Upload" />
           </form>
         </div>
       </Section>

@@ -212,7 +212,7 @@ export function legacyFormFields(): (TemplateField & { key: LegacyFormKey })[] {
     f("why", "long_text", "Why are you a good fit?"),
     f("hours", "number", "Hours per week you can give", { mapsTo: "hours_per_week" }),
     f("start", "single_select", "When can you start?", { options: { choices: START_CHOICES } }),
-    f("cv", "file", "CV", { helpText: "PDF or Word, up to 10 MB", mapsTo: "cv" }),
+    f("cv", "file", "CV", { helpText: "PDF or Word, up to 4 MB", mapsTo: "cv" }),
     f("screening1", "long_text", "Screening 1 answers (jobs site)", { helpText: "Copied from the old jobs site." }),
     f("screening2", "long_text", "Screening 2 answers (jobs site)", { helpText: "Copied from the old jobs site." }),
   ];

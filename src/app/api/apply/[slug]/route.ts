@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   try {
     fd = await req.formData();
   } catch {
-    return reply(400, { ok: false, message: "The form couldn't be read. Files can be up to 10 MB." }, `/jobs/${slug}?error=${encodeURIComponent("The form couldn't be read. Files can be up to 10 MB.")}#apply`);
+    return reply(400, { ok: false, message: "The form couldn't be read. Files can be up to 4 MB." }, `/jobs/${slug}?error=${encodeURIComponent("The form couldn't be read. Files can be up to 4 MB.")}#apply`);
   }
   const account = await getAccount();
   let applicant: Applicant = { kind: "guest" };

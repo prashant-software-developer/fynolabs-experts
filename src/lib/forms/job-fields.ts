@@ -5,6 +5,7 @@ import { AVAILABILITY, type Availability } from "@/lib/constants";
 import { toCountryName } from "@/lib/countries";
 import { normalizeSkills, splitSkills } from "@/lib/match/dictionary";
 import { cleanLongText, cleanText, normalizeEmail, normalizeLinkedin, normalizePhone, splitList } from "@/lib/normalize";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limit";
 
 export {
   AVAILABILITY_CHOICES,
@@ -47,7 +48,7 @@ export function defaultTemplate(): TemplateField[] {
     t("skills", "Skills", { required: true, helpText: "Comma-separated, e.g. Python, numerical methods, LaTeX", mapsTo: "skills" }),
     t("number", "Hours per week you can give", { mapsTo: "hours_per_week" }),
     t("single_select", "Availability", { options: { choices: AVAILABILITY_CHOICES }, mapsTo: "availability" }),
-    t("file", "CV", { required: true, helpText: "PDF or Word, up to 10 MB", mapsTo: "cv" }),
+    t("file", "CV", { required: true, helpText: "PDF or Word, up to 4 MB", mapsTo: "cv" }),
     t("long_text", "Why are you a good fit?", { helpText: "A few lines about the work you have done that fits this role." }),
     t("consent", CONSENT_TEXT, { required: true, mapsTo: "cv_consent" }),
   ];
@@ -123,7 +124,8 @@ export type AnswerInput = {
 };
 
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+/** Vercel's standard request limit decides it (src/lib/upload-limit.ts). */
+export const MAX_FILE_BYTES = MAX_UPLOAD_BYTES;
 const FILE_TYPES = new Set([
   "application/pdf",
   "application/msword",
@@ -132,7 +134,7 @@ const FILE_TYPES = new Set([
 
 export function checkFile(file: { name: string; type: string; size: number }): string | null {
   if (!file.size) return "The file is empty.";
-  if (file.size > MAX_FILE_BYTES) return "Files can be up to 10 MB.";
+  if (file.size > MAX_FILE_BYTES) return "Files can be up to 4 MB.";
   const byExt = /\.(pdf|docx?)$/i.test(file.name);
   if (!byExt || (file.type && !FILE_TYPES.has(file.type) && file.type !== "application/octet-stream")) return "Upload a PDF or Word document (.pdf, .doc, .docx).";
   return null;

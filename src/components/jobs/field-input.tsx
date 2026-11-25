@@ -142,7 +142,7 @@ export function FieldInput({
     case "file":
       control = (
         <div className="space-y-1.5">
-          <FilePicker id={id} name={name} accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" label={field.label} hint={field.helpText ? "Click or drop a file here." : "PDF or Word, up to 10 MB. Click or drop a file."} invalid={Boolean(error)} disabled={disabled} />
+          <FilePicker id={id} name={name} accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" label={field.label} hint={field.helpText ? "Click or drop a file here." : "PDF or Word, up to 4 MB. Click or drop a file."} invalid={Boolean(error)} disabled={disabled} />
           {fileNote ? <p className="text-xs text-muted-foreground">{fileNote}</p> : null}
         </div>
       );

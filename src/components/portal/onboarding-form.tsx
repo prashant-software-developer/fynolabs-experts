@@ -94,7 +94,7 @@ export function OnboardingForm({ step, initial, nextHref, cvFilename }: { step: 
         </>
       ) : null}
       {step === "cv" ? (
-        <Field label="Your CV" htmlFor="cv-file" error={e.file} hint={cvFilename ? `On file: ${cvFilename}. Choose a new file to replace it, or continue.` : "PDF or Word, up to 10 MB."}>
+        <Field label="Your CV" htmlFor="cv-file" error={e.file} hint={cvFilename ? `On file: ${cvFilename}. Choose a new file to replace it, or continue.` : "PDF or Word, up to 4 MB."}>
           <FilePicker id="cv-file" name="file" accept=".pdf,.doc,.docx" label={cvFilename ? "Replace your CV" : "Upload your CV"} hint="Click or drop a file" invalid={Boolean(e.file)} />
         </Field>
       ) : null}

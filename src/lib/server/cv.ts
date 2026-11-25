@@ -9,9 +9,11 @@ import { and, eq, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { rowsOf } from "@/db/client";
 import { expertFiles, experts } from "@/db/schema";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limit";
 import { actorEmail, logActivity, type Actor } from "./activity";
 
-export const MAX_CV_BYTES = 10 * 1024 * 1024;
+/** Vercel's standard request limit decides it (src/lib/upload-limit.ts). */
+export const MAX_CV_BYTES = MAX_UPLOAD_BYTES;
 export const CV_TYPES: Record<string, string> = {
   "application/pdf": ".pdf",
   "application/msword": ".doc",
@@ -70,7 +72,7 @@ export async function readCv(db: DB, file: FileRow): Promise<CvFile | null> {
 
 export function checkCvUpload(file: { name: string; type: string; size: number }): string | null {
   if (!file.size) return "Choose a file first.";
-  if (file.size > MAX_CV_BYTES) return "CVs can be up to 10 MB.";
+  if (file.size > MAX_CV_BYTES) return "CVs can be up to 4 MB.";
   const okType = CV_TYPES[file.type] || /\.(pdf|docx?|txt|rtf)$/i.test(file.name);
   if (!okType) return "Upload a PDF, Word document or text file.";
   return null;

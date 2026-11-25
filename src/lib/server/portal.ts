@@ -65,7 +65,7 @@ export const ONBOARDING_STEPS = [
   { id: "basics", title: "Basics", blurb: "Your name, where you are and how to reach you." },
   { id: "expertise", title: "Expertise & skills", blurb: "Your field and what you are good at." },
   { id: "experience", title: "Experience & education", blurb: "Years of experience and your highest degree." },
-  { id: "cv", title: "CV", blurb: "A PDF or Word file, up to 10 MB." },
+  { id: "cv", title: "CV", blurb: "A PDF or Word file, up to 4 MB." },
   { id: "availability", title: "Availability & hours", blurb: "When you can work and how much." },
   { id: "consent", title: "Consent", blurb: "Whether we may share your profile with partners." },
 ] as const;

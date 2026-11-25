@@ -125,7 +125,7 @@ const JOB_FORM: FieldDef[] = [
   { key: "link", type: "url", label: "LinkedIn or portfolio" },
   { key: "github", type: "url", label: "GitHub" },
   { key: "note", type: "long_text", label: "Note from the applicant" },
-  { key: "cv", type: "file", label: "CV", mapsTo: "cv", help: "PDF, up to 10 MB" },
+  { key: "cv", type: "file", label: "CV", mapsTo: "cv", help: "PDF, up to 4 MB" },
 ];
 
 const TALENT_FORM: FieldDef[] = [
@@ -138,7 +138,7 @@ const TALENT_FORM: FieldDef[] = [
   { key: "links", type: "long_text", label: "Links" },
   { key: "availability", type: "short_text", label: "Availability" },
   { key: "notes", type: "long_text", label: "Anything else" },
-  { key: "cv", type: "file", label: "CV", mapsTo: "cv", help: "PDF, up to 10 MB" },
+  { key: "cv", type: "file", label: "CV", mapsTo: "cv", help: "PDF, up to 4 MB" },
 ];
 
 async function addForm(raw: SqlRunner, jobId: string, form: FieldDef[]): Promise<Record<string, string>> {

@@ -215,7 +215,7 @@ Email and password work on their own. "Continue with Google" and "Continue with 
    - in a private window, sign up at `/join` with a personal email → the 6-digit code arrives → you land on `/me`; opening `/admin` shows "This part is for the team" (403); "Forgot password?" emails a working link;
    - Admin → Requirements → open one → **Create job from requirement** → Form tab → Share tab → **Open**; open the public link in a private window and apply with a test CV; the applicant shows on the Applicants tab and as an expert.
 
-**Known limit:** Vercel accepts request bodies up to 4.5 MB, so CVs larger than that can't be uploaded on Vercel even though the app allows 10 MB. Moving uploads to object storage (Vercel Blob or R2) is on the roadmap.
+**Upload limit:** Vercel accepts request bodies up to 4.5 MB (its standard limit), so CVs and other files stop at **4 MB** everywhere (set 26 Nov 2026 in `src/lib/upload-limit.ts`): the upload boxes refuse a bigger file as soon as it's picked, with the reason, and the server checks again. Job forms made before then say 4 MB too (migration 0007). Bigger files would need object storage (Vercel Blob or R2), still on the roadmap.
 
 ## 8. Later changes to the tables
 
