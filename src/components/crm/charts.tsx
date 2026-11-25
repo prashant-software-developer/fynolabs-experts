@@ -13,14 +13,14 @@ export function BarList({ items, emptyText }: { items: { key: string; label: str
       {items.map((i) => {
         const body = (
           <>
-            <span className="w-36 shrink-0 truncate text-foreground/70 group-hover:text-foreground">{i.label}</span>
+            <span className="w-24 shrink-0 truncate sm:w-36 text-foreground/70 group-hover:text-foreground">{i.label}</span>
             <span className="h-1.5 flex-1 overflow-hidden bg-secondary">
               <span
                 className={cn("block h-1.5 transition-colors", i.tone === "primary" ? "bg-primary" : i.tone === "muted" ? "bg-muted-foreground/50" : "bg-foreground/75 group-hover:bg-foreground")}
                 style={{ width: `${(i.value / max) * 100}%` }}
               />
             </span>
-            <span className="tabular w-16 shrink-0 text-right text-foreground/80">{i.value}</span>
+            <span className="tabular w-16 shrink-0 text-right text-foreground/80">{i.value.toLocaleString("en-GB")}</span>
             {i.hint ? <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground sm:inline">{i.hint}</span> : null}
           </>
         );
@@ -104,7 +104,7 @@ export function DayBars({ days, series, stacked = true, height = 160, label }: {
         })}
         {days.map((d, i) =>
           (i % every === 0 && n - 1 - i >= Math.ceil(every / 2)) || i === n - 1 ? (
-            <text key={`l-${d.day}`} x={pad.left + i * slot + slot / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+            <text key={`l-${d.day}`} x={i === n - 1 ? W - pad.right : pad.left + i * slot + slot / 2} y={H - 6} textAnchor={i === n - 1 ? "end" : "middle"} className="fill-muted-foreground text-[10px]">
               {shortDay(d.day)}
             </text>
           ) : null,

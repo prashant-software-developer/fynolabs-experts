@@ -84,7 +84,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </Section>
         <Section title="Sources">
           {hasVisits ? (
-            <BarList items={a.sources.map((s) => ({ key: s.source, label: s.label, value: s.visitors, hint: `${s.pageViews} page views · ${s.share}%`, tone: s.source === "linkedin" ? "primary" : undefined }))} />
+            <BarList items={a.sources.map((s) => ({ key: s.source, label: s.label, value: s.visitors, hint: `${s.share}%`, tone: s.source === "linkedin" ? "primary" : undefined }))} />
           ) : (
             <EmptyState title="No sources yet." padded={false} />
           )}
@@ -96,34 +96,36 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           {a.pages.length ? <PathTable rows={a.pages.map((r) => ({ key: r.path, label: r.path, n: r.views }))} unit="Views" /> : <EmptyState title="No page views in this range." />}
         </Section>
         <Section title="Top referrers" description="Sites that sent visitors (sessions)." flush>
-          {a.referrers.length ? <PathTable rows={a.referrers.map((r) => ({ key: r.host, label: r.host, n: r.sessions }))} unit="Sessions" /> : <EmptyState title="No referrers in this range." />}
+          {a.referrers.length ? <PathTable rows={a.referrers.map((r) => ({ key: r.host, label: r.host, n: r.sessions }))} unit="Sessions" first="Site" /> : <EmptyState title="No referrers in this range." />}
         </Section>
       </Stack>
     </>
   );
 }
 
-function PathTable({ rows, unit }: { rows: { key: string; label: string; n: number }[]; unit: string }) {
+function PathTable({ rows, unit, first = "Page" }: { rows: { key: string; label: string; n: number }[]; unit: string; first?: string }) {
   const max = Math.max(1, ...rows.map((r) => r.n));
+  // Fixed layout: a long address (tracking links run to 300 characters) is cut with an ellipsis instead
+  // of pushing the bar and the count off the screen. The bar column is left out on phones.
   return (
-    <Table>
+    <Table className="[&_table]:table-fixed">
       <THead>
-        <Th>Page</Th>
-        <Th className="w-1/3" />
-        <Th className="text-right">{unit}</Th>
+        <Th>{first}</Th>
+        <Th className="hidden w-1/4 sm:table-cell" />
+        <Th className="w-24 text-right">{unit}</Th>
       </THead>
       <TBody>
         {rows.map((r) => (
           <Tr key={r.key}>
-            <Td className="max-w-md truncate font-mono text-small" title={r.label}>
+            <Td className="truncate font-mono text-small" title={r.label}>
               {r.label}
             </Td>
-            <Td>
+            <Td className="hidden sm:table-cell">
               <span className="block h-1.5 overflow-hidden bg-secondary">
                 <span className="block h-1.5 bg-foreground/70" style={{ width: `${(r.n / max) * 100}%` }} />
               </span>
             </Td>
-            <Td className="tabular text-right">{r.n}</Td>
+            <Td className="tabular text-right">{r.n.toLocaleString("en-GB")}</Td>
           </Tr>
         ))}
       </TBody>
