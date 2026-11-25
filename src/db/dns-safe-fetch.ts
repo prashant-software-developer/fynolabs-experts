@@ -1,21 +1,27 @@
 // fetch for the app's database connection (Neon over HTTPS) that survives a PC whose own address
 // lookup can't find Neon's names (seen on Prashant's PC: getaddrinfo ENOTFOUND, on and off). It
 // connects through an undici Agent whose lookup asks the computer first and, only if that fails,
-// Cloudflare/Google over HTTPS (resolveHost in db-connect). TLS still uses the real name, so the
+// Cloudflare/Google over HTTPS (backupLookup in db-connect). TLS still uses the real name, so the
 // certificate is checked as usual. On Vercel the normal lookup works and nothing changes.
 import dns from "node:dns";
-import { resolveHost } from "@/lib/server/db-connect";
+import { backupLookup, isDnsMiss } from "@/lib/server/db-connect";
 
 type LookupCb = (err: NodeJS.ErrnoException | null, address?: string | dns.LookupAddress[], family?: number) => void;
 
-function lookup(hostname: string, options: dns.LookupOptions, cb: LookupCb) {
+/**
+ * The computer's lookup, then on a miss straight to the backup (not the computer again first: when
+ * the lookup comes and goes, a second try can work and the answer was lost, so the first error went
+ * out; seen 26 Nov 2026). No backup answer (offline, both services blocked): one more try with the
+ * computer's lookup, else the first error.
+ */
+export function safeLookup(hostname: string, options: dns.LookupOptions, cb: LookupCb) {
   dns.lookup(hostname, options, (err, address, family) => {
     if (!err) return cb(null, address as string | dns.LookupAddress[], family);
-    resolveHost(hostname).then(
+    if (!isDnsMiss(err)) return cb(err);
+    backupLookup(hostname).then(
       (r) => {
-        if (!r) return cb(err);
-        if (options.all) return cb(null, [{ address: r.address, family: 4 }]);
-        cb(null, r.address, 4);
+        if (r) return options.all ? cb(null, [{ address: r.address, family: 4 }]) : cb(null, r.address, 4);
+        dns.lookup(hostname, options, (again, a2, f2) => (again ? cb(err) : cb(null, a2 as string | dns.LookupAddress[], f2)));
       },
       () => cb(err),
     );
@@ -31,7 +37,7 @@ function load() {
     try {
       const name = "undici";
       const u = (await import(/* webpackIgnore: true */ name)) as Undici;
-      return { u, agent: new u.Agent({ connect: { lookup } }) };
+      return { u, agent: new u.Agent({ connect: { lookup: safeLookup } }) };
     } catch {
       return null;
     }

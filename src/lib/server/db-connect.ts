@@ -43,14 +43,19 @@ export function pgConfig(url: string, max?: number, address?: string) {
 const DNS_MISS = new Set(["ENOTFOUND", "EAI_AGAIN", "ESERVFAIL", "ETIMEOUT", "ECONNREFUSED"]);
 const resolved = new Map<string, string>();
 
+/** An address-lookup error that means "the name wasn't found right now" (worth asking the backup). */
+export const isDnsMiss = (e: unknown): boolean => DNS_MISS.has((e as { code?: string } | null)?.code ?? "");
+
+const isLiteral = (hostname: string) => !hostname || LOCAL_HOSTS.has(hostname) || /^[\d.]+$/.test(hostname) || hostname.includes(":");
+
 /**
  * The computer's own address lookup sometimes can't find Neon's database names (seen on Prashant's
  * PC: getaddrinfo ENOTFOUND, on and off). When that happens, ask Cloudflare (1.1.1.1) and then Google
  * (8.8.8.8) over HTTPS for the address instead. Returns null when the normal lookup works (or for
- * local addresses), so nothing changes in the usual case.
+ * local addresses), so nothing changes in the usual case. For the scripts, before they connect.
  */
 export async function resolveHost(hostname: string): Promise<{ address: string; by: string } | null> {
-  if (!hostname || LOCAL_HOSTS.has(hostname) || /^[\d.]+$/.test(hostname) || hostname.includes(":")) return null;
+  if (isLiteral(hostname)) return null;
   const cached = resolved.get(hostname);
   if (cached) return { address: cached, by: "backup lookup" };
   try {
@@ -58,9 +63,20 @@ export async function resolveHost(hostname: string): Promise<{ address: string; 
     await dns.promises.lookup(hostname);
     return null;
   } catch (e) {
-    const code = (e as { code?: string }).code ?? "";
-    if (!DNS_MISS.has(code)) return null;
+    if (!isDnsMiss(e)) return null;
   }
+  return backupLookup(hostname);
+}
+
+/**
+ * The backup lookup on its own (Cloudflare, then Google, over HTTPS), without asking the computer
+ * first. For a lookup that has just failed: asking the computer again can succeed a moment later
+ * (the lookup comes and goes) and would throw away the answer. Null when neither service answers.
+ */
+export async function backupLookup(hostname: string): Promise<{ address: string; by: string } | null> {
+  if (isLiteral(hostname)) return null;
+  const cached = resolved.get(hostname);
+  if (cached) return { address: cached, by: "backup lookup" };
   const services: [string, string][] = [
     ["Cloudflare", `https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}&type=A`],
     ["Google", `https://8.8.8.8/resolve?name=${encodeURIComponent(hostname)}&type=A`],
