@@ -78,9 +78,9 @@ HUB_TEST_DB_DIR=.data/smoke SMOKE_PASSWORD=<10+ characters> npx tsx tests/smoke/
 HUB_TEST_DB=pglite HUB_TEST_DB_DIR=.data/smoke AUTH_SECRET=<anything long> npm run dev
 ```
 
-Sign in as `smoke.admin@example.com`, `smoke.viewer@example.com` or `smoke.expert@example.com` with that password. The seed fills both the CRM and the talent fixtures. The screenshots in `docs/screenshots/` come from this data at 1280 px (24 Nov 2026, the FynoLabs admin look): dashboard, dashboard-dark, experts, expert-detail, accounts, account-detail, leads, calendar, platforms, projects, campaigns, send-referrals, fees, job-radar, jobs, messages, analytics, settings-team, signin and job-board.
+Sign in as `smoke.admin@example.com`, `smoke.viewer@example.com` or `smoke.expert@example.com` with that password. The seed fills both the CRM and the talent fixtures. The screenshots in `docs/screenshots/` come from this data at 1280 px (26 Nov 2026, Expert Hub's own design): dashboard, experts, expert-detail, accounts, account-detail, leads, calendar, projects, jobs, messages, analytics, my-work, fees, settings-team, search, account-menu, mobile-menu, signin and job-board.
 
-The look to check against the FynoLabs admin: square corners, 1px hairlines and no shadows, light 40px page titles, uppercase outline badges, KPI tiles with the small line glyphs, the 282px sidebar with Search (Ctrl K), and the sun / moon switch in the profile menu (dark admin; the public pages stay light).
+The look to check: Expert Hub's own design (as on 23 Nov), with the FynoLabs admin's features in it. A compact sidebar with "Expert Hub" under the mark and small group labels; a top bar with where you are, the search field (Ctrl K) and your email and role (its menu: Settings, Change password, Public job board, Refresh, Sign out); light page titles with a subtitle; content in bordered cards; soft coloured status labels; light only. Running a second copy while `Start Expert Hub.bat` is open: set `HUB_DIST_DIR=.next-check` (and another `--port`) so it builds into its own folder.
 
 Write down anything that looks off (a screenshot and the page name is enough) and send it to Claude.
 

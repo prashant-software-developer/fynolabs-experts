@@ -12,7 +12,7 @@ export default async function TeamOnlyPage() {
   const account = await getAccount();
   return (
     <div className="mx-auto max-w-md space-y-6 py-10 text-center">
-      <span className="mx-auto inline-flex h-12 w-12 items-center justify-center bg-secondary">
+      <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
         <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
       </span>
       <div className="space-y-2">

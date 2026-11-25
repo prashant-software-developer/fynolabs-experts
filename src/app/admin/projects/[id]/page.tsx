@@ -172,7 +172,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                 {people.map((x) => (
                   <Tr key={x.applicationId}>
                     <Td>
-                      <Link href={`/admin/experts?view=${x.expertId}`} className="font-normal text-foreground hover:text-primary">
+                      <Link href={`/admin/experts?view=${x.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {x.name}
                       </Link>
                       <span className="block text-xs text-muted-foreground">{x.email ?? "No email"}</span>
@@ -254,7 +254,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                   {parts.roles.map((r) => (
                     <Tr key={r.id}>
                       <Td>
-                        <Link href={`/admin/jobs/${r.id}`} className="font-normal text-foreground hover:text-primary">
+                        <Link href={`/admin/jobs/${r.id}`} className="font-medium text-foreground hover:text-primary">
                           {r.title}
                         </Link>
                       </Td>
@@ -326,7 +326,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                 <TBody>
                   {parts.members.map((m) => (
                     <Tr key={m.id}>
-                      <Td className="font-normal text-foreground">{m.name ?? m.email.split("@")[0]}</Td>
+                      <Td className="font-medium text-foreground">{m.name ?? m.email.split("@")[0]}</Td>
                       <Td>{crmLabel(m.role)}</Td>
                       <Td className="tabular">{m.capacity ?? "No limit"}</Td>
                       <Td>{m.active ? <StatusChip value="active" /> : <StatusChip value="inactive" />}</Td>
@@ -405,7 +405,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                 <TBody>
                   {parts.documents.map((d) => (
                     <Tr key={d.id}>
-                      <Td className="font-normal text-foreground">{d.title}</Td>
+                      <Td className="font-medium text-foreground">{d.title}</Td>
                       <Td>{crmLabel(d.kind)}</Td>
                       <Td>{PIPELINE_STAGE_LABELS[d.requiredStage as keyof typeof PIPELINE_STAGE_LABELS] ?? label(d.requiredStage)}</Td>
                       <Td>{d.expiresAfterDays ? `${d.expiresAfterDays} days` : "Never expires"}</Td>
@@ -493,7 +493,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
               <TBody>
                 {parts.reports.map((r) => (
                   <Tr key={r.id}>
-                    <Td className="font-normal text-foreground">{r.label ?? "Report"}</Td>
+                    <Td className="font-medium text-foreground">{r.label ?? "Report"}</Td>
                     <Td className="whitespace-nowrap">
                       {fmtDate(r.periodStart)} – {fmtDate(r.periodEnd)}
                     </Td>
@@ -616,7 +616,7 @@ function TracksTable({ tracks }: { tracks: { id: string; name: string; targetCou
       <TBody>
         {tracks.map((t) => (
           <Tr key={t.id}>
-            <Td className="font-normal text-foreground">{t.name}</Td>
+            <Td className="font-medium text-foreground">{t.name}</Td>
             <Td className="tabular text-right">{t.achieved}</Td>
             <Td className="tabular text-right">{t.targetCount ?? "–"}</Td>
             <Td className="tabular text-right">{t.inPipeline}</Td>

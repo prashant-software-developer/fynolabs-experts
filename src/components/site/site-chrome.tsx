@@ -32,12 +32,12 @@ export function SiteHeader({ account }: { account: Account | null }) {
       <div className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
         <SiteBrand />
         <nav className="ml-auto flex items-center gap-1.5 sm:gap-2" aria-label="Site">
-          <Link href="/" className="hidden h-8 items-center rounded-md px-2.5 text-small text-foreground/75 transition-colors hover:bg-accent hover:text-foreground sm:inline-flex">
+          <Link href="/" className="hidden h-8 items-center rounded-md px-2.5 text-[13px] text-foreground/75 transition-colors hover:bg-accent hover:text-foreground sm:inline-flex">
             Jobs
           </Link>
           {account?.kind === "expert" ? (
             <>
-              <Link href="/me/applications" className="hidden h-8 items-center rounded-md px-2.5 text-small text-foreground/75 transition-colors hover:bg-accent hover:text-foreground md:inline-flex">
+              <Link href="/me/applications" className="hidden h-8 items-center rounded-md px-2.5 text-[13px] text-foreground/75 transition-colors hover:bg-accent hover:text-foreground md:inline-flex">
                 My applications
               </Link>
               <Link href="/me" className={buttonClass("secondary", "sm")}>
@@ -54,7 +54,7 @@ export function SiteHeader({ account }: { account: Account | null }) {
             </>
           ) : (
             <>
-              <Link href="/signin" className="inline-flex h-8 items-center rounded-md px-2.5 text-small whitespace-nowrap text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+              <Link href="/signin" className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] whitespace-nowrap text-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
                 Sign in
               </Link>
               <Link href="/join" className={buttonClass("primary", "sm")}>
@@ -72,7 +72,7 @@ export function SiteFooter() {
   const email = contactEmail();
   return (
     <footer className="mt-20 border-t border-border bg-sidebar">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-10 text-small text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-10 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="space-y-1">
           <p className="text-foreground/80">{siteName()} connects domain experts with AI training and evaluation work.</p>
           <p>

@@ -55,7 +55,7 @@ export default async function RequirementPage({ params, searchParams }: { params
         back={{ href: "/admin/requirements", label: "Requirements" }}
         meta={
           <>
-            <span className="font-normal text-foreground">{partner.name}</span>
+            <span className="font-medium text-foreground">{partner.name}</span>
             {req.externalRef ? <span className="text-muted-foreground">· {req.externalRef}</span> : null}
             <StatusBadge value={req.status} />
             <Badge tone={filled >= req.slots ? "success" : "neutral"}>
@@ -75,10 +75,10 @@ export default async function RequirementPage({ params, searchParams }: { params
               <form action={setRequirementStatus} className="flex items-center gap-2">
                 <input type="hidden" name="id" value={id} />
                 <input type="hidden" name="returnTo" value={`${base}${tab === "matches" ? "" : `?tab=${tab}`}`} />
-                <label className="text-small text-muted-foreground" htmlFor="req-status">
+                <label className="text-[13px] text-muted-foreground" htmlFor="req-status">
                   Status
                 </label>
-                <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control h-8 w-auto text-small">
+                <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control h-8 w-auto text-[13px]">
                   {REQUIREMENT_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {label(s)}
@@ -153,7 +153,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
                       </Td>
                     ) : null}
                     <Td className="min-w-48">
-                      <Link href={`/admin/experts/${m.expertId}`} className="font-normal text-foreground hover:text-primary">
+                      <Link href={`/admin/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {m.expert.fullName}
                       </Link>
                       <div className="text-xs text-muted-foreground">
@@ -168,7 +168,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
                     </Td>
                     <Td className="text-right">
                       {canShortlist ? (
-                        <button name="one" value={m.expertId} className="inline-flex h-8 items-center rounded-md px-2.5 text-small font-normal text-primary transition-colors hover:bg-primary/[0.07]">
+                        <button name="one" value={m.expertId} className="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-primary/[0.07]">
                           Shortlist
                         </button>
                       ) : null}
@@ -184,7 +184,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
       </Section>
       {excludedTotal ? (
         <details className="rounded-md border border-border bg-card">
-          <summary className="cursor-pointer px-5 py-4 text-[15px] font-normal text-foreground">Left out ({excludedTotal}): location rules</summary>
+          <summary className="cursor-pointer px-5 py-4 text-[15px] font-medium text-foreground">Left out ({excludedTotal}): location rules</summary>
           <ul className="divide-y divide-border border-t border-border">
             {excluded.map((m) => (
               <li key={m.expertId} className="flex items-center justify-between gap-4 px-5 py-2.5 text-sm">
@@ -244,7 +244,7 @@ async function SubmissionsTab({
               {subs.map((s) => (
                 <Tr key={s.sub.id}>
                   <Td className="min-w-44">
-                    <Link href={`/admin/experts/${s.sub.expertId}`} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
                       {s.expertName}
                     </Link>
                     <div className="text-xs text-muted-foreground">{s.expertCountry ?? "–"}</div>
@@ -335,7 +335,7 @@ async function DetailsTab({ id, user }: { id: string; user: CurrentUser }) {
           <ul className="divide-y divide-border">
             {linkedJobs.map((j) => (
               <li key={j.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <Link href={`/admin/jobs/${j.id}`} className="font-normal text-foreground hover:text-primary">
+                <Link href={`/admin/jobs/${j.id}`} className="font-medium text-foreground hover:text-primary">
                   {j.title}
                 </Link>
                 <StatusBadge value={j.status} />

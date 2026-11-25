@@ -123,7 +123,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 return (
                   <Tr key={job.id}>
                     <Td className="min-w-64">
-                      <Link href={`/admin/jobs/${job.id}`} className="inline-flex items-center gap-1.5 font-normal text-foreground hover:text-primary">
+                      <Link href={`/admin/jobs/${job.id}`} className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary">
                         {job.featured ? <Star className="h-3.5 w-3.5 fill-current text-warning" aria-label="Featured" /> : null}
                         {job.title}
                       </Link>

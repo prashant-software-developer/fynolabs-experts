@@ -122,7 +122,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
                       </Td>
                     ) : null}
                     <Td className="py-2">
-                      <Link href={hrefWith("/admin/referrals", sp, { r: r.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                      <Link href={hrefWith("/admin/referrals", sp, { r: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                         {r.name ?? "Someone"}
                       </Link>
                       <div className="text-xs text-muted-foreground">

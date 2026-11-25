@@ -7,7 +7,7 @@ import { cn } from "@/components/ui/cn";
 import { FilePicker } from "@/components/ui/file-picker";
 
 const pill =
-  "inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground/85 transition-colors hover:bg-foreground/[0.06] has-[:checked]:border-primary has-[:checked]:bg-primary/[0.06] has-[:checked]:text-foreground";
+  "inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground/85 transition-colors hover:bg-secondary/60 has-[:checked]:border-primary has-[:checked]:bg-primary/[0.06] has-[:checked]:text-foreground";
 
 export function FieldInput({
   field,
@@ -37,7 +37,7 @@ export function FieldInput({
   if (field.type === "section") {
     return (
       <div className="space-y-1 border-t border-border pt-6 first:border-t-0 first:pt-0">
-        <h3 className="text-[15px] font-normal text-foreground">{field.label}</h3>
+        <h3 className="text-[15px] font-medium text-foreground">{field.label}</h3>
         {field.helpText ? <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{field.helpText}</p> : null}
       </div>
     );
@@ -49,7 +49,7 @@ export function FieldInput({
       control = <textarea {...common} rows={5} defaultValue={str} readOnly={readOnly} className="control" />;
       break;
     case "email":
-      control = <input {...common} type="email" autoComplete="email" defaultValue={str} readOnly={readOnly} className={cn("control", readOnly && "bg-foreground/[0.06]")} />;
+      control = <input {...common} type="email" autoComplete="email" defaultValue={str} readOnly={readOnly} className={cn("control", readOnly && "bg-secondary/60")} />;
       break;
     case "phone":
       control = <input {...common} type="tel" autoComplete="tel" defaultValue={str} className="control" />;
@@ -149,7 +149,7 @@ export function FieldInput({
       break;
     case "consent":
       control = (
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-4 py-3 text-sm leading-relaxed text-foreground/85">
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm leading-relaxed text-foreground/85">
           <input type="checkbox" name={name} value="yes" defaultChecked={str === "yes" || str === "true"} disabled={disabled} className="mt-0.5 h-4 w-4 shrink-0" aria-invalid={error ? true : undefined} aria-describedby={describedBy} />
           <span>
             {field.label}
@@ -159,13 +159,13 @@ export function FieldInput({
       );
       break;
     default:
-      control = <input {...common} defaultValue={str} readOnly={readOnly} className={cn("control", readOnly && "bg-foreground/[0.06]")} />;
+      control = <input {...common} defaultValue={str} readOnly={readOnly} className={cn("control", readOnly && "bg-secondary/60")} />;
   }
 
   return (
     <div className="min-w-0 space-y-1.5" id={`field-${field.id}`}>
       {field.type !== "consent" ? (
-        <label id={`${id}-label`} htmlFor={["single_select", "multi_select", "checkboxes", "yes_no"].includes(field.type) && (field.type !== "single_select" || choices.length <= 4) ? undefined : id} className="block text-small font-normal text-foreground/85">
+        <label id={`${id}-label`} htmlFor={["single_select", "multi_select", "checkboxes", "yes_no"].includes(field.type) && (field.type !== "single_select" || choices.length <= 4) ? undefined : id} className="block text-[13px] font-medium text-foreground/85">
           {field.label}
           {req ? <span className="text-destructive"> *</span> : null}
         </label>

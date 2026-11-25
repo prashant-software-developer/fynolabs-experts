@@ -159,7 +159,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
                           <input type="checkbox" form="remove" name="ids" value={m.id} aria-label={`Select ${m.name ?? m.email}`} className="h-4 w-4 rounded-sm align-middle" />
                         </Td>
                       ) : null}
-                      <Td className="py-2 font-normal text-foreground">{m.expertName ?? m.name ?? "–"}</Td>
+                      <Td className="py-2 font-medium text-foreground">{m.expertName ?? m.name ?? "–"}</Td>
                       <Td className="py-2 text-small">
                         <Email value={m.email} contact={contact} />
                       </Td>

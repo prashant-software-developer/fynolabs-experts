@@ -327,9 +327,9 @@ function Board({ view, sp, today, edit, here }: { view: ReturnType<typeof compan
         {view.lanes.map(({ lane, rows, due }) => (
           <section key={lane.key} className="flex w-72 shrink-0 flex-col rounded-md border border-border bg-muted" aria-label={lane.label}>
             <header className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-t-md bg-muted px-3 py-2.5">
-              <span className="text-small font-normal text-foreground">{lane.label}</span>
+              <span className="text-small font-medium text-foreground">{lane.label}</span>
               <span className="flex items-center gap-2 text-xs">
-                {due ? <span className="font-normal text-danger">{due} due</span> : null}
+                {due ? <span className="font-medium text-danger">{due} due</span> : null}
                 <span className="tabular text-muted-foreground">{rows.length}</span>
               </span>
             </header>
@@ -340,7 +340,7 @@ function Board({ view, sp, today, edit, here }: { view: ReturnType<typeof compan
                     <Link href={hrefWith("/admin/accounts", sp, { view: c.id, ok: null, error: null })} scroll={false} className="group block space-y-1.5">
                       <span className="flex items-center gap-2">
                         <OrgLogo name={c.name} domain={c.domain} size={22} />
-                        <span className="min-w-0 truncate text-sm font-normal text-foreground group-hover:text-primary">{c.name}</span>
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary">{c.name}</span>
                         <PriorityDot priority={c.priority} />
                       </span>
                       {lane.stages.length > 1 ? <span className="eyebrow block text-muted-foreground">{crmLabel(c.stage)}</span> : null}

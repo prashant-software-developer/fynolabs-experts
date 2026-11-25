@@ -14,7 +14,7 @@ export function JobMeta({ job }: { job: PublicJob }) {
     ...(job.minYears != null ? [{ icon: CalendarClock, text: `${job.minYears}+ years` }] : []),
   ];
   return (
-    <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-small text-muted-foreground">
+    <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
       {items.map((i) => (
         <li key={i.text} className="inline-flex items-center gap-1.5">
           <i.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />

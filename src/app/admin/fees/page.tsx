@@ -169,7 +169,7 @@ async function FeesTab({ tab, sp, manage, here }: { tab: string; sp: SearchParam
                     </Td>
                   ) : null}
                   <Td className="py-2">
-                    <Link href={hrefWith("/admin/fees", sp, { f: r.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={hrefWith("/admin/fees", sp, { f: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {r.personName ?? "–"}
                     </Link>
                   </Td>
@@ -306,7 +306,7 @@ function TotalsTable({ title, rows, first }: { title: string; rows: FeeTotal[]; 
           <TBody>
             {rows.map((r) => (
               <Tr key={`${r.key}|${r.currency}`}>
-                <Td className="font-normal text-foreground">{r.label}</Td>
+                <Td className="font-medium text-foreground">{r.label}</Td>
                 <Td className="tabular text-right">{r.count}</Td>
                 <Td className="tabular text-right">{money(r.expected, r.currency)}</Td>
                 <Td className="tabular text-right">{money(r.invoiced, r.currency)}</Td>
@@ -360,7 +360,7 @@ async function RulesTab({ sp, manage }: { sp: SearchParams; manage: boolean }) {
               {rules.map((r) => (
                 <Tr key={r.id}>
                   <Td>
-                    <Link href={`/admin/fees?tab=rules&rule=${r.id}`} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/fees?tab=rules&rule=${r.id}`} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {r.projectCode} · {r.trackName ?? "whole project"}
                     </Link>
                   </Td>
@@ -475,7 +475,7 @@ async function EarningsTab({ sp }: { sp: SearchParams }) {
               {byMonth.map((m) => (
                 <Tr key={m.month}>
                   <Td>
-                    <Link href={`/admin/fees?tab=earnings&month=${m.month}`} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/fees?tab=earnings&month=${m.month}`} className="font-medium text-foreground hover:text-primary">
                       {m.month}
                     </Link>
                   </Td>

@@ -8,7 +8,7 @@ import { cn } from "@/components/ui/cn";
  */
 export function RowLink({ href, children, className, title }: { href: string; children: ReactNode; className?: string; title?: string }) {
   return (
-    <Link href={href} scroll={false} title={title} className={cn("font-normal text-foreground after:absolute after:inset-0 after:content-[''] hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring", className)}>
+    <Link href={href} scroll={false} title={title} className={cn("font-medium text-foreground after:absolute after:inset-0 after:content-[''] hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring", className)}>
       {children}
     </Link>
   );

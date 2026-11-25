@@ -42,7 +42,7 @@ export function PlacementForm({ id, initial, partners, expertLabel, cancelHref }
       {state.message ? <Notice tone="error">{state.message}</Notice> : null}
       <fieldset className="space-y-4">
         <legend className="eyebrow mb-3 text-muted-foreground">Placement</legend>
-        {expertLabel ? <p className="text-sm text-foreground/70">Expert: <span className="font-normal text-foreground">{expertLabel}</span></p> : null}
+        {expertLabel ? <p className="text-sm text-foreground/70">Expert: <span className="font-medium text-foreground">{expertLabel}</span></p> : null}
         <FieldRow>
           <Field label="Project" error={err.projectName} htmlFor="projectName" hint="Internal name (field or task type).">
             <Input id="projectName" name="projectName" value={v.projectName} onChange={(e) => set("projectName", e.target.value)} />

@@ -24,13 +24,12 @@ import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
 import { Checkbox, Input, Select } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
-import { PeopleTabs } from "@/components/admin/kit";
 import { Pagination } from "@/components/ui/pagination";
 import { SlideOver } from "@/components/ui/slide-over";
 import { SortTh, Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { ColumnPicker } from "@/components/column-picker";
 import { ExpertSummary } from "@/components/expert-summary";
-import { SectionBlocked, StageBar } from "@/components/talent/bits";
+import { PeopleTabs, SectionBlocked, StageBar } from "@/components/talent/bits";
 import { ChoiceFields, PendingButton, StageForm } from "@/components/talent/client";
 import { addSelectedToRequirement, deleteExpertView, saveExpertView, setExpertStatus, updateExpertView } from "./actions";
 import { bulkExperts, movePipelineStage } from "./talent-actions";
@@ -163,9 +162,9 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
             <summary className={cn(buttonClass("ghost", "sm"), "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> Save view
             </summary>
-            <form action={saveExpertView} className="absolute right-0 z-40 mt-1 w-72 space-y-3 border border-border bg-popover p-4">
+            <form action={saveExpertView} className="absolute right-0 z-40 mt-1 w-72 space-y-3 rounded-md border border-border bg-popover p-4 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)]">
               <input type="hidden" name="params" value={currentParams} />
-              <p className="text-small text-muted-foreground">Saves the current filters, sort, columns and layout.</p>
+              <p className="text-[13px] text-muted-foreground">Saves the current filters, sort, columns and layout.</p>
               <Input name="name" placeholder="View name, e.g. US maths bench" maxLength={60} required aria-label="View name" />
               {can(user.role, "views.share") ? <Checkbox name="shared" value="yes" label="Share with the team" /> : <p className="text-xs text-muted-foreground">Personal view (your role can&apos;t share views).</p>}
               <SubmitButton size="sm" pendingText="Saving...">
@@ -354,7 +353,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
                       ) : null}
                       <Td className="py-2">
                         <div className="w-40 2xl:w-60">
-                          <Link href={hrefWith("/admin/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate font-normal text-foreground hover:text-primary" title={e.fullName}>
+                          <Link href={hrefWith("/admin/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate font-medium text-foreground hover:text-primary" title={e.fullName}>
                             {e.fullName}
                           </Link>
                           {e.headline ? (
@@ -391,7 +390,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
           title={viewing.fullName}
           closeHref={hrefWith("/admin/experts", sp, { view: null })}
           footer={
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               <ButtonLink href={`/admin/experts/${viewing.id}`} variant="primary" size="sm">
                 Open full profile →
               </ButtonLink>
@@ -440,7 +439,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
                   {viewingPipes.map((p) => (
                     <li key={p.id} className="space-y-2 rounded-md border border-border p-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span className="text-sm font-normal text-foreground">{p.jobTitle}</span>
+                        <span className="text-sm font-medium text-foreground">{p.jobTitle}</span>
                         <span className="text-xs text-muted-foreground">
                           Since {fmtDate(p.stageChangedAt)}
                           {p.startedOn ? ` · contract ${fmtDate(p.startedOn)}${p.endedOn ? ` – ${fmtDate(p.endedOn)}` : ""}` : ""}
@@ -489,8 +488,8 @@ function ViewTab({ href, active, label: text, shared, mine, owner }: { href: str
       aria-current={active ? "page" : undefined}
       title={shared ? (mine ? "Shared with the team" : `Shared by ${owner}`) : mine ? "Only you see this view" : undefined}
       className={cn(
-        "inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-small whitespace-nowrap transition-colors",
-        active ? "border-foreground font-normal text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+        "inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-[13px] whitespace-nowrap transition-colors",
+        active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
       {text}
@@ -504,7 +503,7 @@ function LayoutLink({ href, active, icon, label: text }: { href: string; active:
     <Link
       href={href}
       aria-current={active ? "true" : undefined}
-      className={cn("inline-flex h-7 items-center gap-1.5 px-2.5 text-small transition-colors", active ? "bg-foreground/[0.06] text-foreground" : "text-muted-foreground hover:text-foreground")}
+      className={cn("inline-flex h-7 items-center gap-1.5 rounded-[3px] px-2.5 text-[13px] transition-colors", active ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
     >
       {icon}
       {text}
@@ -541,7 +540,7 @@ function Cell({ id, e, owner }: { id: ColumnId; e: ListRow; owner: string | null
     case "source":
       return <>{label(e.primarySource)}</>;
     case "email":
-      return <span className="text-small">{e.email ?? "–"}</span>;
+      return <span className="text-[13px]">{e.email ?? "–"}</span>;
     case "university":
       return (
         <span className="block max-w-48 truncate" title={e.university ?? undefined}>
@@ -599,7 +598,7 @@ function Board({ columns, sp, canEdit, role, here }: { columns: Awaited<ReturnTy
                 return (
                   <li key={e.id} className="space-y-2 rounded-md border border-border bg-card p-3">
                     <div className="min-w-0">
-                      <Link href={hrefWith("/admin/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate text-sm font-normal text-foreground hover:text-primary" title={e.fullName}>
+                      <Link href={hrefWith("/admin/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate text-sm font-medium text-foreground hover:text-primary" title={e.fullName}>
                         {e.fullName}
                       </Link>
                       {e.headline ? (
@@ -664,7 +663,7 @@ function PipelineBoard({ columns, sp, canPipe, here }: { columns: BoardColumn[];
               {col.rows.map((c) => (
                 <li key={c.id} className="space-y-2 rounded-md border border-border bg-card p-3">
                   <div className="min-w-0">
-                    <Link href={hrefWith("/admin/experts", sp, { view: c.expertId, ok: null, error: null })} scroll={false} className="block truncate text-sm font-normal text-foreground hover:text-primary" title={c.expertName}>
+                    <Link href={hrefWith("/admin/experts", sp, { view: c.expertId, ok: null, error: null })} scroll={false} className="block truncate text-sm font-medium text-foreground hover:text-primary" title={c.expertName}>
                       {c.expertName}
                     </Link>
                     <p className="truncate text-xs text-muted-foreground" title={c.jobTitle}>

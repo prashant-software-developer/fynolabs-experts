@@ -79,7 +79,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                   <Initials name={m.name} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Link href={hrefWith("/admin/messages", sp, { view: m.id, ok: null, error: null })} scroll={false} className="text-sm font-normal text-foreground after:absolute after:inset-0 hover:text-primary">
+                      <Link href={hrefWith("/admin/messages", sp, { view: m.id, ok: null, error: null })} scroll={false} className="text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
                         {m.name}
                       </Link>
                       <span className="text-xs text-muted-foreground">
@@ -209,7 +209,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                     <li key={r.id} className="rounded-md border border-border">
                       <details>
                         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
-                          <span className="text-sm font-normal text-foreground">{r.subject}</span>
+                          <span className="text-sm font-medium text-foreground">{r.subject}</span>
                           <span className="text-xs text-muted-foreground">
                             {fmtDateTime(r.createdAt)}
                             {r.sentBy ? ` · ${r.sentBy.split("@")[0]}` : ""}

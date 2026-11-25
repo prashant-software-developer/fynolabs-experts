@@ -31,12 +31,12 @@ export function ActivityTimeline({ items, today, compact, showCompany }: { items
               const Icon = ICONS[a.kind] ?? StickyNote;
               return (
                 <li key={a.id} className="flex gap-3">
-                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center bg-secondary">
+                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-secondary">
                     <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-foreground">
-                      {showCompany && a.companyName ? <span className="font-normal">{a.companyName}: </span> : null}
+                      {showCompany && a.companyName ? <span className="font-medium">{a.companyName}: </span> : null}
                       {a.summary}
                       {a.contactName ? <span className="text-muted-foreground"> · {a.contactName}</span> : null}
                     </p>

@@ -160,11 +160,11 @@ function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
   return (
     <form action={recordConsent} className="flex items-center gap-2">
       <input type="hidden" name="id" value={e.id} />
-      <span className="text-small text-muted-foreground">CV consent:</span>
+      <span className="text-[13px] text-muted-foreground">CV consent:</span>
       <StatusBadge value={e.cvConsent} />
       {canEdit ? (
         <>
-          <AutoSubmitSelect name="consent" defaultValue="" className="control h-8 w-auto text-small" aria-label="Change CV consent">
+          <AutoSubmitSelect name="consent" defaultValue="" className="control h-8 w-auto text-[13px]" aria-label="Change CV consent">
             <option value="" disabled>
               Change to...
             </option>
@@ -227,7 +227,7 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
                     </span>
                   </div>
                   {canDownloadKind(f.kind) ? (
-                    <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-small font-normal text-primary underline-offset-4 hover:underline">
+                    <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
                       <Download className="h-3.5 w-3.5" /> Download
                     </a>
                   ) : null}
@@ -376,7 +376,7 @@ function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
           <ul className="space-y-3">
             {d.experience.map((x, i) => (
               <li key={i} className="text-sm">
-                <div className="font-normal text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
+                <div className="font-medium text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
                 <div className="text-xs text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
                 {txt(x.description) ? <p className="mt-1 whitespace-pre-line text-foreground/80">{txt(x.description)}</p> : null}
               </li>
@@ -389,7 +389,7 @@ function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
           <ul className="space-y-2">
             {d.education.map((x, i) => (
               <li key={i} className="text-sm">
-                <div className="font-normal text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
+                <div className="font-medium text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
                 <div className="text-xs text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
               </li>
             ))}
@@ -602,7 +602,7 @@ function DocumentsTab({ id, docs, user }: { id: string; docs: Awaited<ReturnType
             {docs.map((d) => (
               <Tr key={d.id} className={d.status === "void" ? "opacity-60" : undefined}>
                 <Td>
-                  <div className="font-normal text-foreground">{d.title}</div>
+                  <div className="font-medium text-foreground">{d.title}</div>
                   <div className="text-xs text-muted-foreground">{DOCUMENT_KIND_LABELS[d.kind as keyof typeof DOCUMENT_KIND_LABELS] ?? d.kind}</div>
                 </Td>
                 <Td className="text-muted-foreground">{d.jobTitle ?? "Not tied to a job"}</Td>
@@ -680,7 +680,7 @@ function ReferralsTab({ id, refs, user }: { id: string; refs: Awaited<ReturnType
             {refs.map((r) => (
               <Tr key={r.id}>
                 <Td>
-                  <div className="font-normal text-foreground">{r.platform}</div>
+                  <div className="font-medium text-foreground">{r.platform}</div>
                   {r.projectCode ? <div className="text-xs text-muted-foreground">{r.projectCode}</div> : null}
                 </Td>
                 <Td>{REFERRAL_METHOD_LABELS[r.method as keyof typeof REFERRAL_METHOD_LABELS] ?? r.method}</Td>
@@ -740,7 +740,7 @@ async function EarningsTab({ id, user }: { id: string; user: CurrentUser }) {
             <TBody>
               {engs.map((g) => (
                 <Tr key={g.id}>
-                  <Td className="font-normal text-foreground">{g.platform}</Td>
+                  <Td className="font-medium text-foreground">{g.platform}</Td>
                   <Td>{g.agency ?? "–"}</Td>
                   <Td>{g.project ?? "–"}</Td>
                   <Td>
@@ -814,7 +814,7 @@ async function ApplicationsTab({ e, apps }: { e: ExpertRow; apps: Awaited<Return
               {apps.map((a) => (
                 <Tr key={a.id}>
                   <Td>
-                    <Link href={`/admin/jobs/${a.jobId}?tab=applicants&app=${a.id}`} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/jobs/${a.jobId}?tab=applicants&app=${a.id}`} className="font-medium text-foreground hover:text-primary">
                       {a.jobTitle}
                     </Link>
                   </Td>
@@ -927,7 +927,7 @@ async function WorkTab({
               {subs.map((s) => (
                 <Tr key={s.sub.id}>
                   <Td>
-                    <Link href={`/admin/requirements/${s.sub.requirementId}?tab=submissions`} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/requirements/${s.sub.requirementId}?tab=submissions`} className="font-medium text-foreground hover:text-primary">
                       {s.reqTitle}
                     </Link>
                   </Td>
@@ -971,7 +971,7 @@ async function WorkTab({
               {plcs.map((p) => (
                 <Tr key={p.p.id}>
                   <Td>
-                    <Link href={`/admin/placements/${p.p.id}`} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/placements/${p.p.id}`} className="font-medium text-foreground hover:text-primary">
                       {p.p.projectName}
                     </Link>
                   </Td>

@@ -129,7 +129,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 return (
                   <section key={stage} className="flex w-64 shrink-0 flex-col rounded-md border border-border bg-muted" aria-label={crmLabel(stage, "contact")}>
                     <header className="sticky top-0 z-10 flex items-center justify-between rounded-t-md bg-muted px-3 py-2.5">
-                      <span className="text-small font-normal text-foreground">{crmLabel(stage, "contact")}</span>
+                      <span className="text-small font-medium text-foreground">{crmLabel(stage, "contact")}</span>
                       <span className="tabular text-xs text-muted-foreground">{inLane.length}</span>
                     </header>
                     <ul className="flex flex-col gap-2 px-2 pb-2">
@@ -140,7 +140,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                               <span className="flex items-center gap-2">
                                 <Initials name={c.name} />
                                 <span className="min-w-0">
-                                  <span className="block truncate text-sm font-normal text-foreground group-hover:text-primary">{c.name}</span>
+                                  <span className="block truncate text-sm font-medium text-foreground group-hover:text-primary">{c.name}</span>
                                   <span className="block truncate text-xs text-muted-foreground">{c.role ?? "–"}</span>
                                 </span>
                               </span>

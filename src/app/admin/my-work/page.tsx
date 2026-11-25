@@ -94,7 +94,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
                   {TYPE_LABEL[i.type]}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <Link href={i.href} className="text-sm font-normal text-foreground after:absolute after:inset-0 hover:text-primary">
+                  <Link href={i.href} className="text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
                     {i.title}
                   </Link>
                   <p className="truncate text-small text-muted-foreground" title={i.detail}>
@@ -102,7 +102,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
                     {showOwner && i.owner ? ` · ${i.owner}` : ""}
                   </p>
                 </div>
-                {i.due ? <span className="text-small font-normal whitespace-nowrap text-danger">{i.late ? `Late · ${shortDay(i.due, today)}` : "Today"}</span> : null}
+                {i.due ? <span className="text-small font-medium whitespace-nowrap text-danger">{i.late ? `Late · ${shortDay(i.due, today)}` : "Today"}</span> : null}
                 {i.type === "prospect" && canContact && i.expertId ? (
                   <form action={markProspectContacted} className="relative z-10">
                     <input type="hidden" name="expertId" value={i.expertId} />

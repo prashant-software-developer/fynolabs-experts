@@ -90,7 +90,7 @@ export default async function JobPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       {jsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} /> : null}
-      <Link href="/" className="inline-flex items-center gap-1.5 text-small text-muted-foreground transition-colors hover:text-foreground">
+      <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All open roles
       </Link>
       {preview ? (

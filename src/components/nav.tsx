@@ -1,24 +1,26 @@
 "use client";
-// The admin frame, as the FynoLabs admin's (AdminNavigation.tsx, AdminProfileMenu.tsx, GlobalSearch.tsx):
-// a 282px sidebar with the mark, a Search button (Ctrl K opens the command palette), the groups, and
-// the account bar at the bottom (its menu: Refresh, Settings, password, theme, Sign out). Below 1024px a
-// slim sticky bar opens the same groups in a frosted panel. No counts in the items. Classes, sizes and
-// spacing are copied from those files, so both admins look the same in light and dark.
+// The admin frame, in Expert Hub's own design: a 224px sidebar (the FynoLabs mark with "Expert Hub",
+// each group under a small label, the public job board at the bottom), and a top bar with where you
+// are (Group / Page), search (Ctrl K) and your account (email and role; its menu has Settings,
+// password, the job board, Refresh and Sign out). Below 1024px a menu button opens the same groups.
+// Which items show is decided on the server (roles and per-section access) and passed in as NavAccess.
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import {
+  BadgeCheck,
   BarChart3,
   Briefcase,
   Building2,
   CalendarDays,
+  ChevronDown,
   ClipboardList,
   ExternalLink,
+  FileCheck2,
   FolderKanban,
   Globe,
   Handshake,
-  ChevronsUpDown,
   Inbox,
   KeyRound,
   LayoutDashboard,
@@ -27,29 +29,24 @@ import {
   Mail,
   Megaphone,
   Menu,
-  Moon,
   Radar,
   RefreshCw,
   Search,
   Send,
   Settings,
-  Sun,
   User,
   UserPlus,
   Users,
   Wallet,
   X,
   type LucideIcon,
-  BadgeCheck,
-  FileCheck2,
 } from "lucide-react";
 import { cn } from "@/components/ui/cn";
-import { setAdminTheme, useAdminTheme } from "@/components/admin/kit-client";
 
 /** `also`: other paths that belong to this item (Send referrals also covers the sent-referrals list). */
 type NavLink = { href: string; label: string; icon: LucideIcon; also?: string[] };
 
-/** One line about each page, shown in the command palette (the FynoLabs admin's MODULES hints; short ones for hub-only pages). */
+/** One line about each page, shown in the search palette. */
 const PAGE_HINTS: Record<string, string> = {
   "/admin": "Counts and trends, plus visitor sources",
   "/admin/settings": "Email replies, team and access",
@@ -75,8 +72,6 @@ const PAGE_HINTS: Record<string, string> = {
   "/admin/placements": "Experts placed on partner work",
   "/admin/fees": "Fees owed and paid for referrals",
 };
-/** The palette lists pages in the FynoLabs admin's order first, then the hub's own. */
-const PAGE_ORDER = ["/admin", "/admin/settings", "/admin/settings/team", "/admin/messages", "/admin/accounts", "/admin/platforms", "/admin/experts", "/admin/campaigns/new", "/admin/send-referrals", "/admin/jobs", "/admin/jobs/radar"];
 
 /** What the signed-in person may open (decided on the server, passed down). */
 export type NavAccess = {
@@ -95,13 +90,21 @@ export type NavUser = { name: string; email: string; role: string };
 /** Shown unless the person's sections leave it out. */
 const can = (access: NavAccess, section: string) => access.open?.[section] !== false;
 
-// Grouped as the FynoLabs admin: Dashboard, My work, Analytics without a label; Inbox (what came in);
-// Outreach (companies, their people, the calendar, platforms); Talent (projects, experts and what we
-// send them); Jobs (roles we post or pick up, then the hub's partner requests); Money. Settings sits at the bottom.
+/** The last item: Settings (Email replies, with Team & access inside) or, for those who only manage the team, Team & access. */
+function settingsLink(access: NavAccess): NavLink | null {
+  if (access.settings && can(access, "settings")) return { href: "/admin/settings", label: "Settings", icon: Settings, also: ["/admin/settings/team"] };
+  if (access.team) return { href: "/admin/settings/team", label: "Team & access", icon: Settings };
+  return null;
+}
+
+// Grouped by what the work is about: the workspace; what came in; outreach (companies, their people,
+// the calendar, platforms); talent (projects, experts and what we send them); jobs (roles we post or
+// pick up, then partner requests and what came of them); money; settings.
 function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
+  const settings = settingsLink(access);
   const groups: { label: string; links: NavLink[] }[] = [
     {
-      label: "",
+      label: "Workspace",
       links: [
         ...(can(access, "dashboard") ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] : []),
         { href: "/admin/my-work", label: "My work", icon: ListChecks },
@@ -128,7 +131,7 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
       label: "Talent",
       links: [
         ...(can(access, "projects") ? [{ href: "/admin/projects", label: "Projects", icon: FolderKanban }] : []),
-        // Groups live with Experts (the Profiles | Groups switch), as in the FynoLabs admin.
+        // Groups and Import live with Experts (the Experts | Groups switch, the Import button).
         ...(can(access, "profiles") ? [{ href: "/admin/experts", label: "Experts", icon: Users, also: ["/admin/groups", "/admin/import"] }] : []),
         ...(can(access, "referrals") ? [{ href: "/admin/campaigns/new", label: "Send emails", icon: Send }] : []),
         ...(can(access, "referrals") ? [{ href: "/admin/campaigns", label: "Campaigns", icon: Megaphone }] : []),
@@ -146,104 +149,117 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
       ],
     },
     { label: "Money", links: access.money && can(access, "fees") ? [{ href: "/admin/fees", label: "Referral fees", icon: Wallet }] : [] },
+    { label: "Settings", links: settings ? [settings] : [] },
   ];
   return groups.filter((g) => g.links.length);
 }
 
-/** The bottom item: Settings (Email replies) or, for those who only manage the team, Team & access. */
-function settingsLink(access: NavAccess): NavLink | null {
-  if (access.settings && can(access, "settings")) return { href: "/admin/settings", label: "Settings", icon: Settings, also: ["/admin/settings/team"] };
-  if (access.team) return { href: "/admin/settings/team", label: "Settings", icon: Settings };
-  return null;
-}
-
 const matches = (path: string, href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
 
-/** The one item a path belongs to: the most specific match (Job radar wins over Posted jobs on /admin/jobs/radar). */
-function activeHref(path: string, access: NavAccess): string | null {
+/** The item a path belongs to: the most specific match (Job radar wins over Posted jobs on /admin/jobs/radar). */
+function current(path: string, access: NavAccess): { group: string; link: NavLink } | null {
   // /admin/partners redirects to Accounts.
   const p = path === "/admin/partners" || path.startsWith("/admin/partners/") ? path.replace("/admin/partners", "/admin/accounts") : path;
-  const all = [...groupsFor(access).flatMap((g) => g.links), ...[settingsLink(access)].filter((l): l is NavLink => Boolean(l))];
-  let best: string | null = null;
+  let best: { group: string; link: NavLink } | null = null;
   let len = -1;
-  for (const l of all)
-    for (const h of [l.href, ...(l.also ?? [])])
-      if (matches(p, h) && h.length > len) {
-        best = l.href;
-        len = h.length;
-      }
+  for (const g of groupsFor(access))
+    for (const l of g.links)
+      for (const h of [l.href, ...(l.also ?? [])])
+        if (matches(p, h) && h.length > len) {
+          best = { group: g.label, link: l };
+          len = h.length;
+        }
   return best;
 }
 
-function currentLink(path: string, access: NavAccess): NavLink | null {
-  const href = activeHref(path, access);
-  const all = [...groupsFor(access).flatMap((g) => g.links), settingsLink(access)].filter((l): l is NavLink => Boolean(l));
-  return all.find((l) => l.href === href) ?? null;
-}
-
-const rowClass = (active: boolean) =>
-  cn(
-    "admin-hover flex h-11 w-full items-center gap-3 border-l-2 pr-3 pl-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-    active ? "border-foreground bg-foreground/[0.06] text-foreground" : "border-transparent text-foreground/75 hover:text-foreground",
-  );
-
-function NavItem({ link, active, onNavigate }: { link: NavLink; active: boolean; onNavigate?: () => void }) {
-  return (
-    <Link href={link.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={rowClass(active)}>
-      <link.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
-      {link.label}
-    </Link>
-  );
-}
-
-function NavGroups({ path, access, onNavigate, compact }: { path: string; access: NavAccess; onNavigate?: () => void; compact?: boolean }) {
-  const active = activeHref(path, access);
+function NavGroups({ path, access, onNavigate }: { path: string; access: NavAccess; onNavigate?: () => void }) {
+  const active = current(path, access)?.link.href;
   return (
     <>
       {groupsFor(access).map((group) => (
-        <div key={group.label || "top"} className={cn("flex flex-col gap-1 first:mt-0", compact ? "mt-3" : "mt-6")}>
-          {group.label ? <p className="px-3 pb-1 text-eyebrow tracking-widest text-muted-foreground uppercase">{group.label}</p> : null}
-          {group.links.map((l) => (
-            <NavItem key={l.href} link={l} active={active === l.href} onNavigate={onNavigate} />
-          ))}
+        <div key={group.label} className="mt-6 first:mt-0">
+          <p className="eyebrow px-3 pb-1.5 text-muted-foreground">{group.label}</p>
+          <ul className="space-y-0.5">
+            {group.links.map((l) => {
+              const on = active === l.href;
+              return (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    onClick={onNavigate}
+                    aria-current={on ? "page" : undefined}
+                    className={cn(
+                      "flex h-9 items-center gap-3 rounded-r-md border-l-2 pr-3 pl-2.5 text-sm transition-colors",
+                      on ? "border-foreground bg-sidebar-accent font-medium text-foreground" : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-foreground",
+                    )}
+                  >
+                    <l.icon className={cn("h-4 w-4 shrink-0", on ? "text-foreground" : "text-muted-foreground")} aria-hidden />
+                    {l.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ))}
     </>
   );
 }
 
-/** The FynoLabs mark: two mirrored halves of bars facing each other across a thin gap. */
-export function LogoMark({ className = "h-6 w-6" }: { className?: string }) {
-  const bars = [
-    { y: 6, half: 14 },
-    { y: 16, half: 22 },
-    { y: 26, half: 27 },
-    { y: 36, half: 29 },
-    { y: 46, half: 27 },
-    { y: 56, half: 22 },
-    { y: 66, half: 14 },
-  ];
+/** The FynoLabs mark, wordmark and the app's name. */
+export function Brand({ compact }: { compact?: boolean }) {
   return (
-    <svg viewBox="0 0 72 72" className={className} aria-hidden="true" focusable="false">
-      <g fill="currentColor">
-        {bars.map(({ y, half }) => (
-          <g key={y}>
-            <rect x={36 - 3 - half} y={y} width={half} height={6} />
-            <rect x={36 + 3} y={y} width={half} height={6} />
-          </g>
-        ))}
-      </g>
-    </svg>
+    <Link href="/admin" className="flex items-center gap-2.5 text-foreground">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/fynolabs-mark.svg" alt="" width={24} height={24} className={compact ? "h-6 w-6" : "h-7 w-7"} />
+      <span className="flex flex-col gap-0.5 whitespace-nowrap">
+        <span className={cn("leading-none", compact ? "text-[15px]" : "text-base")}>FynoLabs</span>
+        <span className="text-[0.625rem] leading-none tracking-[0.12em] text-primary uppercase">Expert Hub</span>
+      </span>
+    </Link>
   );
 }
 
-/** The mark and wordmark: 24px and body-lg in the sidebar, 20px and body in the phone panel. */
-export function Brand({ compact }: { compact?: boolean }) {
+/** Desktop sidebar (from 1024px): brand, then each group under its label. Stays in view while the page scrolls. */
+export function Sidebar({ access }: { access: NavAccess }) {
+  const path = usePathname();
+  // On a short window the list scrolls: keep the current page in view.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
+  }, [path]);
   return (
-    <Link href="/admin" className={cn("flex items-center text-foreground", compact ? "gap-2.5" : "gap-3")}>
-      <LogoMark className={compact ? "h-5 w-5" : "h-6 w-6"} />
-      <span className={compact ? "text-body" : "text-body-lg"}>FynoLabs</span>
-    </Link>
+    // The outer column carries the background and line to the bottom of long pages; the inner one stays in view.
+    <div className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">
+      <aside className="sticky top-0 flex h-screen flex-col">
+        <div className="flex h-14 items-center px-5">
+          <Brand />
+        </div>
+        <nav ref={navRef} className="flex-1 overflow-y-auto px-3 pt-5 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main">
+          <NavGroups path={path} access={access} />
+        </nav>
+        <div className="border-t border-sidebar-border px-3 py-3">
+          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/70 hover:text-foreground">
+            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            Public job board
+          </a>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+/** Where you are, for the top bar: Group / Page. */
+export function CurrentSection({ access }: { access: NavAccess }) {
+  const path = usePathname();
+  const hit = current(path, access);
+  if (!hit) return null;
+  return (
+    <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+      <span className="hidden sm:inline">{hit.group}</span>
+      <span className="hidden text-border sm:inline">/</span>
+      <span className="truncate text-foreground">{hit.link.label}</span>
+    </span>
   );
 }
 
@@ -259,30 +275,29 @@ const RESULT_GROUPS: { key: keyof Results; label: string; icon: LucideIcon }[] =
   { key: "platforms", label: "Platforms", icon: Globe },
   { key: "messages", label: "Messages", icon: Mail },
 ];
-const OPEN_EVENT = "fyno:open-search";
+const EMPTY: Results = { experts: [], accounts: [], leads: [], jobs: [], platforms: [], messages: [] };
+const OPEN_EVENT = "hub:open-search";
 export const openSearch = () => window.dispatchEvent(new Event(OPEN_EVENT));
 
-/** While the first results load: the mark with short status lines underneath (the FynoLabs AdminLoader). */
-function PaletteLoader() {
-  const steps = ["Okay, fetching everything…", "Okay, checking access…", "Okay, preparing everything…", "Okay, everything active."];
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setStep((s) => (s + 1) % steps.length), 900);
-    return () => window.clearInterval(id);
-  }, [steps.length]);
+/** The search field in the top bar: opens the palette (so does Ctrl K / ⌘K anywhere in the admin). */
+export function SearchButton() {
   return (
-    <div className="flex min-h-[320px] w-full flex-col items-center justify-center gap-5 py-16 text-center" role="status" aria-live="polite">
-      <LogoMark className="h-10 w-10 animate-[pulse_1.6s_ease-in-out_infinite] text-foreground" />
-      <p key={step} className="animate-fade-in text-small text-muted-foreground">
-        {steps[step]}
-      </p>
-    </div>
+    <button
+      type="button"
+      onClick={openSearch}
+      aria-label="Search (Ctrl K)"
+      className="inline-flex h-9 items-center gap-2 rounded-md border-input text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground max-md:w-9 max-md:justify-center md:w-56 md:border md:bg-background md:px-3 md:hover:bg-background md:hover:border-foreground/25"
+    >
+      <Search className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="hidden flex-1 text-left md:inline">Search…</span>
+      <kbd className="hidden rounded border border-border bg-secondary px-1.5 text-[11px] leading-5 text-muted-foreground md:inline">Ctrl K</kbd>
+    </button>
   );
 }
 
 /**
  * Ctrl+K (⌘K on a Mac) on any admin page: one search across experts, accounts, leads, jobs, platforms,
- * messages and the admin pages. Only what this person can open is searched. Enter opens the result.
+ * messages and the admin pages. Only what this person can open is searched. Arrow keys move, Enter opens.
  */
 export function CommandPalette({ access }: { access: NavAccess }) {
   const [open, setOpen] = useState(false);
@@ -292,11 +307,10 @@ export function CommandPalette({ access }: { access: NavAccess }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  const pages = useMemo(() => {
-    const all = [...groupsFor(access).flatMap((g) => g.links), settingsLink(access)].filter((l): l is NavLink => Boolean(l));
-    const rank = (href: string) => (PAGE_ORDER.includes(href) ? PAGE_ORDER.indexOf(href) : PAGE_ORDER.length);
-    return all.map((l, i) => ({ l, i })).sort((a, b) => rank(a.l.href) - rank(b.l.href) || a.i - b.i).map(({ l }) => ({ id: l.href, title: l.label, hint: PAGE_HINTS[l.href] ?? null, href: l.href }));
-  }, [access]);
+  const pages = useMemo(
+    () => groupsFor(access).flatMap((g) => g.links.map((l) => ({ id: l.href, title: l.label, hint: PAGE_HINTS[l.href] ?? null, href: l.href, icon: l.icon }))),
+    [access],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -350,9 +364,12 @@ export function CommandPalette({ access }: { access: NavAccess }) {
   const term = q.trim();
   const needles = term.toLowerCase().split(/\s+/).filter(Boolean);
   const pageHits = pages.filter((p) => needles.every((n) => `page ${p.title} ${p.hint ?? ""}`.toLowerCase().includes(n)));
-  // Until something is typed, show a few pages and a few of each; once typing, everything that matches.
-  const sections: { key: string; label: string; icon: LucideIcon; hits: Hit[] }[] = res
-    ? [{ key: "pages", label: "Pages", icon: Search, hits: term ? pageHits : pageHits.slice(0, 5) }, ...RESULT_GROUPS.map((g) => ({ key: g.key as string, label: g.label, icon: g.icon, hits: res[g.key] }))].filter((s) => s.hits.length)
+  // Until something is typed, a few pages and a few of each; once typing, everything that matches.
+  const sections: { key: string; label: string; hits: (Hit & { icon: LucideIcon })[] }[] = res
+    ? [
+        { key: "pages", label: "Pages", hits: term ? pageHits : pageHits.slice(0, 5) },
+        ...RESULT_GROUPS.map((g) => ({ key: g.key as string, label: g.label, hits: res[g.key].map((h) => ({ ...h, icon: g.icon })) })),
+      ].filter((s) => s.hits.length)
     : [];
   const flat = sections.flatMap((s) => s.hits.map((h) => ({ ...h, key: `${s.key}-${h.id}` })));
   const count = flat.length;
@@ -371,120 +388,114 @@ export function CommandPalette({ access }: { access: NavAccess }) {
   if (!open) return null;
   let index = -1;
   return createPortal(
-    <>
-      <div className="animate-fade fixed inset-0 z-50 bg-black/80" onClick={() => setOpen(false)} aria-hidden="true" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Search"
-        className="animate-pop fixed top-[12vh] left-[50%] z-50 grid w-full max-w-[min(760px,calc(100vw-2rem))] translate-x-[-50%] gap-0 overflow-hidden border border-border bg-background p-0 shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_4px_6px_-4px_rgb(0_0_0/0.1)]"
-      >
-        <div className="flex max-h-[70vh] w-full min-w-0 flex-col pb-3">
-          <div className="flex items-center gap-3 border-b border-border px-5">
-            <Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              ref={input}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setOpen(false);
-                else if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setCursor((c) => (count ? (c + 1) % count : 0));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setCursor((c) => (count ? (c - 1 + count) % count : 0));
-                } else if (e.key === "Home") {
-                  e.preventDefault();
-                  setCursor(0);
-                } else if (e.key === "End") {
-                  e.preventDefault();
-                  setCursor(Math.max(count - 1, 0));
-                } else if (e.key === "Enter" && flat[cursor]) {
-                  e.preventDefault();
-                  go(flat[cursor].href);
-                } else if (e.key === "Tab") e.preventDefault();
-              }}
-              placeholder="Search experts, accounts, leads, jobs, platforms, messages…"
-              aria-label="Search experts, accounts, leads, jobs, platforms and messages"
-              role="combobox"
-              aria-expanded="true"
-              aria-controls="admin-search-list"
-              aria-activedescendant={flat[cursor] ? `admin-search-${flat[cursor].key}` : undefined}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="h-16 w-full bg-transparent text-body text-foreground outline-none placeholder:text-muted-foreground"
-            />
-            <kbd className="hidden shrink-0 border border-border px-2 py-0.5 text-eyebrow text-muted-foreground sm:block">Esc</kbd>
-          </div>
-          <div ref={list} id="admin-search-list" role="listbox" aria-label="Results" className="mt-3 min-h-0 min-w-0 flex-1 scroll-py-3 overflow-x-hidden overflow-y-auto pb-2">
-            {!res ? (
-              <PaletteLoader />
-            ) : !count ? (
-              <p className="px-5 py-12 text-center text-small text-muted-foreground">Nothing matches “{q}”.</p>
-            ) : (
-              sections.map((s) => (
-                <div key={s.key} role="group" aria-label={s.label}>
-                  <p aria-hidden="true" className={cn("px-5 pb-1 text-eyebrow tracking-widest text-muted-foreground uppercase", s.key === "pages" ? "pt-3" : "pt-4")}>
-                    {s.label}
-                  </p>
-                  {s.hits.map((h) => {
-                    index += 1;
-                    const i = index;
-                    const key = `${s.key}-${h.id}`;
-                    return (
-                      <div
-                        key={key}
-                        id={`admin-search-${key}`}
-                        role="option"
-                        aria-selected={i === cursor}
-                        data-selected={i === cursor}
-                        onPointerMove={() => i !== cursor && setCursor(i)}
-                        onClick={() => go(h.href)}
-                        className="flex w-full min-w-0 cursor-pointer items-center gap-4 px-5 py-3 text-left data-[selected=true]:bg-foreground/[0.06]"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-border text-muted-foreground" aria-hidden="true">
-                          <s.icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-body text-foreground">{h.title}</span>
-                          {h.hint ? <span className="block truncate text-small text-muted-foreground">{h.hint}</span> : null}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="animate-fade absolute inset-0 bg-foreground/10 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-hidden="true" />
+      <div className="animate-pop absolute top-[12vh] left-1/2 flex max-h-[70vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-md border border-border bg-popover shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center gap-3 border-b border-border px-4">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <input
+            ref={input}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+              else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setCursor((c) => (count ? (c + 1) % count : 0));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setCursor((c) => (count ? (c - 1 + count) % count : 0));
+              } else if (e.key === "Home") {
+                e.preventDefault();
+                setCursor(0);
+              } else if (e.key === "End") {
+                e.preventDefault();
+                setCursor(Math.max(count - 1, 0));
+              } else if (e.key === "Enter" && flat[cursor]) {
+                e.preventDefault();
+                go(flat[cursor].href);
+              } else if (e.key === "Tab") e.preventDefault();
+            }}
+            placeholder="Search experts, accounts, leads, jobs, platforms, messages…"
+            aria-label="Search experts, accounts, leads, jobs, platforms and messages"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="admin-search-list"
+            aria-activedescendant={flat[cursor] ? `admin-search-${flat[cursor].key}` : undefined}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className="h-12 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          <kbd className="hidden shrink-0 rounded border border-border bg-secondary px-1.5 text-[11px] leading-5 text-muted-foreground sm:block">Esc</kbd>
+        </div>
+        <div ref={list} id="admin-search-list" role="listbox" aria-label="Results" className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2">
+          {!res ? (
+            <p className="px-4 py-10 text-center text-[13px] text-muted-foreground" role="status">
+              Searching…
+            </p>
+          ) : !count ? (
+            <p className="px-4 py-10 text-center text-[13px] text-muted-foreground">Nothing matches “{q}”.</p>
+          ) : (
+            sections.map((s) => (
+              <div key={s.key} role="group" aria-label={s.label} className="pb-1">
+                <p aria-hidden="true" className="eyebrow px-4 pt-3 pb-1 text-muted-foreground">
+                  {s.label}
+                </p>
+                {s.hits.map((h) => {
+                  index += 1;
+                  const i = index;
+                  const key = `${s.key}-${h.id}`;
+                  return (
+                    <div
+                      key={key}
+                      id={`admin-search-${key}`}
+                      role="option"
+                      aria-selected={i === cursor}
+                      data-selected={i === cursor}
+                      onPointerMove={() => i !== cursor && setCursor(i)}
+                      onClick={() => go(h.href)}
+                      className="mx-2 flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 data-[selected=true]:bg-accent"
+                    >
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-foreground/70" aria-hidden="true">
+                        <h.icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-foreground">{h.title}</span>
+                        {h.hint ? <span className="block truncate text-xs text-muted-foreground">{h.hint}</span> : null}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
       </div>
-    </>,
+    </div>,
     document.body,
   );
 }
-const EMPTY: Results = { experts: [], accounts: [], leads: [], jobs: [], platforms: [], messages: [] };
 
-/* ---------- Account bar and its menu ---------- */
+/* ---------- Account menu (top bar) ---------- */
 
-// The FynoLabs dropdown item (dropdown-menu.tsx + AdminProfileMenu's itemClass): 40px, body text, the accent wash.
 const menuItem =
-  "relative flex h-10 min-h-10 w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left text-body text-popover-foreground outline-none transition-colors select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0";
-const menuIcon = "h-4 w-4 text-muted-foreground";
-const MenuSeparator = () => <div role="separator" className="-mx-1 my-1 h-px bg-muted" />;
+  "flex h-9 w-full items-center gap-2.5 rounded-sm px-2.5 text-left text-sm text-foreground/85 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent disabled:pointer-events-none disabled:opacity-50";
+const menuIcon = "h-4 w-4 shrink-0 text-muted-foreground";
 
 /**
- * The account at the bottom of the sidebar and the phone menu: the email and an up/down chevron. Clicking
- * it opens the account details (email, role) with Refresh, Settings, the light/dark switch and Sign out.
+ * Your email and role in the top bar. Opens a small menu: Settings (when you may), Change password,
+ * Public job board, Refresh, Sign out. Arrow keys move through it; Escape closes it.
  */
-function ProfileMenu({ user, signOut, onNavigate, size = "default" }: { user: NavUser & { settingsHref?: string }; signOut: () => Promise<void>; onNavigate?: () => void; size?: "default" | "large" }) {
+export function AccountMenu({ user, access, signOut }: { user: NavUser; access: NavAccess; signOut: () => Promise<void> }) {
+  const settingsHref = settingsLink(access)?.href;
   const [open, setOpen] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const theme = useAdminTheme();
+  const path = usePathname();
+  useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
     const close = (e: Event) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
@@ -509,11 +520,6 @@ function ProfileMenu({ user, signOut, onNavigate, size = "default" }: { user: Na
       document.removeEventListener("keydown", key);
     };
   }, [open]);
-  const settings = user.settingsHref;
-  const leave = () => {
-    setOpen(false);
-    onNavigate?.();
-  };
   return (
     <div ref={ref} className="relative">
       <button
@@ -521,68 +527,49 @@ function ProfileMenu({ user, signOut, onNavigate, size = "default" }: { user: Na
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={`Account: ${user.email}`}
-        // A plain bar: no background on hover, focus or while open; keyboard focus shows a ring.
-        className={cn(
-          "flex w-full items-center gap-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background focus-visible:outline-none",
-          size === "large" ? "py-1.5" : "py-1",
-        )}
+        aria-label={`Account: ${user.email} (${user.role})`}
+        className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
-        <span className="min-w-0 flex-1 truncate text-small text-foreground">{user.email}</span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="hidden max-w-[16rem] truncate md:inline">{user.email}</span>
+        <span className="inline-flex h-5 items-center rounded-full border border-border bg-secondary px-2 text-[11px] font-medium text-foreground/80">{user.role}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
       </button>
       {open ? (
-        <div
-          ref={menu}
-          role="menu"
-          aria-label="Account"
-          className="animate-pop absolute bottom-full left-0 z-50 mb-2 w-full min-w-[8rem] origin-bottom overflow-hidden border border-border bg-popover p-1 text-popover-foreground shadow-[0_4px_6px_-1px_rgb(0_0_0/0.1),0_2px_4px_-2px_rgb(0_0_0/0.1)]"
-        >
-          <div className="px-3 py-2.5 text-sm font-normal">
-            <p className="truncate text-small text-foreground">{user.email}</p>
-            <p className="mt-0.5 text-eyebrow tracking-widest text-muted-foreground uppercase">{user.role}</p>
+        <div ref={menu} role="menu" aria-label="Account" className="animate-pop absolute top-full right-0 z-50 mt-1.5 w-64 origin-top-right rounded-md border border-border bg-popover p-1 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+          <div className="px-2.5 py-2">
+            <p className="truncate text-sm text-foreground">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {user.email} · {user.role}
+            </p>
           </div>
-          <MenuSeparator />
+          <div role="separator" className="-mx-1 my-1 h-px bg-border" />
+          {settingsHref ? (
+            <Link href={settingsHref} role="menuitem" className={menuItem}>
+              <Settings className={menuIcon} aria-hidden /> Settings
+            </Link>
+          ) : null}
+          <Link href="/account/password" role="menuitem" className={menuItem}>
+            <KeyRound className={menuIcon} aria-hidden /> Change password
+          </Link>
+          <a href="/" target="_blank" rel="noreferrer" role="menuitem" onClick={() => setOpen(false)} className={menuItem}>
+            <ExternalLink className={menuIcon} aria-hidden /> Public job board
+          </a>
           <button
             type="button"
             role="menuitem"
             disabled={refreshing}
             onClick={() => {
-              leave();
+              setOpen(false);
               startRefresh(() => router.refresh());
             }}
             className={menuItem}
           >
-            <RefreshCw className={cn(menuIcon, refreshing && "animate-spin")} aria-hidden="true" />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            <RefreshCw className={cn(menuIcon, refreshing && "animate-spin")} aria-hidden /> {refreshing ? "Refreshing…" : "Refresh"}
           </button>
-          {settings ? (
-            <Link href={settings} role="menuitem" onClick={leave} className={menuItem}>
-              <Settings className={menuIcon} aria-hidden="true" /> Settings
-            </Link>
-          ) : null}
-          <Link href="/account/password" role="menuitem" onClick={leave} className={menuItem}>
-            <KeyRound className={menuIcon} aria-hidden="true" /> Change password
-          </Link>
-          <a href="/" target="_blank" rel="noreferrer" role="menuitem" onClick={() => setOpen(false)} className={menuItem}>
-            <ExternalLink className={menuIcon} aria-hidden="true" /> Public job board
-          </a>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              setAdminTheme(theme === "dark" ? "light" : "dark");
-            }}
-            className={menuItem}
-          >
-            {theme === "dark" ? <Sun className={menuIcon} aria-hidden="true" /> : <Moon className={menuIcon} aria-hidden="true" />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </button>
-          <MenuSeparator />
+          <div role="separator" className="-mx-1 my-1 h-px bg-border" />
           <form action={signOut}>
             <button type="submit" role="menuitem" className={menuItem}>
-              <LogOut className={menuIcon} aria-hidden="true" /> Sign out
+              <LogOut className={menuIcon} aria-hidden /> Sign out
             </button>
           </form>
         </div>
@@ -591,57 +578,12 @@ function ProfileMenu({ user, signOut, onNavigate, size = "default" }: { user: Na
   );
 }
 
-/* ---------- Sidebar and phone bar ---------- */
+/* ---------- Phones and tablets ---------- */
 
-/** Desktop sidebar (from 1024px). Stays in view while the page scrolls. */
-export function Sidebar({ access, user, signOut }: { access: NavAccess; user: NavUser; signOut: () => Promise<void> }) {
-  const path = usePathname();
-  const settings = settingsLink(access);
-  // On a short window the list scrolls; keep the current page in view instead of leaving it off-screen.
-  const navRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest" });
-  }, [path]);
-  return (
-    <aside className="sticky hidden h-screen w-[282px] shrink-0 flex-col border-r border-border lg:flex" style={{ top: "env(safe-area-inset-top, 0px)" }}>
-      <div className="px-5 pt-9 pb-6">
-        <Brand />
-      </div>
-      <div className="px-2 pb-5">
-        <button
-          type="button"
-          onClick={openSearch}
-          className="admin-hover flex h-10 w-full items-center gap-3 border border-border px-3 text-left text-small text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-        >
-          <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="flex-1">Search</span>
-          <kbd className="border border-border px-1.5 text-eyebrow">Ctrl K</kbd>
-        </button>
-      </div>
-      {/* On short windows the list scrolls on its own, without a visible scrollbar, rather than squeezing the spacing. */}
-      <nav ref={navRef} className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Admin sections">
-        <NavGroups path={path} access={access} />
-      </nav>
-      <div className="border-t border-border px-5 py-4">
-        <ProfileMenu user={{ ...user, settingsHref: settings?.href }} signOut={signOut} />
-      </div>
-    </aside>
-  );
-}
-
-// The FynoLabs ghost icon button (its icons render at 16px).
-const barButton =
-  "inline-flex h-10 w-10 items-center justify-center text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
-
-/**
- * Phones and tablets (below 1024px): a slim sticky bar with the menu button, the current section and
- * search. The menu is a frosted-glass panel with every section and the account bar.
- */
-export function MobileBar({ access, user, signOut }: { access: NavAccess; user: NavUser; signOut: () => Promise<void> }) {
+/** Below 1024px: a menu button in the top bar opens the same groups in a panel. */
+export function MobileNav({ access }: { access: NavAccess }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const current = currentLink(path, access);
-  const settings = settingsLink(access);
   useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
@@ -656,37 +598,40 @@ export function MobileBar({ access, user, signOut }: { access: NavAccess; user: 
   }, [open]);
   return (
     <>
-      <div
-        className="sticky z-30 -mx-5 mb-6 flex items-center gap-3 border-b border-border bg-background/80 px-5 py-2.5 backdrop-blur-xl md:-mx-10 md:px-10 lg:hidden"
-        style={{ top: "env(safe-area-inset-top, 0px)" }}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Open menu"
+        aria-expanded={open}
+        className="-ml-2 inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground hover:bg-accent lg:hidden"
       >
-        <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} className={cn(barButton, "-ml-2")}>
-          <Menu className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {current ? <current.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
-          <span className="truncate text-eyebrow tracking-widest text-foreground uppercase">{current?.label ?? "Admin"}</span>
-        </div>
-        <button type="button" onClick={openSearch} aria-label="Search" className={cn(barButton, "-mr-2")}>
-          <Search className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+      {/* Portalled to <body>: the top bar's backdrop blur would otherwise trap a fixed panel inside the bar. */}
       {open
         ? createPortal(
-            <div className="lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-              <div className="animate-fade fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-hidden="true" />
-              <div className="animate-slide-left fixed inset-y-0 left-0 z-50 flex h-full w-[86%] max-w-sm flex-col gap-0 border-r border-white/40 bg-background/85 p-0 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60 dark:border-white/10">
-                <div className="flex items-center justify-between px-5 pb-4" style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top))" }}>
+            <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+              <button type="button" className="animate-fade absolute inset-0 bg-foreground/10 backdrop-blur-[2px]" aria-label="Close menu" onClick={() => setOpen(false)} />
+              <div className="absolute inset-y-0 left-0 flex w-72 max-w-[86%] flex-col border-r border-sidebar-border bg-sidebar shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
+                <div className="flex h-14 items-center justify-between px-5">
                   <Brand compact />
-                  <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className={cn(barButton, "-mr-2")}>
-                    <X className="h-4 w-4" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close menu"
+                    className="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
-                <nav className="flex-1 overflow-y-auto px-3 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Admin sections">
-                  <NavGroups path={path} access={access} onNavigate={() => setOpen(false)} compact />
+                <nav className="flex-1 overflow-y-auto px-3 pt-3 pb-6" aria-label="Main">
+                  <NavGroups path={path} access={access} onNavigate={() => setOpen(false)} />
                 </nav>
-                <div className="border-t border-border/60 px-6 pt-4" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-                  <ProfileMenu size="large" user={{ ...user, settingsHref: settings?.href }} signOut={signOut} onNavigate={() => setOpen(false)} />
+                <div className="border-t border-sidebar-border px-3 py-3">
+                  <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-foreground">
+                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    Public job board
+                  </a>
                 </div>
               </div>
             </div>,

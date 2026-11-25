@@ -14,9 +14,9 @@ export function BarList({ items, emptyText }: { items: { key: string; label: str
         const body = (
           <>
             <span className="w-24 shrink-0 truncate sm:w-36 text-foreground/70 group-hover:text-foreground">{i.label}</span>
-            <span className="h-1.5 flex-1 overflow-hidden bg-secondary">
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
               <span
-                className={cn("block h-1.5 transition-colors", i.tone === "primary" ? "bg-primary" : i.tone === "muted" ? "bg-muted-foreground/50" : "bg-foreground/75 group-hover:bg-foreground")}
+                className={cn("block h-1.5 rounded-full transition-colors", i.tone === "primary" ? "bg-primary" : i.tone === "muted" ? "bg-muted-foreground/50" : "bg-foreground/75 group-hover:bg-foreground")}
                 style={{ width: `${(i.value / max) * 100}%` }}
               />
             </span>

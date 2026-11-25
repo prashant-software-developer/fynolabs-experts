@@ -17,12 +17,12 @@ export function Field({
   htmlFor?: string;
 }) {
   return (
-    <div className={cn("min-w-0 space-y-2", className)}>
-      <label htmlFor={htmlFor} className="eyebrow block text-muted-foreground">
+    <div className={cn("min-w-0 space-y-1.5", className)}>
+      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-foreground/80">
         {label}
       </label>
       {children}
-      {error ? <p className="text-small text-destructive">{error}</p> : hint ? <p className="text-small text-muted-foreground">{hint}</p> : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -61,8 +61,8 @@ export function Select({
 
 export function Checkbox({ label, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
   return (
-    <label className={cn("inline-flex cursor-pointer items-center gap-2.5 text-small text-foreground", className)}>
-      <input type="checkbox" className="h-4 w-4 shrink-0 border-input" {...props} />
+    <label className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-foreground/80", className)}>
+      <input type="checkbox" className="h-4 w-4 shrink-0 rounded-sm border-input" {...props} />
       {label}
     </label>
   );
@@ -70,6 +70,6 @@ export function Checkbox({ label, className, ...props }: InputHTMLAttributes<HTM
 
 /** Two fields side by side on wide screens (form fields only; pages stay single-column). */
 export function FieldRow({ children }: { children: ReactNode }) {
-  return <div className="grid gap-x-4 gap-y-6 sm:grid-cols-2">{children}</div>;
+  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
 }
 

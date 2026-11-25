@@ -243,7 +243,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                   {shownPeople.map((p) => (
                     <Tr key={p.id}>
                       <Td>
-                        <Link href={`/admin/leads?view=${p.id}`} className="flex items-center gap-2.5 font-normal text-foreground hover:text-primary">
+                        <Link href={`/admin/leads?view=${p.id}`} className="flex items-center gap-2.5 font-medium text-foreground hover:text-primary">
                           <Initials name={p.name} />
                           {p.name}
                         </Link>
@@ -348,7 +348,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                       {e.startTime ? <span className="text-muted-foreground"> · {hhmm(e.startTime)}{e.endTime ? `–${hhmm(e.endTime)}` : ""}</span> : null}
                     </Td>
                     <Td>
-                      <Link href={`/admin/calendar?event=${e.id}${e.eventDate ? `&date=${e.eventDate}` : ""}`} className="font-normal text-foreground hover:text-primary">
+                      <Link href={`/admin/calendar?event=${e.id}${e.eventDate ? `&date=${e.eventDate}` : ""}`} className="font-medium text-foreground hover:text-primary">
                         {e.title}
                       </Link>
                     </Td>
@@ -382,7 +382,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                   {links.jobs.map((j) => (
                     <Tr key={j.id}>
                       <Td>
-                        <Link href={`/admin/jobs/${j.id}`} className="font-normal text-foreground hover:text-primary">
+                        <Link href={`/admin/jobs/${j.id}`} className="font-medium text-foreground hover:text-primary">
                           {j.title}
                         </Link>
                       </Td>
@@ -414,7 +414,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                   {links.projects.map((p) => (
                     <Tr key={p.id}>
                       <Td>
-                        <Link href={`/admin/projects/${p.id}`} className="font-normal text-foreground hover:text-primary">
+                        <Link href={`/admin/projects/${p.id}`} className="font-medium text-foreground hover:text-primary">
                           {p.name}
                         </Link>
                       </Td>
@@ -447,7 +447,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                   {links.requirements.map((r) => (
                     <Tr key={r.id}>
                       <Td>
-                        <Link href={`/admin/requirements/${r.id}`} className="font-normal text-foreground hover:text-primary">
+                        <Link href={`/admin/requirements/${r.id}`} className="font-medium text-foreground hover:text-primary">
                           {r.title}
                         </Link>
                       </Td>

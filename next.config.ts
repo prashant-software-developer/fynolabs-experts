@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // A second copy (e.g. a local check while Start Expert Hub.bat runs) can build into its own folder.
+  distDir: process.env.HUB_DIST_DIR || ".next",
   // PGlite (tests and local smoke tests only) ships WebAssembly; load it from node_modules, don't bundle it.
   devIndicators: false,
   serverExternalPackages: ["@electric-sql/pglite", "undici"],

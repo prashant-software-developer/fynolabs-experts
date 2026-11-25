@@ -173,7 +173,7 @@ export default async function PlatformPage({ params, searchParams }: { params: P
                       <Link href={`/admin/accounts/${c.id}`} className="row-hover flex items-center gap-3 px-5 py-3">
                         <OrgLogo name={c.name} size={24} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-normal text-foreground">{c.name}</span>
+                          <span className="block truncate text-sm font-medium text-foreground">{c.name}</span>
                           <span className="block text-xs text-muted-foreground">
                             {label(c.kind)}
                             {c.nextStepDue ? (
@@ -206,7 +206,7 @@ export default async function PlatformPage({ params, searchParams }: { params: P
                     {links.projects.map((x) => (
                       <Tr key={x.id}>
                         <Td>
-                          <Link href={`/admin/projects/${x.id}`} className="font-normal text-foreground hover:text-primary">
+                          <Link href={`/admin/projects/${x.id}`} className="font-medium text-foreground hover:text-primary">
                             {x.name}
                           </Link>
                         </Td>
@@ -252,11 +252,11 @@ export default async function PlatformPage({ params, searchParams }: { params: P
                       <Tr key={r.key}>
                         <Td>
                           {r.expertId ? (
-                            <Link href={`/admin/experts?view=${r.expertId}`} className="font-normal text-foreground hover:text-primary">
+                            <Link href={`/admin/experts?view=${r.expertId}`} className="font-medium text-foreground hover:text-primary">
                               {r.name}
                             </Link>
                           ) : (
-                            <span className="font-normal text-foreground">{r.name}</span>
+                            <span className="font-medium text-foreground">{r.name}</span>
                           )}
                         </Td>
                         <Td className="text-small text-foreground/80">{r.times > 1 ? `Referred ${r.times} times, last ${fmtDate(r.last)}` : `Referred ${fmtDate(r.last)}`}</Td>

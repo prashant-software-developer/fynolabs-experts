@@ -15,15 +15,15 @@ export function TempPasswordBox({ email, password, signInUrl, note }: { email: s
       <div className="flex items-start gap-3">
         <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-normal text-foreground">Temporary password for {email}</p>
-          <p className="text-small leading-relaxed text-muted-foreground">Copy it now: it won&apos;t be shown again. Give it to them privately (not in a shared channel). They choose their own password when they first sign in.</p>
+          <p className="text-sm font-medium text-foreground">Temporary password for {email}</p>
+          <p className="text-[13px] leading-relaxed text-muted-foreground">Copy it now: it won&apos;t be shown again. Give it to them privately (not in a shared channel). They choose their own password when they first sign in.</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <input readOnly value={password} aria-label={`Temporary password for ${email}`} className="control h-10 max-w-xs flex-1 font-mono text-[15px] tracking-wide" onFocus={(e) => e.currentTarget.select()} />
         <CopyButton value={password} label="Copy password" size="md" />
       </div>
-      <p className="text-small text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Sign-in page: <span className="text-foreground">{signInUrl}</span>
       </p>
       {note ? <Notice tone="info">{note}</Notice> : null}
@@ -54,7 +54,7 @@ export function AddMemberForm({ roles, partners, domain, signInUrl }: { roles: {
         </FieldRow>
         {partners.length ? (
           <fieldset className="space-y-2">
-            <legend className="eyebrow text-muted-foreground">Partner scope (pod leads only)</legend>
+            <legend className="text-[13px] font-medium text-foreground/80">Partner scope (pod leads only)</legend>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {partners.map((p) => (
                 <Checkbox key={p.id} name="partnerIds" value={p.id} label={p.name} />

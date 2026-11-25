@@ -1,8 +1,28 @@
 "use client";
 // Small interactive pieces. Everything else renders on the server.
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { buttonClass } from "./button";
+
+/** While a side panel is open: Escape goes to `href` (closes it), and the page behind doesn't scroll. */
+export function EscapeTo({ href }: { href: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) router.push(href, { scroll: false });
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [href, router]);
+  return null;
+}
 
 export function SubmitButton({
   children,

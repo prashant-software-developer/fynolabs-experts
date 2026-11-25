@@ -15,7 +15,7 @@ export function JobCard({ job }: { job: PublicJob }) {
               <span className="eyebrow text-muted-foreground">{job.companyLabel}</span>
               {job.featured ? <Badge tone="info">Featured</Badge> : null}
             </div>
-            <h2 className="text-lg leading-snug font-normal text-foreground group-hover:text-primary">{job.title}</h2>
+            <h2 className="text-lg leading-snug font-medium text-foreground group-hover:text-primary">{job.title}</h2>
             {job.summary ? <p className="line-clamp-2 max-w-3xl text-sm leading-relaxed text-foreground/70">{job.summary}</p> : null}
           </div>
           <ArrowRight className="mt-1 hidden h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary sm:block" aria-hidden />

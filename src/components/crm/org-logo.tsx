@@ -9,10 +9,10 @@ export function OrgLogo({ name, logoUrl, domain, size = 28, className }: { name:
   const sources = [logoUrl, lookup ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(lookup)}&sz=64` : null].filter((s): s is string => Boolean(s));
   const [i, setI] = useState(0);
   const src = sources[i];
-  const box = cn("inline-flex shrink-0 items-center justify-center overflow-hidden border border-border bg-background", className);
+  const box = cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background", className);
   if (!src) {
     return (
-      <span className={cn(box, "text-[11px] font-normal text-muted-foreground")} style={{ width: size, height: size }} aria-hidden>
+      <span className={cn(box, "text-[11px] font-medium text-muted-foreground")} style={{ width: size, height: size }} aria-hidden>
         {(name.trim()[0] ?? "?").toUpperCase()}
       </span>
     );

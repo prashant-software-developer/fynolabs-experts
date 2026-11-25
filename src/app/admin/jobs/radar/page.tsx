@@ -163,7 +163,7 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
                 <li key={r.id} className="row-hover flex flex-wrap items-start gap-3 px-4 py-3">
                   {manage && tab !== "published" ? <input type="checkbox" form="bulk-radar" name="ids" value={r.id} aria-label={`Select ${r.title}`} className="mt-1 h-4 w-4 rounded-sm" /> : null}
                   <div className="min-w-0 flex-1 space-y-1">
-                    <Link href={hrefWith("/admin/jobs/radar", sp, { r: r.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={hrefWith("/admin/jobs/radar", sp, { r: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {r.title}
                     </Link>
                     <p className="text-small text-muted-foreground">

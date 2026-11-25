@@ -76,7 +76,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Section>
         {can(user.role, "team.manage") ? (
           <Section title="Team & access" description="Team logins, roles and access.">
-            <Link href="/admin/settings/team" className="inline-flex items-center gap-2 text-sm font-normal text-primary hover:underline">
+            <Link href="/admin/settings/team" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
               <ShieldCheck className="h-4 w-4" aria-hidden /> Open Team & access
             </Link>
           </Section>

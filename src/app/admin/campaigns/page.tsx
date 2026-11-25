@@ -110,7 +110,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
               {rows.map((c) => (
                 <Tr key={c.id}>
                   <Td>
-                    <Link href={hrefWith("/admin/campaigns", sp, { c: c.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={hrefWith("/admin/campaigns", sp, { c: c.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {c.name}
                     </Link>
                     {c.followUpAfterDays ? <div className="text-xs text-muted-foreground">Follow-up after {c.followUpAfterDays} days</div> : null}
@@ -192,7 +192,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
             <PanelBlock title="The email (merge fields shown with sample values)">
               {camp.subject.trim() || camp.body.trim() ? (
                 <div className="space-y-2 rounded-md border border-border p-4 text-sm">
-                  <div className="font-normal text-foreground">{renderMerge(camp.subject, sample) || "(no subject yet)"}</div>
+                  <div className="font-medium text-foreground">{renderMerge(camp.subject, sample) || "(no subject yet)"}</div>
                   <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.body, sample)}</pre>
                   <p className="text-xs text-muted-foreground">Don&apos;t want these emails? Unsubscribe (added to every email).</p>
                 </div>
@@ -202,7 +202,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
               {camp.followUpBody ? (
                 <div className="space-y-2 rounded-md border border-dashed border-border p-4 text-sm">
                   <p className="text-xs text-muted-foreground">Follow-up after {camp.followUpAfterDays} days, to anyone who hasn&apos;t answered:</p>
-                  <div className="font-normal text-foreground">{renderMerge(camp.followUpSubject || `Re: ${camp.subject}`, sample)}</div>
+                  <div className="font-medium text-foreground">{renderMerge(camp.followUpSubject || `Re: ${camp.subject}`, sample)}</div>
                   <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.followUpBody, sample)}</pre>
                 </div>
               ) : null}
@@ -237,7 +237,7 @@ async function TemplatesTab({ sp, manage }: { sp: SearchParams; manage: boolean 
               {rows.map((r) => (
                 <Tr key={r.id}>
                   <Td>
-                    <Link href={`/admin/campaigns?tab=templates&t=${r.id}`} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={`/admin/campaigns?tab=templates&t=${r.id}`} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {r.name}
                     </Link>
                   </Td>
@@ -292,7 +292,7 @@ async function TemplatesTab({ sp, manage }: { sp: SearchParams; manage: boolean 
       {viewing ? (
         <SlideOver title={viewing.name} closeHref="/admin/campaigns?tab=templates">
           <div className="space-y-3 text-sm">
-            <div className="font-normal text-foreground">{viewing.subject}</div>
+            <div className="font-medium text-foreground">{viewing.subject}</div>
             <pre className="font-sans whitespace-pre-wrap text-foreground/85">{viewing.body}</pre>
           </div>
         </SlideOver>

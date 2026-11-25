@@ -2,11 +2,28 @@
 import { CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/components/ui/cn";
-import { StagePipeline } from "@/components/admin/crm-kit";
 import { CONTACT_STEPS, STAGE_STEPS, crmLabel, dueState, isParked, stageGroup } from "@/lib/crm/labels";
 import { shortDay } from "@/lib/crm/dates";
 
 const GROUP_TONE = { early: "neutral", talks: "info", won: "success", parked: "muted" } as const;
+
+/**
+ * Where a record is on its way: the stage name over a row of thin rounded steps, filled up to the
+ * stage (dark), green from the winning step on, grey when it is parked (on hold, dropped, rejected, lost).
+ */
+export function StageSteps({ steps, current, label, parked = false, wonFrom, width = 140 }: { steps: readonly string[]; current: number; label: string; parked?: boolean; wonFrom?: number; width?: number }) {
+  const won = wonFrom !== undefined && current >= wonFrom;
+  return (
+    <span className="flex min-w-0 flex-col gap-1.5" title={`${label} · step ${Math.max(current, 0) + 1} of ${steps.length}`}>
+      <span className={cn("truncate text-sm", parked ? "text-muted-foreground" : "text-foreground")}>{label}</span>
+      <span className="flex gap-1" style={{ width }} aria-hidden="true">
+        {steps.map((step, i) => (
+          <span key={step} className={cn("h-1.5 flex-1 rounded-full", i > current ? "bg-secondary" : parked ? "bg-muted-foreground/40" : won ? "bg-success" : "bg-foreground/75")} />
+        ))}
+      </span>
+    </span>
+  );
+}
 
 export function StageChip({ stage }: { stage: string }) {
   return <Badge tone={GROUP_TONE[stageGroup(stage)]}>{crmLabel(stage)}</Badge>;
@@ -17,14 +34,14 @@ export function StageBar({ stage, compact }: { stage: string; compact?: boolean 
   const parked = isParked(stage);
   const step = (STAGE_STEPS as readonly string[]).indexOf(stage);
   if (compact) return <span className={cn("text-small whitespace-nowrap", parked ? "text-muted-foreground" : "text-foreground")}>{crmLabel(stage)}</span>;
-  return <StagePipeline steps={STAGE_STEPS} current={parked ? -1 : step} label={crmLabel(stage)} parked={parked} wonFrom={(STAGE_STEPS as readonly string[]).indexOf("pilot")} />;
+  return <StageSteps steps={STAGE_STEPS} current={parked ? -1 : step} label={crmLabel(stage)} parked={parked} wonFrom={(STAGE_STEPS as readonly string[]).indexOf("pilot")} />;
 }
 
 /** Leads: New → Won in 6 steps; Lost shows an empty grey bar. */
 export function ContactStageBar({ stage }: { stage: string }) {
   const step = (CONTACT_STEPS as readonly string[]).indexOf(stage);
   const lost = stage === "lost";
-  return <StagePipeline steps={CONTACT_STEPS} current={lost ? -1 : step} label={crmLabel(stage, "contact")} parked={lost} wonFrom={(CONTACT_STEPS as readonly string[]).indexOf("won")} />;
+  return <StageSteps steps={CONTACT_STEPS} current={lost ? -1 : step} label={crmLabel(stage, "contact")} parked={lost} wonFrom={(CONTACT_STEPS as readonly string[]).indexOf("won")} />;
 }
 
 export function ContactStageChip({ stage }: { stage: string }) {
@@ -37,7 +54,7 @@ export function DueChip({ due, today, stage, empty = "–" }: { due: string | nu
   if (!due || !s) return <span className="text-muted-foreground/70">{due ? shortDay(due, today) : empty}</span>;
   const text = s === "overdue" ? `Late · ${shortDay(due, today)}` : s === "today" ? "Today" : shortDay(due, today);
   return (
-    <span className={cn("inline-flex items-center gap-1 text-small whitespace-nowrap", s === "overdue" || s === "today" ? "font-normal text-danger" : s === "soon" ? "text-foreground/85" : "text-muted-foreground")}>
+    <span className={cn("inline-flex items-center gap-1 text-small whitespace-nowrap", s === "overdue" || s === "today" ? "font-medium text-danger" : s === "soon" ? "text-foreground/85" : "text-muted-foreground")}>
       <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
       {text}
     </span>
@@ -67,7 +84,7 @@ export function Initials({ name, className }: { name: string; className?: string
     .map((w) => w[0]!.toUpperCase())
     .join("");
   return (
-    <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border bg-background text-[0.625rem] tracking-wider text-foreground", className)} aria-hidden>
+    <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[0.625rem] font-medium tracking-wider text-foreground/80", className)} aria-hidden>
       {initials || "?"}
     </span>
   );
@@ -76,19 +93,23 @@ export function Initials({ name, className }: { name: string; className?: string
 /** A small dot for high priority. */
 export function PriorityDot({ priority }: { priority: string }) {
   if (priority !== "high") return null;
-  return <span className="eyebrow ml-2 inline-flex border border-primary px-1.5 align-middle leading-4 text-primary" title="High priority">High</span>;
+  return (
+    <Badge tone="warning" className="ml-2 align-middle" title="High priority">
+      High
+    </Badge>
+  );
 }
 
-/** Eyebrow-style fact tiles for side panels: label over value, empty ones hidden. */
+/** Facts for side panels: small label over value, empty ones hidden. */
 export function Facts({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   const shown = items.filter((i) => i.value != null && i.value !== "" && i.value !== false);
   if (!shown.length) return null;
   return (
-    <dl className="grid grid-cols-2 border-t border-l border-border sm:grid-cols-3">
+    <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
       {shown.map((i) => (
-        <div key={i.label} className="min-w-0 border-r border-b border-border p-4">
+        <div key={i.label} className="min-w-0">
           <dt className="eyebrow text-muted-foreground">{i.label}</dt>
-          <dd className="mt-1 text-small break-words text-foreground">{i.value}</dd>
+          <dd className="mt-1 text-sm break-words text-foreground">{i.value}</dd>
         </div>
       ))}
     </dl>

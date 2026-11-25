@@ -127,7 +127,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
-          <h2 className="text-[15px] font-normal text-foreground">{title}</h2>
+          <h2 className="text-[15px] font-medium text-foreground">{title}</h2>
           <form method="get" className="ml-auto flex flex-wrap items-center gap-2">
             {view !== "agenda" ? <input type="hidden" name="view" value={view} /> : null}
             {one(sp.date) ? <input type="hidden" name="date" value={anchor} /> : null}
@@ -143,7 +143,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <>
             {overdue.length ? (
               <details className="border border-destructive/40">
-                <summary className="cursor-pointer list-none px-5 py-3 text-sm font-normal text-danger [&::-webkit-details-marker]:hidden">
+                <summary className="cursor-pointer list-none px-5 py-3 text-sm font-medium text-danger [&::-webkit-details-marker]:hidden">
                   {overdue.length} overdue from earlier days · Show / hide
                 </summary>
                 <ul className="divide-y divide-border border-t border-border bg-card">{overdue.map((i) => row(i, true))}</ul>
@@ -359,7 +359,7 @@ function ItemRow({ i, today, showDate, href, names, edit, returnTo }: { i: Timel
   const ours = i.teamMemberIds.map((id) => names.team.get(id)).filter(Boolean);
   return (
     <li className="row-hover relative flex items-start gap-4 px-5 py-3">
-      <div className={cn("tabular w-20 shrink-0 pt-0.5 text-small", late ? "font-normal text-danger" : "text-foreground/80")}>
+      <div className={cn("tabular w-20 shrink-0 pt-0.5 text-small", late ? "font-medium text-danger" : "text-foreground/80")}>
         {showDate ? (
           i.date ? shortDay(i.date, today) : "No date"
         ) : i.start ? (
@@ -372,7 +372,7 @@ function ItemRow({ i, today, showDate, href, names, edit, returnTo }: { i: Timel
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <Link href={href} scroll={false} className={cn("text-sm font-normal text-foreground after:absolute after:inset-0 hover:text-primary", i.status === "done" && "line-through opacity-60")}>
+        <Link href={href} scroll={false} className={cn("text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary", i.status === "done" && "line-through opacity-60")}>
           {i.title}
         </Link>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">

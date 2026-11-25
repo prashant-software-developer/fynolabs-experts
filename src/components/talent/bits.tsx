@@ -8,9 +8,9 @@ import { PIPELINE_LINE, STAGE_TONE, stageLabel, type Tone } from "@/lib/talent";
 import type { PipelineStage } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/components/ui/cn";
-import { StagePipeline } from "@/components/admin/crm-kit";
+import { StageSteps } from "@/components/crm/chips";
 import { PageHeader, Section } from "@/components/ui/layout";
-import { AdminTabs } from "@/components/admin/kit";
+import { Tabs } from "@/components/ui/tabs";
 
 export function ToneBadge({ tone, children, title }: { tone?: Tone; children: ReactNode; title?: string }) {
   return (
@@ -31,14 +31,14 @@ export function StageBadge({ stage }: { stage: string | null | undefined }) {
   return <Badge tone={STAGE_TONE[stage as PipelineStage] ?? "neutral"}>{stageLabel(stage)}</Badge>;
 }
 
-/** The FynoLabs stage bar (PipelineBar): eight steps filled up to the stage, Active and after in the brand blue; Rejected greyed. */
+/** The pipeline stage bar: the steps filled up to the stage, Active and after in green; Rejected greyed. */
 export function StageBar({ stage, className }: { stage: string | null | undefined; className?: string }) {
   if (!stage) return <span className="text-muted-foreground/70">–</span>;
   const at = PIPELINE_LINE.indexOf(stage as PipelineStage);
   const rejected = stage === "rejected";
   return (
     <span className={cn("inline-flex", className)}>
-      <StagePipeline steps={PIPELINE_LINE} current={rejected ? -1 : at} label={stageLabel(stage)} parked={rejected} wonFrom={PIPELINE_LINE.indexOf("active")} width={120} />
+      <StageSteps steps={PIPELINE_LINE} current={rejected ? -1 : at} label={stageLabel(stage)} parked={rejected} wonFrom={PIPELINE_LINE.indexOf("active")} width={120} />
     </span>
   );
 }
@@ -61,12 +61,12 @@ export function SectionBlocked({ title, section }: { title: string; section: Sec
       <PageHeader title={title} />
       <Section flush>
         <div className="flex w-full flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-          <span className="inline-flex h-12 w-12 items-center justify-center border border-border">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
             <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-normal text-foreground">You don&apos;t have access to {SECTIONS[section].label}.</p>
-            <p className="mx-auto max-w-md text-small leading-relaxed text-muted-foreground">Ask an admin to give you access in Team &amp; access.</p>
+            <p className="text-sm font-medium text-foreground">You don&apos;t have access to {SECTIONS[section].label}</p>
+            <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">Ask an admin to give you access in Team &amp; access.</p>
           </div>
         </div>
       </Section>
@@ -75,22 +75,30 @@ export function SectionBlocked({ title, section }: { title: string; section: Sec
 }
 
 /** Link tabs with counts where the active one is chosen by the caller (keeps other params). */
-export function CountTabs({ tabs, label = "Views" }: { tabs: { href: string; label: string; active: boolean; count?: number | null }[]; label?: string }) {
+export function CountTabs({ tabs }: { tabs: { href: string; label: string; active: boolean; count?: number | null }[]; label?: string }) {
+  return <Tabs tabs={tabs.map((t) => ({ ...t, count: t.count ?? undefined }))} />;
+}
+
+/** Experts | Groups: the two people lists side by side as tabs. */
+export function PeopleTabs({ value, counts }: { value: "profiles" | "groups"; counts?: { profiles?: number; groups?: number } }) {
   return (
-    <div className="tabs-line mb-8 border-b border-border pb-4">
-      <AdminTabs tabs={tabs} label={label} />
-    </div>
+    <Tabs
+      tabs={[
+        { href: "/admin/experts", label: "Experts", active: value === "profiles", count: counts?.profiles },
+        { href: "/admin/groups", label: "Groups", active: value === "groups", count: counts?.groups },
+      ]}
+    />
   );
 }
 
 /** A row of facts in a side panel (label above value). */
 export function Facts({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="grid border-t border-l border-border sm:grid-cols-2">
+    <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
       {items.map((i) => (
-        <div key={i.label} className="min-w-0 border-r border-b border-border p-4">
+        <div key={i.label} className="min-w-0">
           <dt className="eyebrow text-muted-foreground">{i.label}</dt>
-          <dd className="mt-1 text-small break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
+          <dd className="mt-1 text-sm break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
         </div>
       ))}
     </dl>

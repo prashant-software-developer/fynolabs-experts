@@ -56,7 +56,7 @@ export default async function PlacementPage({ params, searchParams }: { params: 
         meta={
           <>
             {p.expertId ? (
-              <Link href={`/admin/experts/${p.expertId}`} className="font-normal text-foreground hover:text-primary">
+              <Link href={`/admin/experts/${p.expertId}`} className="font-medium text-foreground hover:text-primary">
                 {row.expertName}
               </Link>
             ) : (

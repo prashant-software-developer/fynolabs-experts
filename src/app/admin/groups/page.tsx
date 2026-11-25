@@ -12,10 +12,9 @@ import { SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import { PageHeader, Section } from "@/components/ui/layout";
-import { PeopleTabs } from "@/components/admin/kit";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
-import { CountTabs, Email, SectionBlocked } from "@/components/talent/bits";
+import { CountTabs, Email, PeopleTabs, SectionBlocked } from "@/components/talent/bits";
 import { newGroup } from "./actions";
 
 export const metadata = { title: "Groups" };
@@ -77,7 +76,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
               {groups.map((g) => (
                 <Tr key={g.id}>
                   <Td>
-                    <Link href={hrefWith("/admin/groups", sp, { g: g.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                    <Link href={hrefWith("/admin/groups", sp, { g: g.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {g.name}
                     </Link>
                   </Td>

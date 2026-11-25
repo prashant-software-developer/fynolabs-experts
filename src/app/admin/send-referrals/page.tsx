@@ -151,7 +151,7 @@ export default async function SendReferralsPage({ searchParams }: { searchParams
                           <input type="checkbox" form="refer" name="ids" value={p.id} defaultChecked={ticked.has(p.id) && !blocked} disabled={blocked} aria-label={`Select ${p.name}`} className="h-4 w-4 rounded-sm align-middle" />
                         </Td>
                         <Td className="py-2">
-                          <Link href={`/admin/experts/${p.id}`} className="font-normal text-foreground hover:text-primary">
+                          <Link href={`/admin/experts/${p.id}`} className="font-medium text-foreground hover:text-primary">
                             {p.name}
                           </Link>
                           {p.headline ? <div className="max-w-sm truncate text-xs text-muted-foreground">{p.headline}</div> : null}

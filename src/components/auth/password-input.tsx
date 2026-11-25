@@ -59,7 +59,7 @@ export function PasswordInput({
         <div className="flex items-center gap-3" aria-live="polite">
           <div className="flex flex-1 gap-1" aria-hidden>
             {[0, 1, 2, 3].map((i) => (
-              <span key={i} className={cn("h-1 flex-1", i <= s.score ? tones[s.score] : "bg-secondary")} />
+              <span key={i} className={cn("h-1 flex-1 rounded-full", i <= s.score ? tones[s.score] : "bg-secondary")} />
             ))}
           </div>
           <span className="text-xs whitespace-nowrap text-muted-foreground">{s.label}</span>

@@ -118,7 +118,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                         </Td>
                       ) : null}
                       <Td className="py-2">
-                        <Link href={hrefWith("/admin/applications", sp, { a: r.id, ok: null, error: null })} scroll={false} className="font-normal text-foreground hover:text-primary">
+                        <Link href={hrefWith("/admin/applications", sp, { a: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                           {r.name}
                         </Link>
                         <div className="max-w-xs truncate text-xs text-muted-foreground">
