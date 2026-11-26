@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { createPortal } from "react-dom";
 import {
   BadgeCheck,
+  Banknote,
   BarChart3,
   Briefcase,
   Building2,
@@ -18,8 +19,10 @@ import {
   ClipboardList,
   ExternalLink,
   FileCheck2,
+  FileSignature,
   FolderKanban,
   Globe,
+  GraduationCap,
   Handshake,
   Inbox,
   KeyRound,
@@ -71,6 +74,9 @@ const PAGE_HINTS: Record<string, string> = {
   "/admin/submissions": "Experts put forward to partners",
   "/admin/placements": "Experts placed on partner work",
   "/admin/fees": "Fees owed and paid for referrals",
+  "/admin/documents": "Agreements experts sign in their portal: templates, sent and signed",
+  "/admin/learn": "Courses, booklets and quizzes on the expert portal",
+  "/admin/payouts": "What we pay experts, per project: upcoming, processing, paid",
 };
 
 /** What the signed-in person may open (decided on the server, passed down). */
@@ -139,6 +145,14 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
       ],
     },
     {
+      // What experts see in their portal (/me): the agreements they sign and the courses they take.
+      label: "Expert portal",
+      links: [
+        ...(can(access, "profiles") ? [{ href: "/admin/documents", label: "Documents", icon: FileSignature }] : []),
+        ...(access.settings && can(access, "settings") ? [{ href: "/admin/learn", label: "Learn", icon: GraduationCap }] : []),
+      ],
+    },
+    {
       label: "Jobs",
       links: [
         ...(can(access, "posted-jobs") ? [{ href: "/admin/jobs", label: "Posted jobs", icon: Briefcase }] : []),
@@ -148,7 +162,16 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
         { href: "/admin/placements", label: "Placements", icon: BadgeCheck },
       ],
     },
-    { label: "Money", links: access.money && can(access, "fees") ? [{ href: "/admin/fees", label: "Referral fees", icon: Wallet }] : [] },
+    {
+      label: "Money",
+      links:
+        access.money && can(access, "fees")
+          ? [
+              { href: "/admin/payouts", label: "Expert payouts", icon: Banknote },
+              { href: "/admin/fees", label: "Referral fees", icon: Wallet },
+            ]
+          : [],
+    },
     { label: "Settings", links: settings ? [settings] : [] },
   ];
   return groups.filter((g) => g.links.length);

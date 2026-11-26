@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // Learn booklets (public/learn) open inside the portal's lesson page; the later rule wins.
+      { source: "/learn/:path*", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }, { key: "Content-Security-Policy", value: "frame-ancestors 'self'" }] },
       // Only the job board and job pages are for search engines.
       ...["/admin/:path*", "/admin", "/me/:path*", "/me", "/api/:path*", "/signin", "/verify-email", "/forgot-password", "/reset-password", "/account/:path*", "/db-not-set-up", "/no-access", "/team-only", "/auth/:path*"].map((source) => ({ source, headers: [noindex] })),
     ];

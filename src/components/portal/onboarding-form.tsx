@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState } from "react";
-import { saveOnboarding, type StepFormState } from "@/app/(site)/me/actions";
+import { saveOnboarding, type StepFormState } from "@/app/(portal)/me/actions";
 import { DOMAINS } from "@/lib/constants";
 import { CONSENT_TEXT, DEGREE_CHOICES } from "@/lib/forms/field-meta";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
@@ -20,7 +20,7 @@ const AVAIL = [
 ];
 
 const pill =
-  "flex cursor-pointer items-center gap-2.5 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground/85 transition-colors hover:bg-foreground/[0.06] has-[:checked]:border-primary has-[:checked]:bg-primary/[0.06] has-[:checked]:text-foreground";
+  "flex cursor-pointer items-center gap-2.5 rounded-md border border-input bg-background px-3 py-2.5 text-sm text-foreground/85 transition-colors hover:bg-secondary/60 has-[:checked]:border-primary has-[:checked]:bg-primary/[0.06] has-[:checked]:text-foreground";
 
 export function OnboardingForm({ step, initial, nextHref, cvFilename }: { step: StepId; initial: Record<string, string>; nextHref: string | null; cvFilename: string | null }) {
   const [state, action, pending] = useActionState<StepFormState, FormData>(saveOnboarding, {});
@@ -101,7 +101,7 @@ export function OnboardingForm({ step, initial, nextHref, cvFilename }: { step: 
       {step === "availability" ? (
         <>
           <fieldset className="space-y-2">
-            <legend className="mb-1.5 eyebrow text-muted-foreground">Availability *</legend>
+            <legend className="mb-1.5 text-[13px] font-medium text-foreground/80">Availability *</legend>
             {AVAIL.map((a) => (
               <label key={a.value} className={pill}>
                 <input type="radio" name="availability" value={a.value} defaultChecked={val("availability") === a.value} className="h-4 w-4" />

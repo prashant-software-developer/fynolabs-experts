@@ -18,6 +18,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "expert:create": "tsx scripts/create-test-expert.ts",
+    "docs:defaults": "tsx scripts/load-default-documents.ts",
     "import:jobs": "tsx scripts/import-jobs.ts",
     "copy:engine": "tsx scripts/copy-from-engine.ts",
     "sync:fynolabs": "tsx scripts/sync-fynolabs.ts",

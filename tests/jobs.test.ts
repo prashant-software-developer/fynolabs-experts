@@ -60,7 +60,7 @@ import { getJobBySlug, jobCandidates, jobFields, listPublicJobs, publishProblems
 import { jobForPage } from "@/lib/server/public-jobs";
 import { JobPublicView } from "@/components/jobs/public-job";
 import { changeFormField, inviteToJob, saveJob, setApplicantsStatus, setJobSharing, applyFormTemplate, saveFormTemplate, saveApplicantNote } from "@/app/admin/jobs/actions";
-import { requestMyDeletion, saveOnboarding, setMyConsent } from "@/app/(site)/me/actions";
+import { requestMyDeletion, saveOnboarding, setMyConsent } from "@/app/(portal)/me/actions";
 import { GET as exportApplicants } from "@/app/api/jobs/[id]/applicants/route";
 import { GET as exportMine } from "@/app/api/me/export/route";
 import { GET as exportExperts } from "@/app/api/experts/export/route";

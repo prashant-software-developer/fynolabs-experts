@@ -333,6 +333,7 @@ export const MONEY_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   project_fee_rules: ["*"],
   referral_fees: ["*"],
   monthly_earnings: ["*"],
+  payouts: ["*"],
 };
 
 export const isMoneyTable = (table: string) => MONEY_COLUMNS[table]?.includes("*") ?? false;

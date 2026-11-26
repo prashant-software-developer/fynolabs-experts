@@ -57,6 +57,13 @@
       "when": 1795645200428,
       "tag": "0007_upload_limit_4mb",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795653834375,
+      "tag": "0008_expert_portal",
+      "breakpoints": true
     }
   ]
 }

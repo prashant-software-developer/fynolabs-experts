@@ -32,6 +32,17 @@ The pattern on Mercor, Outlier, micro1 and Handshake AI: a light sign-up, a prof
 - **After selection:** a project onboarding checklist (agreement, platform account, guidelines, identity check through the partner flow), then hours or tasks and earnings.
 - **Extras:** referrals with tracked links, notifications, and data export or deletion on request.
 
+### Built (26 Nov 2026): the expert portal at /me
+
+A slim rail on the left (phones: a top bar and menu) with six sections, all stacked, one column:
+
+- **Home:** "Welcome back", important tasks (documents to sign with due dates, profile still missing, the weekly availability check-in, a course in progress), then tabs Projects (their placements: rate, status; past projects folded), Invitations and Applications.
+- **Jobs:** the open roles of the public board inside the portal, marked "Applied" where they have.
+- **Learn:** courses, booklets and quizzes from FynoLabs's own material (the benchmark playbook, Terminal-Bench and PaperBench from zero, the video notes, the AI Trainer Quiz), progress, quizzes graded on the server (70% passes) and certificates. Team side: `/admin/learn`, with "Add the FynoLabs starter courses".
+- **Payments:** paid to date, current and next payout, paid this month, earnings by month and by project, payout history, and the payout method (no bank account numbers are collected). Team side: `/admin/payouts` (money roles).
+- **Documents:** what they must sign: templates marked "for every expert" (the NDA and the profile sharing consent, loaded from Company/Legal by `Load default documents.bat`) and anything the team sends one person. Signed in the portal (typed name, details the document needs, ticked boxes; the signed text, time, IP and SHA-256 are kept, with a printable certificate) or by uploading a signed PDF. Team side: `/admin/documents`.
+- **Profile:** Resume (personal info, CV, education, work experience, projects, certifications, links, skills), Location & work authorization, Availability (start, hours, time zone, working hours by day), Work preferences (fields, private minimum pay), Communications (looking for work, channels, kinds of opportunities) and Account (picture, payout method, password, email, sharing consent, data download, deletion).
+
 ## Admin CRM: same modules as today, then better
 
 **Parity first.** Everything in the current Lovable admin and the current jobs site works the same way:

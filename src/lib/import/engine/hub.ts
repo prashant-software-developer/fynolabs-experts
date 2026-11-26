@@ -165,9 +165,11 @@ export async function mapPeopleDetails(db: DB, read: Reader, loc: JobsLocation):
     join hub.experts e on e.id = m.hub_id`;
   const order = `order by m.hub_id, ${cols.has("last_login_at") ? "u.last_login_at desc nulls last, " : ""}u.id desc`;
 
-  // A column the copy keeps in step while only the copy has written the row; otherwise only filled if empty.
+  // A column the copy keeps in step while only the copy has written the row; otherwise only filled if
+  // empty. Once the expert has edited the row in the portal (updated_by 'expert-portal'), the copy
+  // leaves it alone: an emptied field (no payout handle, education removed) stays empty.
   const upsert = async (table: "expert_details" | "expert_payout", fields: { name: string; src: string; empty: string }[], where: string, extra: { name: string; src: string; merge: string }[] = []) => {
-    const merged = (f: { name: string; empty: string }) => `case when d.updated_by = '${COPY_BY}' or ${f.empty} then excluded.${f.name} else d.${f.name} end`;
+    const merged = (f: { name: string; empty: string }) => `case when d.updated_by = 'expert-portal' then d.${f.name} when d.updated_by = '${COPY_BY}' or ${f.empty} then excluded.${f.name} else d.${f.name} end`;
     const names = [...fields.map((f) => f.name), ...extra.map((x) => x.name)];
     const res = rowsOf<{ inserted: boolean }>(
       await db.execute(

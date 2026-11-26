@@ -35,14 +35,18 @@ import {
   CONTACT_KINDS,
   CONTACT_SOURCES,
   CONTACT_STAGES,
+  COURSE_KINDS,
+  COURSE_LEVELS,
   DOCUMENT_KINDS,
   DOCUMENT_STAGES,
   DOCUMENT_STATUSES,
   EXPERT_ACTIVITY_KINDS,
   FEE_STATUSES,
+  LESSON_KINDS,
   LINK_CHANNELS,
   OUTREACH_STATUSES,
   PARTNER_KINDS,
+  PAYOUT_STATUSES,
   PIPELINE_STAGES,
   PROJECT_KINDS,
   PROJECT_ROLES,
@@ -52,6 +56,8 @@ import {
   REFERRAL_OUTCOMES,
   REJECT_REASONS,
   SENIORITY,
+  SIGN_METHODS,
+  START_AVAILABILITY,
   TEMPLATE_KINDS,
   VISIT_SOURCES,
 } from "../lib/constants";
@@ -221,7 +227,7 @@ export const expertFiles = hub.table(
   (t) => [
     index("expert_files_expert_idx").on(t.expertId, t.createdAt),
     check("expert_files_storage_check", inList("storage", ["jobs_db", "upload", "fynolabs"])),
-    check("expert_files_kind_check", inList("kind", ["cv", "attachment", "tax", "document"])),
+    check("expert_files_kind_check", inList("kind", ["cv", "attachment", "tax", "document", "avatar"])),
   ],
 );
 
@@ -753,6 +759,12 @@ export const accountTokens = hub.table(
 
 export type ExperienceItem = { title: string | null; company: string | null; location?: string | null; start?: string | null; end?: string | null; current?: boolean; description?: string | null };
 export type EducationItem = { school: string | null; degree?: string | null; field?: string | null; start_year?: number | null; end_year?: number | null; grade?: string | null };
+export type ProjectItem = { title: string; url?: string | null; year?: number | null; description?: string | null };
+export type CertificationItem = { name: string; issuer?: string | null; year?: number | null; url?: string | null };
+/** Weekly working hours per day as [from, to] pairs in 24-hour "HH:MM", in the expert's own time zone. */
+export type WeeklyHours = Partial<Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", [string, string][]>>;
+/** What an expert wants to hear from us about (Profile → Communications). Missing keys mean yes. */
+export type CommPrefs = { email?: boolean; whatsapp?: boolean; fullTime?: boolean; partTime?: boolean; referrals?: boolean; jobAlerts?: boolean; learning?: boolean };
 
 /**
  * More profile details, as the old jobs site kept them (copied by npm run copy:engine). Experience
@@ -775,9 +787,26 @@ export const expertDetails = hub.table("expert_details", {
   referralCode: text("referral_code"),
   referredByExpertId: uuid("referred_by_expert_id").references(() => experts.id, { onDelete: "set null" }),
   lastLoginAt: ts("last_login_at"),
+  // Expert portal profile (26 Nov 2026): written by the expert on /me/profile.
+  projects: jsonb("projects").$type<ProjectItem[]>().notNull().default(sql`'[]'::jsonb`),
+  certifications: jsonb("certifications").$type<CertificationItem[]>().notNull().default(sql`'[]'::jsonb`),
+  workSameAsResidence: boolean("work_same_as_residence").notNull().default(true),
+  workCountry: text("work_country"),
+  workRegion: text("work_region"),
+  workCity: text("work_city"),
+  workPostalCode: text("work_postal_code"),
+  startAvailability: text("start_availability"),
+  weeklyHours: jsonb("weekly_hours").$type<WeeklyHours>(),
+  domainInterests: textArray("domain_interests"),
+  minFullTimeUsd: integer("min_full_time_usd"),
+  minPartTimeUsd: integer("min_part_time_usd"),
+  lookingForWork: boolean("looking_for_work").notNull().default(true),
+  commPrefs: jsonb("comm_prefs").$type<CommPrefs>().notNull().default(sql`'{}'::jsonb`),
+  availabilityConfirmedAt: ts("availability_confirmed_at"),
+  avatarFileId: uuid("avatar_file_id").references(() => expertFiles.id, { onDelete: "set null" }),
   updatedBy: text("updated_by"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
-});
+}, (t) => [check("expert_details_start_check", sql`${t.startAvailability} is null or ${inList("start_availability", START_AVAILABILITY)}`)]);
 
 /**
  * Money-only (admins and finance): how an expert asked to be paid and their tax form, as entered on
@@ -1076,12 +1105,29 @@ export const expertDocuments = hub.table(
     signedAt: ts("signed_at"),
     expiresAt: ts("expires_at"),
     notes: text("notes"),
+    // Expert portal (26 Nov 2026): which template it came from and the signing record.
+    templateId: uuid("template_id").references((): AnyPgColumn => documentTemplates.id, { onDelete: "set null" }),
+    dueOn: date("due_on", { mode: "string" }),
+    viewedAt: ts("viewed_at"),
+    signMethod: text("sign_method"),
+    signedName: text("signed_name"),
+    signedIp: text("signed_ip"),
+    signedUserAgent: text("signed_user_agent"),
+    signedHash: text("signed_hash"),
+    // A text template as signed: the filled text (its SHA-256 is signed_hash) and the details typed when signing.
+    signedBody: text("signed_body"),
+    signedFields: jsonb("signed_fields").$type<Record<string, string>>(),
     createdBy: text("created_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
     updatedBy: updatedBy(),
   },
-  (t) => [index("expert_documents_expert_idx").on(t.expertId), check("expert_documents_kind_check", inList("kind", DOCUMENT_KINDS)), check("expert_documents_status_check", inList("status", DOCUMENT_STATUSES))],
+  (t) => [
+    index("expert_documents_expert_idx").on(t.expertId),
+    check("expert_documents_kind_check", inList("kind", DOCUMENT_KINDS)),
+    check("expert_documents_status_check", inList("status", DOCUMENT_STATUSES)),
+    check("expert_documents_sign_method_check", sql`${t.signMethod} is null or ${inList("sign_method", SIGN_METHODS)}`),
+  ],
 );
 
 /** A partner's monthly report (sign-ups, qualified, active) matched against our referrals. */
@@ -1534,6 +1580,135 @@ export const visitorSourceSessions = hub.table(
   (t) => [primaryKey({ columns: [t.visitDate, t.source, t.sessionId] })],
 );
 
+// ---------------------------------------------------------------- expert portal (26 Nov 2026)
+
+/**
+ * Documents the team sends experts to sign (NDA, contractor agreement, ...). The PDF is stored here
+ * (4 MB limit). A template marked required_for_all is listed on every expert's Documents page until
+ * they sign it; signing writes an expert_documents row with template_id and the signing record.
+ */
+export const documentTemplates = hub.table(
+  "document_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    kind: text("kind").notNull().default("agreement"),
+    description: text("description"),
+    // Either a text body (with {{placeholders}} filled from the profile and the signing form) or a PDF.
+    body: text("body"),
+    filename: text("filename"),
+    mime: text("mime"),
+    size: integer("size"),
+    data: bytea("data"),
+    requiredForAll: boolean("required_for_all").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    position: smallint("position").notNull().default(0),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("document_templates_kind_check", inList("kind", DOCUMENT_KINDS))],
+);
+
+export type QuizQuestion = { q: string; options: string[]; answer: number; why?: string | null };
+
+/** Learn: a course, booklet or quiz set shown to experts on /me/learn once published. */
+export const courses = hub.table(
+  "courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    summary: text("summary"),
+    kind: text("kind").notNull().default("course"),
+    level: text("level").notNull().default("beginner"),
+    minutes: integer("minutes"),
+    art: text("art"),
+    published: boolean("published").notNull().default(false),
+    position: smallint("position").notNull().default(0),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [check("courses_kind_check", inList("kind", COURSE_KINDS)), check("courses_level_check", inList("level", COURSE_LEVELS))],
+);
+
+/** One step of a course: a video, a PDF booklet, a reading, a quiz or a link. */
+export const courseLessons = hub.table(
+  "course_lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    position: smallint("position").notNull().default(0),
+    title: text("title").notNull(),
+    kind: text("kind").notNull().default("reading"),
+    url: text("url"),
+    body: text("body"),
+    quiz: jsonb("quiz").$type<QuizQuestion[]>(),
+    minutes: integer("minutes"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("course_lessons_course_idx").on(t.courseId, t.position), check("course_lessons_kind_check", inList("kind", LESSON_KINDS))],
+);
+
+/** An expert finished a lesson (a quiz keeps its best score in percent). */
+export const lessonProgress = hub.table(
+  "lesson_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id")
+      .notNull()
+      .references(() => experts.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => courseLessons.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    completedAt: ts("completed_at").notNull().defaultNow(),
+    score: smallint("score"),
+    attempts: smallint("attempts").notNull().default(1),
+  },
+  (t) => [unique("lesson_progress_expert_lesson_key").on(t.expertId, t.lessonId), index("lesson_progress_expert_idx").on(t.expertId, t.courseId)],
+);
+
+/**
+ * Money: what we pay an expert, per project and period. upcoming = earned, not paid yet. Experts see
+ * their own payouts on /me/payments; the team records them on /admin/payouts (money roles). Like
+ * placements, a payout outlives the person: deleting an expert on request clears expert_id and keeps
+ * the amount for the books.
+ */
+export const payouts = hub.table(
+  "payouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    expertId: uuid("expert_id").references(() => experts.id, { onDelete: "set null" }),
+    placementId: uuid("placement_id").references(() => placements.id, { onDelete: "set null" }),
+    label: text("label"),
+    amount: numeric("amount", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    currency: text("currency").notNull().default("INR"),
+    status: text("status").notNull().default("upcoming"),
+    periodStart: date("period_start", { mode: "string" }),
+    periodEnd: date("period_end", { mode: "string" }),
+    expectedOn: date("expected_on", { mode: "string" }),
+    paidOn: date("paid_on", { mode: "string" }),
+    method: text("method"),
+    reference: text("reference"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+    updatedBy: updatedBy(),
+  },
+  (t) => [index("payouts_expert_idx").on(t.expertId, t.status), check("payouts_status_check", inList("status", PAYOUT_STATUSES))],
+);
+
 export type Expert = typeof experts.$inferSelect;
 export type NewExpert = typeof experts.$inferInsert;
 export type Partner = typeof partners.$inferSelect;
@@ -1551,6 +1726,10 @@ export type FormTemplate = typeof formTemplates.$inferSelect;
 export type Application = Omit<typeof applications.$inferSelect, "rateExpectationUsd">;
 export type ExpertDetails = typeof expertDetails.$inferSelect;
 export type ExpertPayout = typeof expertPayout.$inferSelect;
+export type DocumentTemplate = Omit<typeof documentTemplates.$inferSelect, "data">;
+export type Course = typeof courses.$inferSelect;
+export type CourseLesson = typeof courseLessons.$inferSelect;
+export type Payout = typeof payouts.$inferSelect;
 export type ExpertActivity = typeof expertActivities.$inferSelect;
 export type Company = typeof partners.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;

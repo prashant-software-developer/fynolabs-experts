@@ -276,6 +276,43 @@ export const OPEN_SUBMISSION: readonly SubmissionStatus[] = [
   "active",
 ];
 
+// ---------------------------------------------------------------- expert portal (26 Nov 2026)
+
+/** How soon an expert could start a new project (Profile → Availability). */
+export const START_AVAILABILITY = ["immediately", "1_week", "2_weeks", "1_month", "later"] as const;
+export type StartAvailability = (typeof START_AVAILABILITY)[number];
+export const START_AVAILABILITY_LABELS: Record<StartAvailability, string> = {
+  immediately: "Immediately",
+  "1_week": "Within a week",
+  "2_weeks": "Within two weeks",
+  "1_month": "Within a month",
+  later: "Later",
+};
+
+export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+export const WEEKDAY_LABELS: Record<Weekday, string> = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
+
+/** How an expert signed a document: typed their name in the portal, or uploaded a signed copy. */
+export const SIGN_METHODS = ["typed", "upload"] as const;
+
+/** Learn: what a course page is and how hard it is; what a lesson holds. */
+export const COURSE_KINDS = ["course", "guide", "quiz"] as const;
+export type CourseKind = (typeof COURSE_KINDS)[number];
+export const COURSE_KIND_LABELS: Record<CourseKind, string> = { course: "Course", guide: "Booklet", quiz: "Quiz" };
+export const COURSE_LEVELS = ["beginner", "intermediate", "advanced"] as const;
+export type CourseLevel = (typeof COURSE_LEVELS)[number];
+export const LESSON_KINDS = ["video", "pdf", "reading", "quiz", "link"] as const;
+export type LessonKind = (typeof LESSON_KINDS)[number];
+
+/** Payouts to experts: upcoming (earned, not paid yet) -> processing -> paid; failed and void. */
+export const PAYOUT_STATUSES = ["upcoming", "processing", "paid", "failed", "void"] as const;
+export type PayoutStatus = (typeof PAYOUT_STATUSES)[number];
+export const PAYOUT_STATUS_LABELS: Record<PayoutStatus, string> = { upcoming: "Upcoming", processing: "Processing", paid: "Paid", failed: "Failed", void: "Cancelled" };
+/** How an expert asks to be paid (Profile → Account). No bank account numbers are collected in the portal. */
+export const PAYOUT_METHODS = ["bank_transfer", "upi", "paypal", "wise", "other"] as const;
+export const PAYOUT_METHOD_LABELS: Record<(typeof PAYOUT_METHODS)[number], string> = { bank_transfer: "Bank transfer", upi: "UPI", paypal: "PayPal", wise: "Wise", other: "Other" };
+
 export function isOneOf<T extends string>(list: readonly T[], v: unknown): v is T {
   return typeof v === "string" && (list as readonly string[]).includes(v);
 }

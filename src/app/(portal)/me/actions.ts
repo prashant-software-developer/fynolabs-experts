@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { ownExpertId } from "@/lib/auth/expert";
 import { checkCvUpload } from "@/lib/server/cv";
 import { isStep, ONBOARDING_STEPS, requestDeletion, saveStep, setOwnConsent, uploadOwnCv, type StepValues } from "@/lib/server/portal";
+import { confirmAvailability } from "@/lib/server/portal-home";
 
 export type StepFormState = { errors?: Record<string, string>; values?: StepValues; message?: string };
 
@@ -28,8 +29,16 @@ export async function saveOnboarding(_prev: StepFormState, fd: FormData): Promis
   revalidatePath("/me");
   const i = ONBOARDING_STEPS.findIndex((s) => s.id === step);
   const next = ONBOARDING_STEPS[i + 1];
-  if (fd.get("then") === "profile" || !next) redirect(msg("/me", "ok", next ? "Saved." : "All steps saved. Your profile is ready for matching."));
+  if (fd.get("then") === "profile" || !next) redirect(msg("/me/profile", "ok", next ? "Saved." : "All steps saved. Your profile is ready for matching."));
   redirect(`/me/onboarding?step=${next.id}&saved=${step}`);
+}
+
+/** Home: the weekly check-in ("my availability is still right"). */
+export async function confirmMyAvailability() {
+  const id = await me();
+  await confirmAvailability(await getDb(), id);
+  revalidatePath("/me", "layout");
+  redirect(msg("/me", "ok", "Thanks. Your availability is confirmed for this week."));
 }
 
 export async function uploadMyCv(fd: FormData) {

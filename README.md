@@ -54,7 +54,8 @@ You need [Node.js 22](https://nodejs.org) (the LTS installer is fine) and the da
 3. **`Copy FynoLabs data.bat`**: brings the FynoLabs admin across (experts, pipelines, companies, contacts, calendar, referrals, projects, emails, messages, analytics). One-time setup the first time: two secrets in Lovable and a push of the main site ([DEPLOY.md step 3b](docs/DEPLOY.md#3b-copy-the-fynolabs-admin)).
 4. **`Create my admin account.bat`**: your admin login (email `prashant@xocket.sh` by default). Type a password twice (nothing shows while you type), or press Enter to get a strong one printed once.
 5. **`Start Expert Hub.bat`**, then sign in at http://localhost:3000/signin.
-6. Optional: **`Create a test expert account.bat`**: an expert login (default `test.expert@example.com`, email marked confirmed, record "Test Expert" tagged `test`) to try the portal before sign-up email is set up. Use it in a private window. Details in [LOCAL_TESTING.md](docs/LOCAL_TESTING.md#experts).
+6. **`Load default documents.bat`**: puts the two documents every expert signs in the portal (the NDA and the profile sharing consent) into the database, read from `Company/Legal/Templates` at run time (run `Start Expert Hub.bat` once first, so the tables exist). The NDA names FynoLabs's GSTIN and business address, which experts then see when they sign.
+7. Optional: **`Create a test expert account.bat`**: an expert login (default `test.expert@example.com`, email marked confirmed, record "Test Expert" tagged `test`) to try the portal before sign-up email is set up. Use it in a private window. Details in [LOCAL_TESTING.md](docs/LOCAL_TESTING.md#experts).
 
 The same from a terminal: `npm ci`, `CONFIRM_DB=yes npm run admin:create -- --email you@xocket.sh`, `npm run dev`.
 
