@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Eye } from "lucide-react";
 import { signOutNow } from "@/app/(auth)/actions";
-import { AccountMenu, Brand, CommandPalette, CurrentSection, MobileNav, SearchButton, Sidebar, type NavAccess } from "@/components/nav";
+import { AccountMenu, Brand, CommandPalette, MobileNav, ModuleTabs, SearchButton, Sidebar, type NavAccess } from "@/components/nav";
 import { can, canSeeMoney, ROLE_LABELS } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { openSections } from "@/lib/auth/sections";
@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: { default: "Expert Hub", template: "%
 /**
  * The admin frame: the sidebar on the left; beside it the top bar (where you are, search, your
  * account) and the page in a 1400px column on the canvas. Phones: the menu button in the top bar.
- * `admin-ui` turns on the admin's roomier density (corners, 40px controls: see globals.css).
+ * `admin-ui` turns on the admin's flat look (small corners, hairlines: see globals.css). The top bar
+ * shows the current module and its pages as tabs (GHL-style; the sidebar lists only the modules).
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -34,12 +35,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Brand compact />
             </div>
             <div className="hidden min-w-0 lg:block">
-              <CurrentSection access={access} />
+              <ModuleTabs access={access} />
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <SearchButton />
               <AccountMenu user={navUser} access={access} signOut={signOutNow} />
             </div>
+          </div>
+          <div className="border-t border-border px-4 sm:px-6 lg:hidden [&>div]:h-11">
+            <ModuleTabs access={access} />
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-7 sm:px-6 md:px-8 lg:py-9">{children}</main>

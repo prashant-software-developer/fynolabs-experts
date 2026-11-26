@@ -83,15 +83,17 @@
   --button-sm-h: 2rem;
 }
 
+/* The admin (27 Nov 2026, Prashant: the soft rounded cards felt "AI-ish"): flat panels with hairline
+   borders, small corners (4-6px) and the website's 36px controls, like a working CRM. */
 .admin-ui {
-  --r-sm: 0.375rem;
-  --r-md: 0.5rem;
-  --r-lg: 0.625rem;
-  --r-xl: 0.75rem;
-  --r-2xl: 1rem;
-  --control-h: 2.5rem;
-  --button-h: 2.5rem;
-  --button-sm-h: 2.125rem;
+  --r-sm: 0.25rem;
+  --r-md: 0.3125rem;
+  --r-lg: 0.375rem;
+  --r-xl: 0.375rem;
+  --r-2xl: 0.5rem;
+  --control-h: 2.25rem;
+  --button-h: 2.25rem;
+  --button-sm-h: 2rem;
   --sidebar-background: 0 0% 100%;
   --sidebar-accent: 220 14% 95%;
   --sidebar-border: 225 12% 91%;
@@ -155,9 +157,9 @@
   --radius-xl: var(--r-xl);
   --radius-2xl: var(--r-2xl);
 
-  /* Cards sit on the canvas with a hairline and a whisper of shadow; raised: hovered board cards, menus. */
-  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04);
-  --shadow-raised: 0 6px 16px -6px rgb(16 24 40 / 0.12), 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  /* Panels sit flat on the canvas with a hairline (no shadow); raised: menus and popovers only. */
+  --shadow-card: 0 0 #0000;
+  --shadow-raised: 0 4px 12px -4px rgb(16 24 40 / 0.12), 0 1px 2px 0 rgb(16 24 40 / 0.05);
 
   /* Type from the website: light page titles, small letter-spaced labels. */
   --text-title: clamp(1.625rem, 1.45rem + 0.6vw, 2rem);

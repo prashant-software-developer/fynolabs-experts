@@ -1,7 +1,7 @@
 "use client";
 // The admin frame, in Expert Hub's own design: a 240px sidebar (the FynoLabs mark with "Expert Hub",
-// each group under a small label, the public job board at the bottom), and a top bar with where you
-// are (Group / Page), search (Ctrl K) and your account (email and role; its menu has Settings,
+// about ten modules, Settings and the public job board at the bottom), and a top bar with the module's
+// name and its pages as tabs, search (Ctrl K) and your account (email and role; its menu has Settings,
 // password, the job board, Refresh and Sign out). Below 1024px a menu button opens the same groups.
 // Which items show is decided on the server (roles and per-section access) and passed in as NavAccess.
 import Link from "next/link";
@@ -98,74 +98,89 @@ export type NavUser = { name: string; email: string; role: string };
 /** Shown unless the person's sections leave it out. */
 const can = (access: NavAccess, section: string) => access.open?.[section] !== false;
 
-/** The last item: Settings (Email replies, with Team & access inside) or, for those who only manage the team, Team & access. */
-function settingsLink(access: NavAccess): NavLink | null {
-  if (access.settings && can(access, "settings")) return { href: "/admin/settings", label: "Settings", icon: Settings, also: ["/admin/settings/team"] };
-  if (access.team) return { href: "/admin/settings/team", label: "Team & access", icon: Settings };
-  return null;
+/** Settings tabs: Email replies (admins) and Team & access (whoever manages the team). */
+function settingsLinks(access: NavAccess): NavLink[] {
+  return [
+    ...(access.settings && can(access, "settings") ? [{ href: "/admin/settings", label: "General", icon: Settings }] : []),
+    ...(access.team ? [{ href: "/admin/settings/team", label: "Team & access", icon: Users }] : []),
+  ];
 }
 
-// Grouped by what the work is about: the workspace; what came in; outreach (companies, their people,
-// the calendar, platforms); talent (projects, experts and what we send them); jobs (roles we post or
-// pick up, then partner requests and what came of them); money; settings.
-function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
-  const settings = settingsLink(access);
-  const groups: { label: string; links: NavLink[] }[] = [
+/**
+ * GHL-style modules (27 Nov 2026, Prashant): about ten modules on the left, each one icon and a name;
+ * a module's pages are tabs along the top of the page (ModuleTabs), so new pages never grow the sidebar.
+ * The sidebar link opens the module's first page the person may see.
+ */
+type Module = { label: string; icon: LucideIcon; links: NavLink[]; bottom?: boolean };
+
+function groupsFor(access: NavAccess): Module[] {
+  const modules: Module[] = [
     {
-      label: "Workspace",
-      links: [
-        ...(can(access, "dashboard") ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] : []),
-        { href: "/admin/my-work", label: "My work", icon: ListChecks },
-        ...(can(access, "analytics") ? [{ href: "/admin/analytics", label: "Analytics", icon: BarChart3 }] : []),
-      ],
+      label: "Home",
+      icon: LayoutDashboard,
+      links: [...(can(access, "dashboard") ? [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] : []), { href: "/admin/my-work", label: "My work", icon: ListChecks }],
     },
     {
       label: "Inbox",
+      icon: Inbox,
       links: [
         ...(can(access, "messages") ? [{ href: "/admin/messages", label: "Messages", icon: Mail }] : []),
         ...(can(access, "profiles") ? [{ href: "/admin/applications", label: "Applications", icon: Inbox }] : []),
       ],
     },
+    { label: "Calendar", icon: CalendarDays, links: can(access, "calendar") ? [{ href: "/admin/calendar", label: "Calendar", icon: CalendarDays }] : [] },
     {
-      label: "Outreach",
+      label: "Partners",
+      icon: Building2,
       links: [
         ...(can(access, "accounts") ? [{ href: "/admin/accounts", label: "Accounts", icon: Building2 }] : []),
         ...(can(access, "leads") ? [{ href: "/admin/leads", label: "Leads", icon: Handshake }] : []),
-        ...(can(access, "calendar") ? [{ href: "/admin/calendar", label: "Calendar", icon: CalendarDays }] : []),
         ...(can(access, "platforms") ? [{ href: "/admin/platforms", label: "Platforms", icon: Globe }] : []),
       ],
     },
     {
-      label: "Talent",
-      links: [
-        ...(can(access, "projects") ? [{ href: "/admin/projects", label: "Projects", icon: FolderKanban }] : []),
-        // Groups and Import live with Experts (the Experts | Groups switch, the Import button).
-        ...(can(access, "profiles") ? [{ href: "/admin/experts", label: "Experts", icon: Users, also: ["/admin/groups", "/admin/import"] }] : []),
-        ...(can(access, "referrals") ? [{ href: "/admin/campaigns/new", label: "Send emails", icon: Send }] : []),
-        ...(can(access, "referrals") ? [{ href: "/admin/campaigns", label: "Campaigns", icon: Megaphone }] : []),
-        ...(can(access, "send-referrals") ? [{ href: "/admin/send-referrals", label: "Send referrals", icon: UserPlus, also: ["/admin/referrals"] }] : []),
-      ],
+      label: "Experts",
+      icon: Users,
+      links: can(access, "profiles")
+        ? [
+            { href: "/admin/experts", label: "All experts", icon: Users },
+            { href: "/admin/groups", label: "Groups", icon: FolderKanban },
+            ...(access.import ? [{ href: "/admin/import", label: "Import", icon: UserPlus }] : []),
+          ]
+        : [],
     },
     {
-      // What experts see in their portal (/me): the agreements they sign and the courses they take.
-      label: "Expert portal",
+      label: "Projects",
+      icon: FolderKanban,
       links: [
+        ...(can(access, "projects") ? [{ href: "/admin/projects", label: "Projects", icon: FolderKanban }] : []),
         ...(can(access, "profiles") ? [{ href: "/admin/documents", label: "Documents", icon: FileSignature }] : []),
         ...(access.settings && can(access, "settings") ? [{ href: "/admin/learn", label: "Learn", icon: GraduationCap }] : []),
       ],
     },
     {
       label: "Jobs",
+      icon: Briefcase,
       links: [
         ...(can(access, "posted-jobs") ? [{ href: "/admin/jobs", label: "Posted jobs", icon: Briefcase }] : []),
-        ...(can(access, "job-radar") ? [{ href: "/admin/jobs/radar", label: "Job radar", icon: Radar }] : []),
         { href: "/admin/requirements", label: "Requirements", icon: ClipboardList },
         { href: "/admin/submissions", label: "Submissions", icon: FileCheck2 },
         { href: "/admin/placements", label: "Placements", icon: BadgeCheck },
+        ...(can(access, "job-radar") ? [{ href: "/admin/jobs/radar", label: "Job radar", icon: Radar }] : []),
       ],
     },
     {
-      label: "Money",
+      label: "Outreach",
+      icon: Megaphone,
+      links: [
+        ...(can(access, "referrals") ? [{ href: "/admin/campaigns", label: "Campaigns", icon: Megaphone }] : []),
+        ...(can(access, "referrals") ? [{ href: "/admin/campaigns/new", label: "Send emails", icon: Send }] : []),
+        ...(can(access, "send-referrals") ? [{ href: "/admin/send-referrals", label: "Send referrals", icon: UserPlus, also: ["/admin/referrals"] }] : []),
+      ],
+    },
+    {
+      label: "Payments",
+      icon: Banknote,
       links:
         access.money && can(access, "fees")
           ? [
@@ -174,60 +189,103 @@ function groupsFor(access: NavAccess): { label: string; links: NavLink[] }[] {
             ]
           : [],
     },
-    { label: "Settings", links: settings ? [settings] : [] },
+    { label: "Reporting", icon: BarChart3, links: can(access, "analytics") ? [{ href: "/admin/analytics", label: "Analytics", icon: BarChart3 }] : [] },
+    { label: "Settings", icon: Settings, links: settingsLinks(access), bottom: true },
   ];
-  return groups.filter((g) => g.links.length);
+  return modules.filter((g) => g.links.length);
 }
 
 const matches = (path: string, href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
 
-/** The item a path belongs to: the most specific match (Job radar wins over Posted jobs on /admin/jobs/radar). */
-function current(path: string, access: NavAccess): { group: string; link: NavLink } | null {
+/** The page a path belongs to, and its module: the most specific match (Job radar wins over Posted jobs on /admin/jobs/radar). */
+function current(path: string, access: NavAccess): { group: string; module: Module; link: NavLink } | null {
   // /admin/partners redirects to Accounts.
   const p = path === "/admin/partners" || path.startsWith("/admin/partners/") ? path.replace("/admin/partners", "/admin/accounts") : path;
-  let best: { group: string; link: NavLink } | null = null;
+  let best: { group: string; module: Module; link: NavLink } | null = null;
   let len = -1;
   for (const g of groupsFor(access))
     for (const l of g.links)
       for (const h of [l.href, ...(l.also ?? [])])
         if (matches(p, h) && h.length > len) {
-          best = { group: g.label, link: l };
+          best = { group: g.label, module: g, link: l };
           len = h.length;
         }
   return best;
 }
 
+function ModuleLink({ m, on, onNavigate }: { m: Module; on: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      href={m.links[0].href}
+      onClick={onNavigate}
+      aria-current={on ? "page" : undefined}
+      className={cn(
+        "relative flex h-9 items-center gap-3 rounded-md px-3 text-sm transition-colors",
+        on ? "bg-sidebar-accent font-medium text-foreground before:absolute before:inset-y-2 before:-left-3 before:w-0.5 before:rounded-full before:bg-primary" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
+      )}
+    >
+      <m.icon className={cn("h-4 w-4 shrink-0", on ? "text-primary" : "text-muted-foreground")} aria-hidden />
+      {m.label}
+    </Link>
+  );
+}
+
 function NavGroups({ path, access, onNavigate }: { path: string; access: NavAccess; onNavigate?: () => void }) {
-  const active = current(path, access)?.link.href;
+  const active = current(path, access)?.group;
+  const modules = groupsFor(access);
+  return (
+    <ul className="space-y-0.5">
+      {modules
+        .filter((m) => !m.bottom)
+        .map((m) => (
+          <li key={m.label}>
+            <ModuleLink m={m} on={active === m.label} onNavigate={onNavigate} />
+          </li>
+        ))}
+    </ul>
+  );
+}
+
+function BottomModules({ path, access, onNavigate }: { path: string; access: NavAccess; onNavigate?: () => void }) {
+  const active = current(path, access)?.group;
   return (
     <>
-      {groupsFor(access).map((group) => (
-        <div key={group.label} className="mt-5 first:mt-0">
-          <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground/80">{group.label}</p>
-          <ul className="space-y-0.5">
-            {group.links.map((l) => {
-              const on = active === l.href;
-              return (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    onClick={onNavigate}
-                    aria-current={on ? "page" : undefined}
-                    className={cn(
-                      "flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
-                      on ? "bg-sidebar-accent font-medium text-foreground" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
-                    )}
-                  >
-                    <l.icon className={cn("h-4 w-4 shrink-0", on ? "text-foreground" : "text-muted-foreground")} aria-hidden />
-                    {l.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+      {groupsFor(access)
+        .filter((m) => m.bottom)
+        .map((m) => (
+          <ModuleLink key={m.label} m={m} on={active === m.label} onNavigate={onNavigate} />
+        ))}
     </>
+  );
+}
+
+/** The top bar's left side: the module's name, then its pages as tabs (one-page modules show only the name). */
+export function ModuleTabs({ access }: { access: NavAccess }) {
+  const path = usePathname();
+  const hit = current(path, access);
+  if (!hit) return null;
+  const { module: m, link } = hit;
+  return (
+    <div className="flex h-14 min-w-0 items-stretch gap-6">
+      <span className="flex shrink-0 items-center text-[15px] font-medium text-foreground">{m.label}</span>
+      {m.links.length > 1 ? (
+        <nav aria-label={`${m.label} pages`} className="-mb-px flex min-w-0 items-stretch gap-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {m.links.map((l) => {
+            const on = l.href === link.href;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                aria-current={on ? "page" : undefined}
+                className={cn("flex shrink-0 items-center border-b-2 text-sm whitespace-nowrap transition-colors", on ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
+    </div>
   );
 }
 
@@ -263,8 +321,9 @@ export function Sidebar({ access }: { access: NavAccess }) {
         <nav ref={navRef} className="flex-1 overflow-y-auto px-3 pt-4 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main">
           <NavGroups path={path} access={access} />
         </nav>
-        <div className="border-t border-sidebar-border px-3 py-3">
-          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-foreground">
+        <div className="space-y-0.5 border-t border-sidebar-border px-3 py-3">
+          <BottomModules path={path} access={access} />
+          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-foreground">
             <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             Public job board
           </a>
@@ -513,7 +572,7 @@ const menuIcon = "h-4 w-4 shrink-0 text-muted-foreground";
  * Public job board, Refresh, Sign out. Arrow keys move through it; Escape closes it.
  */
 export function AccountMenu({ user, access, signOut }: { user: NavUser; access: NavAccess; signOut: () => Promise<void> }) {
-  const settingsHref = settingsLink(access)?.href;
+  const settingsHref = settingsLinks(access)[0]?.href;
   const [open, setOpen] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
@@ -660,8 +719,9 @@ export function MobileNav({ access }: { access: NavAccess }) {
                 <nav className="flex-1 overflow-y-auto px-3 pt-3 pb-6" aria-label="Main">
                   <NavGroups path={path} access={access} onNavigate={() => setOpen(false)} />
                 </nav>
-                <div className="border-t border-sidebar-border px-3 py-3">
-                  <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground">
+                <div className="space-y-0.5 border-t border-sidebar-border px-3 py-3">
+                  <BottomModules path={path} access={access} onNavigate={() => setOpen(false)} />
+                  <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-3 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground">
                     <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     Public job board
                   </a>
