@@ -13,7 +13,7 @@ export function Table({ children, className, sticky, dense }: { children: ReactN
   return (
     <div
       className={cn(
-        sticky ? "max-h-[calc(100vh-14rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]" : "overflow-x-auto",
+        sticky ? "max-h-[calc(100vh-14rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-30 [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]" : "overflow-x-auto",
         dense && "[&_td]:h-12 [&_td]:px-3 [&_td]:py-2 [&_th]:px-3 [&_td:first-child]:pl-6 [&_th:first-child]:pl-6 [&_td:last-child]:pr-6 [&_th:last-child]:pr-6",
         className,
       )}
@@ -54,8 +54,10 @@ export function SortTh({ label, sortKey, current, dir, hrefFor, className }: { l
   );
 }
 
+// The body is its own layer (isolate), so links and chips raised inside a row (z-10 over a row link)
+// never show through the sticky header when the list scrolls under it.
 export function TBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-border">{children}</tbody>;
+  return <tbody className="relative isolate z-0 divide-y divide-border">{children}</tbody>;
 }
 
 export function Tr({ children, className }: { children: ReactNode; className?: string }) {
