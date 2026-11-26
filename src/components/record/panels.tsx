@@ -13,7 +13,7 @@ const PANEL = "min-w-0 rounded-lg border border-border bg-card xl:rounded-none x
 
 export function RecordLayout({ left, center, right }: { left: ReactNode; center: ReactNode; right: ReactNode }) {
   return (
-    <div data-record-page className="space-y-4 px-4 py-5 sm:px-6 xl:grid xl:h-[calc(100dvh-3.5rem)] xl:grid-cols-[300px_minmax(0,1fr)_280px] xl:space-y-0 xl:p-0 2xl:grid-cols-[340px_minmax(0,1fr)_320px]">
+    <div data-record-page className="space-y-4 px-4 py-5 sm:px-6 xl:grid xl:h-[calc(100dvh-var(--chrome-h,3.5rem))] xl:grid-cols-[300px_minmax(0,1fr)_280px] xl:space-y-0 xl:p-0 2xl:grid-cols-[340px_minmax(0,1fr)_320px]">
       <aside aria-label="Fields" className={cn(PANEL, "xl:border-r xl:border-border")}>
         {left}
       </aside>

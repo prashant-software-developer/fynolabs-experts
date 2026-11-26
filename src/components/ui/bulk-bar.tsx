@@ -55,6 +55,9 @@ export function BulkBar({
   const words = n === 1 ? noun : (plural ?? `${noun}s`);
   return (
     <div role="region" aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 border-b border-border bg-primary/[0.04] px-4 py-2 sm:px-6">
+      {/* The form's default button, disabled: Enter in a field of the bar submits nothing, instead of
+          running the first action on the page (which used to clear the owner of every ticked expert). */}
+      <button type="submit" form={form} disabled hidden aria-hidden tabIndex={-1} />
       <span className="tabular mr-1 text-[13px] font-medium text-foreground">
         {n} selected
       </span>

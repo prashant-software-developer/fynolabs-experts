@@ -150,7 +150,8 @@ function groupsFor(access: NavAccess): Module[] {
         : [],
     },
     {
-      label: "Projects",
+      // Called "Expert portal" for someone who may open Documents or Learn but not Projects.
+      label: can(access, "projects") ? "Projects" : "Expert portal",
       icon: FolderKanban,
       links: [
         ...(can(access, "projects") ? [{ href: "/admin/projects", label: "Projects", icon: FolderKanban }] : []),
@@ -392,7 +393,7 @@ export function CommandPalette({ access }: { access: NavAccess }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const pages = useMemo(
-    () => groupsFor(access).flatMap((g) => g.links.map((l) => ({ id: l.href, title: l.label, hint: PAGE_HINTS[l.href] ?? null, href: l.href, icon: l.icon }))),
+    () => groupsFor(access).flatMap((g) => g.links.map((l) => ({ id: l.href, title: g.links.length > 1 ? `${g.label}: ${l.label}` : l.label, hint: PAGE_HINTS[l.href] ?? null, href: l.href, icon: l.icon }))),
     [access],
   );
 

@@ -82,7 +82,7 @@ export function ListViewTabs({
           {fields}
           <p className="text-[13px] text-muted-foreground">{hint}</p>
           <Input name="name" placeholder={placeholder} maxLength={60} required aria-label="View name" />
-          {canShare ? <Checkbox name="shared" value="yes" label="Share with the team" defaultChecked /> : <p className="text-[13px] text-muted-foreground">Personal view (your role can&apos;t share views).</p>}
+          {canShare ? <Checkbox name="shared" value="yes" label="Share with the team" /> : <p className="text-[13px] text-muted-foreground">Personal view (your role can&apos;t share views).</p>}
           <SubmitButton size="sm" pendingText="Saving...">
             Save view
           </SubmitButton>

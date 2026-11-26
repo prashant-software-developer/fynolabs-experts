@@ -86,7 +86,7 @@ export async function saveOutreach(fd: FormData) {
 
 export async function addExpertNote(fd: FormData) {
   const id = str(fd, "id");
-  const back = returnPath(fd, `/admin/experts/${isUuid(id) ? id : ""}?tab=timeline`);
+  const back = returnPath(fd, `/admin/experts/${isUuid(id) ? id : ""}`);
   await bounce(back, async () => {
     const user = await authorizeIn("profiles", "experts.notes");
     const db = await getDb();

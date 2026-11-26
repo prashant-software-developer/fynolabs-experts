@@ -412,7 +412,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
           closeHref={hrefWith("/admin/experts", sp, { view: null })}
           footer={
             <>
-              <ButtonLink href={`/admin/experts/${viewing.id}?tab=timeline`} size="sm" variant="ghost">
+              <ButtonLink href={`/admin/experts/${viewing.id}`} size="sm" variant="ghost">
                 Timeline
               </ButtonLink>
               {canEdit ? (
@@ -489,7 +489,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
             <PanelSection
               title="Latest activity"
               actions={
-                <Link href={`/admin/experts/${viewing.id}?tab=timeline`} className="text-[13px] text-primary hover:underline">
+                <Link href={`/admin/experts/${viewing.id}`} className="text-[13px] text-primary hover:underline">
                   See the full timeline
                 </Link>
               }

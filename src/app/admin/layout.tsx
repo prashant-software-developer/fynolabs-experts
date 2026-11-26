@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const access: NavAccess = { import: can(user.role, "imports.csv"), team: can(user.role, "team.manage"), money: canSeeMoney(user.role), settings: can(user.role, "settings.manage"), open: openSections(user) };
   const navUser = { name: user.name || user.email, email: user.email, role: ROLE_LABELS[user.role] ?? user.role };
   return (
-    <div className="admin-ui min-h-screen bg-canvas lg:flex">
+    <div className={user.role === "viewer" ? "admin-ui min-h-screen bg-canvas [--chrome-h:5.625rem] lg:flex" : "admin-ui min-h-screen bg-canvas lg:flex"}>
       <Sidebar access={access} />
       <div className="flex min-w-0 flex-1 flex-col">
         {user.role === "viewer" ? (
@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <AccountMenu user={navUser} access={access} signOut={signOutNow} />
             </div>
           </div>
-          <div className="border-t border-border px-4 sm:px-6 lg:hidden [&>div]:h-11">
+          <div className="border-t border-border px-4 empty:hidden sm:px-6 lg:hidden [&>div]:h-11">
             <ModuleTabs access={access} />
           </div>
         </header>
