@@ -13,11 +13,12 @@ import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 
 export const metadata = { title: "Analytics" };
 
+// Direct sits at the bottom in a quiet grey so the sources we work on (LinkedIn, Google) stand out on top.
 const SERIES = [
-  { key: "linkedin", label: SOURCE_LABELS.linkedin, className: "fill-primary" },
-  { key: "google", label: SOURCE_LABELS.google, className: "fill-info" },
-  { key: "direct", label: SOURCE_LABELS.direct, className: "fill-foreground/60" },
-  { key: "other", label: SOURCE_LABELS.other, className: "fill-muted-foreground/40" },
+  { key: "direct", label: SOURCE_LABELS.direct, color: "hsl(var(--muted-foreground) / 0.28)" },
+  { key: "other", label: SOURCE_LABELS.other, color: "hsl(var(--muted-foreground) / 0.5)" },
+  { key: "google", label: SOURCE_LABELS.google, color: "hsl(38 92% 50%)" },
+  { key: "linkedin", label: SOURCE_LABELS.linkedin, color: "hsl(var(--primary))" },
 ];
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -72,10 +73,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <DayBars
               label="Applications and messages per day"
               stacked={false}
+              capSpikes
               days={a.activity}
               series={[
-                { key: "applications", label: "Applications", className: "fill-primary" },
-                { key: "messages", label: "Messages", className: "fill-foreground/60" },
+                { key: "applications", label: "Applications", color: "hsl(var(--primary))" },
+                { key: "messages", label: "Messages", color: "hsl(38 92% 50%)" },
               ]}
             />
           ) : (

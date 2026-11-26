@@ -39,7 +39,7 @@ export function BarList({ items, emptyText }: { items: { key: string; label: str
   );
 }
 
-export type Series = { key: string; label: string; className?: string };
+export type Series = { key: string; label: string; className?: string; color?: string };
 
 /**
  * Bars per day. `stacked`: one bar per day with the series on top of each other; otherwise the
@@ -47,7 +47,7 @@ export type Series = { key: string; label: string; className?: string };
  * so the axis text keeps its size at any width; a series keyed "other" is grey, the rest blue.
  * (`className` and `height` are kept for older callers and no longer used.)
  */
-export function DayBars({ days, series, stacked = true, label }: { days: ({ day: string } & Record<string, number | string>)[]; series: Series[]; stacked?: boolean; height?: number; label: string }) {
+export function DayBars({ days, series, stacked = true, label, capSpikes = false }: { days: ({ day: string } & Record<string, number | string>)[]; series: Series[]; stacked?: boolean; height?: number; label: string; capSpikes?: boolean }) {
   const rows = days.map((d) => ({ label: shortDay(d.day), ...Object.fromEntries(series.map((s) => [s.key, Number(d[s.key] ?? 0)])) }));
-  return <SeriesBars data={rows} series={series.map((s) => ({ key: s.key, label: s.label, other: s.key === "other" }))} stacked={stacked} name={label} />;
+  return <SeriesBars data={rows} series={series.map((s) => ({ key: s.key, label: s.label, color: s.color, other: s.key === "other" }))} stacked={stacked} name={label} capSpikes={capSpikes} />;
 }
