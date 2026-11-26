@@ -31,7 +31,7 @@ import { FilePicker } from "@/components/ui/file-picker";
 import { PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
-import { deleteTemplateForm, sendDocumentForm } from "./actions";
+import { addDefaultDocumentsForm, deleteTemplateForm, sendDocumentForm } from "./actions";
 import { TemplateForm } from "./template-form";
 
 export const metadata = { title: "Documents" };
@@ -75,6 +75,11 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
         actions={
           canEdit ? (
             <>
+              <form action={addDefaultDocumentsForm}>
+                <SubmitButton size="sm" variant="secondary" pendingText="Adding…">
+                  Add the default documents
+                </SubmitButton>
+              </form>
               <ButtonLink href={`${base}?tab=send`} size="sm">
                 Send to an expert
               </ButtonLink>

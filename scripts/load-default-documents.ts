@@ -1,5 +1,9 @@
-// npm run docs:defaults [-- --dry-run] [-- --dir <folder>]
-// The two documents every expert signs in the portal, made from the company's Word templates:
+// npm run docs:defaults [-- --dry-run] [-- --from-word [--dir <folder>]]
+// The two documents every expert signs in the portal. By default (26 Nov 2026): FynoLabs's own
+// Non-Disclosure Agreement and Data Submission and Ownership Agreement, written for the portal
+// (src/lib/documents/defaults.ts: no GSTIN or street address, so they live in this repo).
+//
+// --from-word loads the older pair made from the company's Word templates instead:
 //   ..\Company\Legal\Templates\2 - Non-Disclosure Agreement.docx           -> "Non-Disclosure Agreement" (NDA)
 //   ..\Company\Legal\Templates\4 - Candidate consent (profile sharing).docx -> "Profile sharing consent"
 // (paths from this folder's parent, the FynoLabs folder; --dir points somewhere else).
@@ -40,19 +44,21 @@ const DEFAULTS = [
   },
 ];
 
-const USAGE = `Load the default documents every expert signs (the NDA and the profile sharing consent).
+const USAGE = `Load the default documents every expert signs (the NDA and the Data Submission and Ownership Agreement).
 
   CONFIRM_DB=yes npm run docs:defaults
-  npm run docs:defaults -- --dry-run      (print the converted text, change nothing)
+  npm run docs:defaults -- --dry-run      (print the text, change nothing)
 
-Options: --dir <folder> (where the Word templates are; default ..\\Company\\Legal\\Templates).
+Options: --from-word (the Word templates' NDA and profile sharing consent instead),
+         --dir <folder> (with --from-word: where the Word templates are; default ..\\Company\\Legal\\Templates).
 The database is DATABASE_URL in .env.local (the Neon project "expert-hub").`;
 
 function parseArgs(argv: string[]) {
-  const a = { dryRun: false, help: false, dir: null as string | null, unknown: [] as string[] };
+  const a = { dryRun: false, help: false, fromWord: false, dir: null as string | null, unknown: [] as string[] };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === "--dry-run") a.dryRun = true;
+    else if (k === "--from-word") a.fromWord = true;
     else if (k === "--help" || k === "-h") a.help = true;
     else if (k === "--dir") a.dir = argv[++i] ?? null;
     else if (k.startsWith("--dir=")) a.dir = k.slice(6);
@@ -74,8 +80,12 @@ async function main(): Promise<number> {
   const dir = args.dir ? path.resolve(args.dir) : path.resolve(process.cwd(), "..", "Company", "Legal", "Templates");
   const { docxDocumentXml, docxToBody, upsertDefaultTemplate } = await import("../src/lib/server/portal-documents");
 
-  const converted: ((typeof DEFAULTS)[number] & { body: string; unmapped: string[] })[] = [];
-  for (const d of DEFAULTS) {
+  const converted: { file: string; title: string; kind: string; position: number; description: string; body: string; unmapped: string[] }[] = [];
+  if (!args.fromWord) {
+    const { DEFAULT_DOCUMENTS } = await import("../src/lib/documents/defaults");
+    for (const d of DEFAULT_DOCUMENTS) converted.push({ ...d, file: "the portal's own text", unmapped: [] });
+  }
+  for (const d of args.fromWord ? DEFAULTS : []) {
     const file = path.join(dir, d.file);
     if (!existsSync(file)) {
       console.error(`Can't find ${file}.\nThe Expert Hub folder should sit inside the FynoLabs folder, next to Company (or pass --dir).`);

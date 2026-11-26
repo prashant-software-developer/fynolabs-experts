@@ -6,7 +6,8 @@ import { getDb } from "@/db/client";
 import { bounce } from "@/lib/auth/guard";
 import { authorizeIn } from "@/lib/auth/section-guard";
 import { flash, str } from "@/lib/crm/flash";
-import { deleteTemplate, PORTAL_DOCUMENTS_URL, saveTemplate, sendDocument, type UploadFile } from "@/lib/server/portal-documents";
+import { DEFAULT_DOCUMENTS } from "@/lib/documents/defaults";
+import { deleteTemplate, PORTAL_DOCUMENTS_URL, saveTemplate, sendDocument, upsertDefaultTemplate, type UploadFile } from "@/lib/server/portal-documents";
 
 const BACK = "/admin/documents";
 
@@ -82,5 +83,20 @@ export async function sendDocumentForm(fd: FormData) {
     if (!r.ok) flash(`${BACK}?tab=send`, "error", r.reason);
     revalidatePath(BACK);
     flash(`${BACK}?tab=sent`, "ok", `“${r.title}” is on ${r.expertName}'s Documents page. No email was sent: tell them to sign it at ${PORTAL_DOCUMENTS_URL}`);
+  });
+}
+
+/** "Add the default documents": the portal's NDA and Data Submission and Ownership Agreement, for every expert. */
+export async function addDefaultDocumentsForm() {
+  await bounce(`${BACK}?tab=templates`, async () => {
+    const user = await authorizeIn("profiles", "experts.edit");
+    const db = await getDb();
+    const done: string[] = [];
+    for (const d of DEFAULT_DOCUMENTS) {
+      const r = await upsertDefaultTemplate(db, user, { title: d.title, kind: d.kind, body: d.body, position: d.position, description: d.description });
+      done.push(`${d.title}: ${{ created: "added", updated: "brought up to date", unchanged: "already up to date", skipped: "left as it is" }[r.status]}`);
+    }
+    revalidatePath(BACK);
+    flash(`${BACK}?tab=templates`, "ok", `${done.join(". ")}. Every expert now sees them on their Documents page until they sign.`);
   });
 }

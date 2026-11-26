@@ -2,8 +2,8 @@
 title Expert Hub: load the default documents
 cd /d "%~dp0"
 echo.
-echo  Loads the two documents every expert signs in the portal: the NDA and the
-echo  profile sharing consent, from the Word templates in Company\Legal\Templates.
+echo  Loads the two documents every expert signs in the portal: the Non-Disclosure
+echo  Agreement and the Data Submission and Ownership Agreement.
 echo  Running it again brings them up to date. What experts already signed never changes.
 echo.
 
@@ -36,13 +36,6 @@ if not "%ERRORLEVEL%"=="0" (
   exit /b 1
 )
 
-if not exist "..\Company\Legal\Templates\2 - Non-Disclosure Agreement.docx" (
-  echo.
-  echo Can't find the Word templates in ..\Company\Legal\Templates
-  echo This folder should sit inside the FynoLabs folder, next to Company.
-  pause
-  exit /b 1
-)
 
 echo.
 set CONFIRM_DB=yes

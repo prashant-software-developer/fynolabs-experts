@@ -493,21 +493,30 @@ describe("npm run docs:defaults (scripts/load-default-documents.ts)", () => {
   });
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
+  it("by default loads the portal's own NDA and Data Submission and Ownership Agreement (no GSTIN in them)", () => {
+    const dry = run(["--dry-run"]);
+    expect(dry.code).toBe(0);
+    expect(dry.out).toContain("Non-Disclosure Agreement (nda");
+    expect(dry.out).toContain("Data Submission and Ownership Agreement (agreement");
+    expect(dry.out).toContain("Contractor: {{full_name}}");
+    expect(dry.out).not.toMatch(/GSTIN|09[A-Z]{5}\d{4}[A-Z]/);
+  });
+
   it("prints the converted text on a dry run, refuses without CONFIRM_DB, then adds both templates (and says so on a re-run)", async () => {
-    const dry = run(["--dry-run", "--dir", words]);
+    const dry = run(["--dry-run", "--from-word", "--dir", words]);
     expect(dry.code).toBe(0);
     expect(dry.out).toContain("Between FynoLabs and {{full_name}}, aged {{age}}.");
     expect(dry.out).toContain("☐ I also agree. (optional)");
     expect(dry.out).toMatch(/Dry run: nothing was written/);
-    expect(run(["--dir", path.join(tmp, "nowhere")]).out).toMatch(/Can't find/);
-    const refused = run(["--dir", words]);
+    expect(run(["--from-word", "--dir", path.join(tmp, "nowhere")]).out).toMatch(/Can't find/);
+    const refused = run(["--from-word", "--dir", words]);
     expect(refused.code).toBe(1);
     expect(refused.out).toMatch(/Refusing: set CONFIRM_DB=yes/);
-    const ok = run(["--dir", words], { CONFIRM_DB: "yes" });
+    const ok = run(["--from-word", "--dir", words], { CONFIRM_DB: "yes" });
     expect(ok.code).toBe(0);
     expect(ok.out).toMatch(/Non-Disclosure Agreement: added/);
     expect(ok.out).toMatch(/Profile sharing consent: added/);
-    expect(run(["--dir", words], { CONFIRM_DB: "yes" }).out).toMatch(/Non-Disclosure Agreement: already up to date/);
+    expect(run(["--from-word", "--dir", words], { CONFIRM_DB: "yes" }).out).toMatch(/Non-Disclosure Agreement: already up to date/);
     const local = await openLocalDbWithClient({ dataDir: dbDir });
     try {
       const rows = await local.db.select().from(documentTemplates).orderBy(documentTemplates.position);
