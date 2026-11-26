@@ -1,3 +1,4 @@
+import { REJECT_REASON_LABELS } from "@/lib/talent";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Download, KanbanSquare, LayoutGrid, Plus, Rows3, SlidersHorizontal, Upload, Users } from "lucide-react";
@@ -18,7 +19,7 @@ import { listRequirements } from "@/lib/server/requirements";
 import { getView, listViews, type ViewRow } from "@/lib/server/views";
 import { EXPERT_COLUMNS, PAGE_SIZES, configFromParams, hasViewParams, paramsFromConfig, parsePageSize, sameConfig, viewHref, EMPTY_CONFIG, type ColumnId } from "@/lib/views";
 import { and } from "drizzle-orm";
-import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardMore, BoardScroller } from "@/components/crm/board";
+import { BoardCard, BoardColumn, BoardEmpty, BoardMore, BoardScroller } from "@/components/crm/board";
 import { DueChip } from "@/components/crm/chips";
 import { ViewSwitch } from "@/components/crm/segments";
 import { Avatar, Person } from "@/components/ui/avatar";
@@ -603,37 +604,40 @@ function Board({ columns, sp, canEdit, role, here }: { columns: Awaited<ReturnTy
           {col.rows.map((raw) => {
             const e = visibleExpert(role, raw);
             return (
-              <BoardCard key={e.id} className="space-y-2.5">
+              <BoardCard key={e.id} className="space-y-2 p-3">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar name={e.fullName} size="lg" />
+                  <Avatar name={e.fullName} size="md" />
                   <div className="min-w-0">
                     <Link href={hrefWith("/admin/experts", sp, { view: e.id, ok: null, error: null })} scroll={false} className="block truncate text-sm font-medium text-foreground hover:text-primary" title={e.fullName}>
                       {e.fullName}
                     </Link>
-                    <p className="truncate text-[13px] text-muted-foreground" title={e.headline ?? undefined}>
-                      {e.headline ?? ([e.domain, e.country].filter(Boolean).join(" · ") || "–")}
-                    </p>
+                    {meta(e) ? (
+                      <p className="truncate text-xs text-muted-foreground" title={meta(e)}>
+                        {meta(e)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
-                {e.headline ? <p className="truncate text-[13px] text-foreground/75">{[e.domain, e.country].filter(Boolean).join(" · ") || "–"}</p> : null}
-                <Chips items={e.skills} max={2} oneLine />
-                <div className="flex flex-wrap gap-1.5">
-                  <StatusBadge value={e.availability} />
-                  <StatusBadge value={e.cvConsent} prefix="CV" />
+                {e.skills?.length ? <Chips items={e.skills} max={3} oneLine /> : null}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                    <Dot tone={e.availability === "available" ? "success" : e.availability === "limited" ? "warning" : "muted"} label={label(e.availability ?? "unknown")} />
+                    <span className={e.cvConsent === "yes" ? "text-foreground/80" : undefined}>CV {label(e.cvConsent ?? "unknown").toLowerCase()}</span>
+                  </span>
+                  {canEdit ? (
+                    <form action={setExpertStatus} className="shrink-0">
+                      <input type="hidden" name="id" value={e.id} />
+                      <input type="hidden" name="returnTo" value={here} />
+                      <AutoSubmitSelect name="status" defaultValue={e.status} className="control h-7 w-auto px-2 text-xs" aria-label={`Move ${e.fullName}`}>
+                        {EXPERT_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {label(s)}
+                          </option>
+                        ))}
+                      </AutoSubmitSelect>
+                    </form>
+                  ) : null}
                 </div>
-                {canEdit ? (
-                  <form action={setExpertStatus} className="border-t border-border pt-3">
-                    <input type="hidden" name="id" value={e.id} />
-                    <input type="hidden" name="returnTo" value={here} />
-                    <AutoSubmitSelect name="status" defaultValue={e.status} className="control h-8 text-[13px]" aria-label={`Status for ${e.fullName}`}>
-                      {EXPERT_STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {label(s)}
-                        </option>
-                      ))}
-                    </AutoSubmitSelect>
-                  </form>
-                ) : null}
               </BoardCard>
             );
           })}
@@ -655,35 +659,35 @@ function PipelineBoard({ columns, sp, canPipe, here, today }: { columns: Pipelin
       {columns.map((col) => (
         <BoardColumn key={col.stage} label={col.label} title={<span className={col.stage === "rejected" ? "text-danger" : undefined}>{col.label}</span>} count={col.total}>
           {col.rows.map((c) => (
-            <BoardCard key={c.id} className="space-y-2.5">
+            <BoardCard key={c.id} className="space-y-2 p-3">
               <div className="min-w-0">
                 <Link href={hrefWith("/admin/experts", sp, { view: c.expertId, ok: null, error: null })} scroll={false} className="block truncate text-sm font-medium text-foreground hover:text-primary" title={c.expertName}>
                   {c.expertName}
                 </Link>
-                <p className="truncate text-[13px] text-muted-foreground" title={c.jobTitle}>
+                <p className="truncate text-xs text-muted-foreground" title={c.jobTitle}>
                   {c.projectCode ? `${c.projectCode} · ` : ""}
                   {c.jobTitle}
                   {c.trackName ? ` · ${c.trackName}` : ""}
                 </p>
               </div>
-              <StageBar stage={c.stage} />
+              {c.stage === "rejected" ? (
+                c.rejectReason ? <p className="text-xs text-muted-foreground">Why: {REJECT_REASON_LABELS[c.rejectReason as keyof typeof REJECT_REASON_LABELS] ?? c.rejectReason}</p> : null
+              ) : (
+                <StageBar stage={c.stage} hideLabel width={140} />
+              )}
               {c.nextAction ? (
-                <p className="line-clamp-2 text-[13px] text-foreground/85" title={c.nextAction}>
+                <p className="line-clamp-2 text-xs text-foreground/85" title={c.nextAction}>
                   Next: {c.nextAction}
                 </p>
               ) : null}
-              <BoardCardFooter>
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="flex min-w-0 items-center gap-1.5" title="In this stage since">
                   {c.ownerName ? <Avatar name={c.ownerName} size="xs" title={c.ownerName} /> : null}
-                  <span className="truncate">Since {fmtDate(c.stageChangedAt)}</span>
+                  <span className="truncate">{fmtDate(c.stageChangedAt)}</span>
+                  {c.nextActionDue ? <DueChip due={c.nextActionDue} today={today} /> : null}
                 </span>
-                {c.nextActionDue ? <DueChip due={c.nextActionDue} today={today} /> : null}
-              </BoardCardFooter>
-              {canPipe ? (
-                <div className="border-t border-border pt-3">
-                  <StageForm action={movePipelineStage} id={c.id} stage={c.stage} rejectReason={c.rejectReason} returnTo={here} compact />
-                </div>
-              ) : null}
+                {canPipe ? <StageForm action={movePipelineStage} id={c.id} stage={c.stage} rejectReason={c.rejectReason} returnTo={here} board /> : null}
+              </div>
             </BoardCard>
           ))}
           {col.total > col.rows.length ? <BoardMore href={hrefWith("/admin/experts", sp, { stage: col.stage, layout: null, page: null, view: null })} n={col.total - col.rows.length} /> : null}
@@ -691,5 +695,20 @@ function PipelineBoard({ columns, sp, canPipe, here, today }: { columns: Pipelin
         </BoardColumn>
       ))}
     </BoardScroller>
+  );
+}
+
+/** A card's second line: headline, else field and country. Nothing at all: no line. */
+function meta(e: { headline?: string | null; domain?: string | null; country?: string | null }) {
+  return e.headline || [e.domain, e.country].filter(Boolean).join(" · ");
+}
+
+/** A coloured dot and a word (availability on board cards). */
+function Dot({ tone, label: text }: { tone: "success" | "warning" | "muted"; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn("h-1.5 w-1.5 rounded-full", tone === "success" ? "bg-success" : tone === "warning" ? "bg-warning" : "bg-muted-foreground/50")} aria-hidden />
+      {text}
+    </span>
   );
 }

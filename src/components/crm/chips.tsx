@@ -12,11 +12,11 @@ const GROUP_TONE = { early: "neutral", talks: "info", won: "success", parked: "m
  * Where a record is on its way: the stage name over a row of thin rounded steps, filled up to the
  * stage (dark), green from the winning step on, grey when it is parked (on hold, dropped, rejected, lost).
  */
-export function StageSteps({ steps, current, label, parked = false, wonFrom, width = 140 }: { steps: readonly string[]; current: number; label: string; parked?: boolean; wonFrom?: number; width?: number }) {
+export function StageSteps({ steps, current, label, parked = false, wonFrom, width = 140, hideLabel = false }: { steps: readonly string[]; current: number; label: string; parked?: boolean; wonFrom?: number; width?: number; hideLabel?: boolean }) {
   const won = wonFrom !== undefined && current >= wonFrom;
   return (
     <span className="flex min-w-0 flex-col gap-1.5" title={`${label} · step ${Math.max(current, 0) + 1} of ${steps.length}`}>
-      <span className={cn("truncate text-sm", parked ? "text-muted-foreground" : "text-foreground")}>{label}</span>
+      {hideLabel ? null : <span className={cn("truncate text-sm", parked ? "text-muted-foreground" : "text-foreground")}>{label}</span>}
       <span className="flex gap-[3px]" style={{ width }} aria-hidden="true">
         {steps.map((step, i) => (
           <span key={step} className={cn("h-1.5 flex-1 rounded-full", i > current ? "bg-foreground/[0.08]" : parked ? "bg-muted-foreground/40" : won ? "bg-success" : "bg-foreground/70")} />

@@ -40,13 +40,13 @@ export function StageBadge({ stage }: { stage: string | null | undefined }) {
 }
 
 /** The pipeline stage bar: the steps filled up to the stage, Active and after in green; Rejected greyed. */
-export function StageBar({ stage, className }: { stage: string | null | undefined; className?: string }) {
+export function StageBar({ stage, className, hideLabel = false, width = 120 }: { stage: string | null | undefined; className?: string; hideLabel?: boolean; width?: number }) {
   if (!stage) return <span className="text-muted-foreground/70">–</span>;
   const at = PIPELINE_LINE.indexOf(stage as PipelineStage);
   const rejected = stage === "rejected";
   return (
     <span className={cn("inline-flex", className)}>
-      <StageSteps steps={PIPELINE_LINE} current={rejected ? -1 : at} label={stageLabel(stage)} parked={rejected} wonFrom={PIPELINE_LINE.indexOf("active")} width={120} />
+      <StageSteps steps={PIPELINE_LINE} current={rejected ? -1 : at} label={stageLabel(stage)} parked={rejected} wonFrom={PIPELINE_LINE.indexOf("active")} width={width} hideLabel={hideLabel} />
     </span>
   );
 }

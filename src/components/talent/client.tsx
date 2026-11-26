@@ -23,10 +23,13 @@ function Pending({ children, pendingText = "Saving...", className, variant = "se
  * Change a pipeline's stage. Any stage but Rejected saves as soon as it's picked; Rejected asks why
  * first (the reason is required, as in the FynoLabs list).
  */
-export function StageForm({ action, id, stage, rejectReason, returnTo, compact }: { action: Action; id: string; stage: string; rejectReason?: string | null; returnTo: string; compact?: boolean }) {
+export function StageForm({ action, id, stage, rejectReason, returnTo, compact, board }: { action: Action; id: string; stage: string; rejectReason?: string | null; returnTo: string; compact?: boolean; board?: boolean }) {
   const [to, setTo] = useState(stage);
   const [reason, setReason] = useState(rejectReason ?? "");
   const asking = to === "rejected" && (stage !== "rejected" || reason !== (rejectReason ?? ""));
+  // On a board card: a small "move" select; the reason picker shows only while a rejection is being made.
+  const size = board ? "h-7 px-2 text-xs" : compact ? "h-8 text-[13px]" : "h-9 text-sm";
+  const showReason = to === "rejected" && (!board || stage !== "rejected" || !rejectReason);
   return (
     <form action={action} className={cn("flex flex-wrap items-center gap-2", compact && "gap-1.5")}>
       <input type="hidden" name="id" value={id} />
@@ -35,7 +38,7 @@ export function StageForm({ action, id, stage, rejectReason, returnTo, compact }
         name="stage"
         value={to}
         aria-label="Stage"
-        className={cn("control w-auto", compact ? "h-8 text-[13px]" : "h-9 text-sm")}
+        className={cn("control w-auto", size)}
         onChange={(e) => {
           setTo(e.currentTarget.value);
           if (e.currentTarget.value !== "rejected") e.currentTarget.form?.requestSubmit();
@@ -47,9 +50,9 @@ export function StageForm({ action, id, stage, rejectReason, returnTo, compact }
           </option>
         ))}
       </select>
-      {to === "rejected" ? (
+      {showReason ? (
         <>
-          <select name="rejectReason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} aria-label="Why rejected" required className={cn("control w-auto", compact ? "h-8 text-[13px]" : "h-9 text-sm")}>
+          <select name="rejectReason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} aria-label="Why rejected" required className={cn("control w-auto", size)}>
             <option value="">Why?</option>
             {REJECT_REASONS.map((r) => (
               <option key={r} value={r}>
