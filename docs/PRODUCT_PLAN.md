@@ -134,7 +134,7 @@ The data and the rules are in place (Phase 3a); these screens put them in front 
 
 ### Done (24 Nov 2026): CRM and operations
 
-Matched screen by screen to the Lovable admin (`Main Website - FyonLabs/src/pages`). Clicking a row opens a side panel first, with "Open full …"; stacked sections and tabs, no side-by-side layouts; page-size empty states on main pages, one-line ones below.
+Matched screen by screen to the Lovable admin (`Main Website - FyonLabs/src/pages`). Clicking a row opens a side panel first, with "Open full …"; stacked sections and tabs, no side-by-side layouts, except the expert and account record pages, which use three panels (fields | activity | up next) from 1280px (Prashant, 27 Nov 2026, GHL-style); the sidebar lists about ten modules and each module's pages are tabs in the top bar; page-size empty states on main pages, one-line ones below.
 
 | Screen | Status | What it does |
 |---|---|---|
