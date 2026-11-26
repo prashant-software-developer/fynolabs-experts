@@ -13,16 +13,19 @@ import { FlashFromParams } from "@/components/ui/feedback";
 
 export const metadata = { title: "Documents" };
 
+// One row: the count, then one segment per document (filled = signed).
 function Progress({ done, total }: { done: number; total: number }) {
-  const pct = total ? Math.round((done / total) * 100) : 0;
+  const complete = done === total;
   return (
-    <div className="w-full space-y-1.5 sm:w-44">
-      <div className="h-1 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total} aria-label="Documents signed">
-        <div className={cn("h-1 rounded-full", done === total ? "bg-success" : "bg-primary")} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-[13px] text-muted-foreground tabular sm:text-right">
-        {done} of {total} signed
+    <div className="flex items-center gap-3" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total} aria-label="Documents signed">
+      <p className="whitespace-nowrap text-[13px] tabular text-muted-foreground">
+        <span className={cn("text-foreground", complete && "text-success")}>{done}</span> of {total} signed
       </p>
+      <div className="flex gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <span key={i} className={cn("h-1.5 w-6 rounded-full", i < done ? (complete ? "bg-success" : "bg-primary") : "bg-border")} />
+        ))}
+      </div>
     </div>
   );
 }
