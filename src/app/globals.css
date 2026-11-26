@@ -433,3 +433,11 @@
     animation: none;
   }
 }
+
+/* Charts: no browser focus box around the plot after a click (Recharts makes the chart focusable for
+   keyboard use; the tooltip and active dot already show where you are). */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface {
+  outline: none !important;
+}
