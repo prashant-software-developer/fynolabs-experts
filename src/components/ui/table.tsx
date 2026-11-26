@@ -15,7 +15,7 @@ export function Table({ children, className, sticky, dense }: { children: ReactN
           ? "max-h-[calc(100vh-15rem)] min-h-0 overflow-auto [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-card [&_thead_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]"
           : "overflow-x-auto",
         // dense: tighter cells (the first and last keep their wider edge padding).
-        dense && "[&_td]:px-2 [&_th]:px-2",
+        dense && "[&_td]:px-2.5 [&_td]:py-3 [&_th]:px-2.5 [&_td:first-child]:pl-5 [&_th:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th:last-child]:pr-5",
         className,
       )}
     >
@@ -32,8 +32,15 @@ export function THead({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * One alignment everywhere (Prashant, 26 Nov 2026): every column, numbers and dates included, reads
+ * from the left, so a page passing text-right or text-center to a cell is ignored here. The first
+ * column lines up with the card title above it (20px).
+ */
+const leftOnly = (c?: string) => c?.replace(/(^|\s)(?:[\w-]+:)*text-(?:right|center|end|start)(?=\s|$)/g, " ").replace(/\s+/g, " ").trim();
+
 export function Th({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn("eyebrow h-10 px-3 align-middle whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4", className)} {...props} />;
+  return <th className={cn("eyebrow h-11 px-4 text-left align-middle whitespace-nowrap text-muted-foreground first:pl-5 last:pr-5", leftOnly(className))} {...props} />;
 }
 
 export function SortTh({ label, sortKey, current, dir, hrefFor, className }: { label: string; sortKey: string; current: string; dir: "asc" | "desc"; hrefFor: (sort: string, dir: "asc" | "desc") => string; className?: string }) {
@@ -58,5 +65,5 @@ export function Tr({ children, className }: { children: ReactNode; className?: s
 }
 
 export function Td({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-3 py-3 align-middle text-foreground/85 first:pl-4 last:pr-4", className)} {...props} />;
+  return <td className={cn("px-4 py-3.5 text-left align-middle text-foreground/85 first:pl-5 last:pr-5", leftOnly(className))} {...props} />;
 }

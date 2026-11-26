@@ -639,7 +639,7 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
                       </Td>
                       <Td className="text-right whitespace-nowrap">
                         {manage ? (
-                          <div className="flex flex-nowrap items-center justify-end gap-1">
+                          <div className="flex flex-nowrap items-center gap-1">
                             <CopyButton value={link} label="Copy link" variant="ghost" />
                             <form action={inviteToJob}>
                               <input type="hidden" name="jobId" value={job.id} />

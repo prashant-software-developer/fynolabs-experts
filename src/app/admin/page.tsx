@@ -154,7 +154,7 @@ export default async function DashboardPage() {
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                     <div className="h-1.5 rounded-full bg-foreground/75 transition-colors group-hover:bg-foreground" style={{ width: `${(v / maxStatus) * 100}%` }} />
                   </div>
-                  <span className="tabular w-10 text-right text-foreground/80">{n(v)}</span>
+                  <span className="tabular w-12 text-foreground/80">{n(v)}</span>
                 </>
               );
               return people ? (

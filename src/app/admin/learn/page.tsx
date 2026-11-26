@@ -156,7 +156,7 @@ export default async function AdminLearnPage({ searchParams }: { searchParams: P
           }
         >
           <div className="space-y-6">
-            <CourseArtPanel art={viewing.art} className="aspect-[12/7] w-full max-w-sm rounded-md border border-border" />
+            <CourseArtPanel art={viewing.art} className="aspect-[21/8] w-full rounded-md border border-border" />
             <div className="space-y-1.5">
               <p className="text-lg text-foreground">{viewing.title}</p>
               {viewing.summary ? <p className="text-small text-muted-foreground">{viewing.summary}</p> : null}

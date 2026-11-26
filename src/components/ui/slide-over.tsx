@@ -13,7 +13,7 @@ export function SlideOver({ title, closeHref, children, footer, addon }: { title
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
       <EscapeTo href={closeHref} />
       <Link href={closeHref} scroll={false} className="absolute inset-0 bg-foreground/10 backdrop-blur-[2px]" aria-label="Close panel" />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-border bg-background shadow-[0_24px_80px_-12px_rgba(0,0,0,0.18)]">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-border bg-background lg:max-w-3xl xl:max-w-4xl shadow-[0_24px_80px_-12px_rgba(0,0,0,0.18)]">
         <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <div className="min-w-0 truncate text-xl font-light text-foreground">{title}</div>

@@ -132,7 +132,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
           ) : null}
           {editing?.body ? (
             <Section title="Preview" description="As experts see it before signing. The highlighted words are filled in from their profile and the sign form.">
-              <div className="max-w-3xl">
+              <div>
                 <DocumentBody blocks={bodyBlocks(editing.body)} />
               </div>
             </Section>

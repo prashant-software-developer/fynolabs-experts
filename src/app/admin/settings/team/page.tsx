@@ -21,6 +21,7 @@ import { AddMemberForm, ResetPasswordForm } from "@/components/team-forms";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
+import { RoleChip } from "@/components/ui/role-chip";
 import { changeTeamRole, setTeamActive, setTeamScope } from "./actions";
 
 export const metadata = { title: "Team & access" };
@@ -197,7 +198,9 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             <TBody>
               {ROLES.map((r) => (
                 <Tr key={r}>
-                  <Td className="font-medium whitespace-nowrap text-foreground">{ROLE_LABELS[r]}</Td>
+                  <Td className="whitespace-nowrap">
+                    <RoleChip role={ROLE_LABELS[r]} />
+                  </Td>
                   <Td className="text-[13px] text-foreground/80">{ROLE_SUMMARY[r]}</Td>
                 </Tr>
               ))}

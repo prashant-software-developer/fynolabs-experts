@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { RoleChip } from "@/components/ui/role-chip";
 import {
   BadgeCheck,
   Banknote,
@@ -510,6 +511,12 @@ const menuIcon = "h-4 w-4 shrink-0 text-muted-foreground";
  * Your email and role in the top bar. Opens a small menu: Settings (when you may), Change password,
  * Public job board, Refresh, Sign out. Arrow keys move through it; Escape closes it.
  */
+/** "Prashant Kumar Singh" -> "PS"; an email -> its first two letters. */
+const initials = (who: string) => {
+  const words = who.split("@")[0].split(/[\s._-]+/).filter(Boolean);
+  return ((words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? "?").slice(0, 2)) || "?").toUpperCase();
+};
+
 export function AccountMenu({ user, access, signOut }: { user: NavUser; access: NavAccess; signOut: () => Promise<void> }) {
   const settingsHref = settingsLink(access)?.href;
   const [open, setOpen] = useState(false);
@@ -551,19 +558,31 @@ export function AccountMenu({ user, access, signOut }: { user: NavUser; access: 
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`Account: ${user.email} (${user.role})`}
-        className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className={cn(
+          "inline-flex h-10 items-center gap-2.5 rounded-lg pr-2 pl-1.5 text-[13px] text-foreground/80 transition-colors hover:bg-foreground/[0.04] hover:text-foreground",
+          open && "bg-foreground/[0.04] text-foreground",
+        )}
       >
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-medium text-foreground/80" aria-hidden>
+          {initials(user.name || user.email)}
+        </span>
         <span className="hidden max-w-[16rem] truncate md:inline">{user.email}</span>
-        <span className="inline-flex h-5 items-center rounded-full border border-border bg-secondary px-2 text-[11px] font-medium text-foreground/80">{user.role}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <RoleChip role={user.role} />
+        <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open ? (
         <div ref={menu} role="menu" aria-label="Account" className="animate-pop absolute top-full right-0 z-50 mt-1.5 w-64 origin-top-right rounded-md border border-border bg-popover p-1 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
-          <div className="px-2.5 py-2">
-            <p className="truncate text-sm text-foreground">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email} · {user.role}
-            </p>
+          <div className="flex items-start gap-3 px-2.5 py-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium text-foreground/80" aria-hidden>
+              {initials(user.name || user.email)}
+            </span>
+            <div className="min-w-0 space-y-1.5">
+              <div>
+                <p className="truncate text-sm text-foreground">{user.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              </div>
+              <RoleChip role={user.role} />
+            </div>
           </div>
           <div role="separator" className="-mx-1 my-1 h-px bg-border" />
           {settingsHref ? (

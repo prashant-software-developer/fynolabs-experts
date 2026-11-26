@@ -118,7 +118,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                     <span className="h-1.5 flex-1 overflow-hidden bg-secondary">
                       <span className={cn("block h-1.5", s === "active" || s === "ended" ? "bg-primary" : "bg-foreground/75")} style={{ width: `${((funnel.stages[s] ?? 0) / maxStage) * 100}%` }} />
                     </span>
-                    <span className="tabular w-12 text-right text-foreground/80">{funnel.stages[s] ?? 0}</span>
+                    <span className="tabular w-12 text-foreground/80">{funnel.stages[s] ?? 0}</span>
                   </Link>
                 ))}
               </div>

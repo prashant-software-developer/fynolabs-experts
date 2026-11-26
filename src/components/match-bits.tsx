@@ -28,7 +28,7 @@ export function ReasonChips({ reasons }: { reasons: Reason[] }) {
 export function ScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="tabular w-7 text-right font-medium text-foreground">{score}</span>
+      <span className="tabular w-7 font-medium text-foreground">{score}</span>
       <div className="h-1 w-16 overflow-hidden rounded-full bg-secondary">
         <div className={cn("h-1 rounded-full", score >= 75 ? "bg-success" : score >= 50 ? "bg-foreground/60" : "bg-warning")} style={{ width: `${score}%` }} />
       </div>

@@ -53,7 +53,7 @@ export function CourseForm({ course, cancelHref, defaultPosition = 0 }: { course
       <Field label="Drawing" htmlFor={`${id}-art`} hint="The line drawing on the card." error={err("art")}>
         <Select id={`${id}-art`} name="art" value={art} onChange={(e) => setArt(e.currentTarget.value)} options={ART_KEYS.map((k) => ({ value: k, label: ART_LABELS[k] }))} placeholder="A learning path (default)" />
       </Field>
-      <CourseArtPanel art={art || null} className="aspect-[12/7] w-full max-w-xs rounded-md border border-border" />
+      <CourseArtPanel art={art || null} className="aspect-[21/8] w-full rounded-md border border-border" />
       <Checkbox name="published" label="Published: experts see it under Learn" defaultChecked={typed ? typed.published === "on" : Boolean(course?.published)} />
       <div className="flex flex-wrap gap-2 pt-1">
         <button type="submit" disabled={pending} className={buttonClass("primary", "md")}>

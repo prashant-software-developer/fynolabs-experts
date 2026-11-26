@@ -68,3 +68,36 @@ export function StackedTrend({ data, series, name }: { data: Row[]; series: stri
     </div>
   );
 }
+
+/**
+ * A few series per day as bars, stacked or side by side (Analytics, a project's activity), in the
+ * same style as the dashboard: legend above, 11px axes that never scale with the width, the brand
+ * blue at falling strengths and grey for "other".
+ */
+export function SeriesBars({ data, series, stacked = true, name }: { data: Row[]; series: { key: string; label: string; other?: boolean }[]; stacked?: boolean; name: string }) {
+  const color = (s: { other?: boolean }, i: number) => (s.other ? OTHER_COLOR : (BAR_COLORS[i] ?? BAR_COLORS[BAR_COLORS.length - 1]));
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {series.map((s, i) => (
+          <span key={s.key} className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color(s, i) }} aria-hidden="true" /> {s.label}
+          </span>
+        ))}
+      </div>
+      <ChartBox label={name}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -16 }} barGap={2}>
+            <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis allowDecimals={false} tick={axisTick} tickLine={false} axisLine={false} />
+            <Tooltip cursor={{ fill: "hsl(var(--secondary))", opacity: 0.6 }} contentStyle={tooltipStyle} labelStyle={{ color: "hsl(var(--foreground))" }} />
+            {series.map((s, i) => (
+              <Bar key={s.key} dataKey={s.key} name={s.label} stackId={stacked ? "s" : undefined} fill={color(s, i)} maxBarSize={stacked ? 40 : 18} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartBox>
+    </div>
+  );
+}
