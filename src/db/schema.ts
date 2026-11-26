@@ -472,9 +472,9 @@ export const savedViews = hub.table(
   (t) => [
     index("saved_views_owner_idx").on(t.collection, t.ownerEmail),
     index("saved_views_shared_idx").on(t.collection, t.shared),
-    // fynolabs_*: views copied from the FynoLabs admin (their filters as FynoLabs had them), kept
+    // accounts, leads: saved views (tabs) on those lists (27 Nov 2026). fynolabs_*: views copied from the FynoLabs admin (their filters as FynoLabs had them), kept
     // apart from the hub's own Experts tabs until those screens exist here.
-    check("saved_views_collection_check", inList("collection", ["experts", "fynolabs_experts", "fynolabs_submissions"])),
+    check("saved_views_collection_check", inList("collection", ["experts", "fynolabs_experts", "fynolabs_submissions", "accounts", "leads"])),
   ],
 );
 

@@ -1,7 +1,8 @@
 import { REJECT_REASON_LABELS } from "@/lib/talent";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowRight, Download, KanbanSquare, LayoutGrid, Plus, Rows3, SlidersHorizontal, Upload, Users } from "lucide-react";
+import { ArrowRight, Download, KanbanSquare, LayoutGrid, Plus, Rows3, SlidersHorizontal, Upload } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can, canManageView, canSeeContact, visibleExpert } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";
@@ -25,20 +26,22 @@ import { ViewSwitch } from "@/components/crm/segments";
 import { Avatar, Person } from "@/components/ui/avatar";
 import { Chips, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
-import { AutoSubmitSelect, SelectAll, SubmitButton } from "@/components/ui/client";
+import { AutoSubmitSelect, SelectAll } from "@/components/ui/client";
+import { BulkApply, BulkBar, BulkMenu } from "@/components/ui/bulk-bar";
+import { ListViewTabs } from "@/components/crm/list-view-tabs";
 import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Checkbox, Input, Select } from "@/components/ui/field";
+import { Input, Select } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
-import { Pagination } from "@/components/ui/pagination";
+import { PageSummary, Pagination } from "@/components/ui/pagination";
 import { PanelSection, SlideOver } from "@/components/ui/slide-over";
 import { SortTh, Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
-import { CountPill, PillNav } from "@/components/ui/tabs";
-import { FilterSelect, ResultCount, SearchField, Toolbar, ToolbarDivider } from "@/components/ui/toolbar";
+import { CountPill } from "@/components/ui/tabs";
+import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { ColumnPicker } from "@/components/column-picker";
 import { ExpertSummary } from "@/components/expert-summary";
 import { PeopleTabs, SectionBlocked, StageBar } from "@/components/talent/bits";
-import { ChoiceFields, PendingButton, StageForm } from "@/components/talent/client";
+import { PendingButton, StageForm } from "@/components/talent/client";
 import { addSelectedToRequirement, deleteExpertView, saveExpertView, setExpertStatus, updateExpertView } from "./actions";
 import { bulkExperts, movePipelineStage } from "./talent-actions";
 
@@ -50,8 +53,8 @@ const DUE_OPTIONS = [
   { value: "today", label: "Due today or earlier" },
   { value: "week", label: "Due in the next 7 days" },
 ];
-/** Bulk-bar controls: one height, sized to their words. */
-const bulkControl = "h-9 w-auto text-[13px]";
+/** Bulk-bar fields: full width inside their small panel. */
+const bulkControl = "h-9 w-full text-[13px]";
 
 export default async function ExpertsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
@@ -65,7 +68,9 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
   const active: ViewRow | null = vId ? (views.find((v) => v.id === vId) ?? (await getView(db, user, vId))) : null;
   if (active && !hasViewParams(sp)) redirect(viewHref(active.id, active.config, { size: one(sp.size) }));
 
-  const config = configFromParams(sp);
+  // Columns: the URL's, else (outside a saved view) the ones this person picked last time (cookie).
+  const remembered = !active && sp.cols === undefined ? (await cookies()).get("hub_cols_experts")?.value : undefined;
+  const config = configFromParams(remembered ? { ...sp, cols: remembered } : sp);
   const f = parseExpertFilters(sp);
   const pageSize = parsePageSize(one(sp.size));
   const layout = config.layout;
@@ -153,69 +158,27 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <Section flush allowOverflow>
-        {/* Saved views, Notion / Zoho style: the built-in list, then mine, then the team's shared ones. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-border px-4 py-3 sm:px-6">
-          <span className="text-[13px] font-medium text-muted-foreground">Views</span>
-          <PillNav
-            label="Saved views"
-            className="flex-1"
-            items={[
-              { href: viewHref(null, EMPTY_CONFIG, keep), label: "All experts", active: !active },
-              ...views.map((v) => ({
-                href: viewHref(v.id, v.config, keep),
-                active: active?.id === v.id,
-                title: v.shared ? (v.ownerEmail === user.email ? "Shared with the team" : `Shared by ${v.ownerEmail}`) : v.ownerEmail === user.email ? "Only you see this view" : undefined,
-                label: (
-                  <>
-                    {v.name}
-                    {v.shared ? <Users aria-label="Shared" /> : null}
-                  </>
-                ),
-              })),
-            ]}
-          />
-          <div className="flex items-center gap-2">
-            {active && dirty ? <span className="text-[13px] text-muted-foreground">Unsaved changes</span> : null}
-            {active && dirty && manageable ? (
-              <form action={updateExpertView}>
-                <input type="hidden" name="id" value={active.id} />
-                <input type="hidden" name="params" value={currentParams} />
-                <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
-                  Update view
-                </SubmitButton>
-              </form>
-            ) : null}
-            <details className="relative">
-              <summary className={cn(buttonClass("ghost", "sm"), "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
-                <Plus className="h-3.5 w-3.5" aria-hidden /> Save view
-              </summary>
-              <form action={saveExpertView} className="absolute right-0 z-40 mt-2 w-80 space-y-3 rounded-xl border border-border bg-popover p-4 shadow-raised">
-                <input type="hidden" name="params" value={currentParams} />
-                <p className="text-[13px] text-muted-foreground">Saves the current filters, sort, columns and layout.</p>
-                <Input name="name" placeholder="View name, e.g. US maths bench" maxLength={60} required aria-label="View name" />
-                {can(user.role, "views.share") ? <Checkbox name="shared" value="yes" label="Share with the team" /> : <p className="text-[13px] text-muted-foreground">Personal view (your role can&apos;t share views).</p>}
-                <SubmitButton size="sm" pendingText="Saving...">
-                  Save view
-                </SubmitButton>
-              </form>
-            </details>
-            {active && manageable ? (
-              <form action={deleteExpertView}>
-                <input type="hidden" name="id" value={active.id} />
-                <SubmitButton size="sm" variant="ghost" confirm={`Delete the view "${active.name}"? The experts stay as they are.`} className="text-muted-foreground">
-                  Delete view
-                </SubmitButton>
-              </form>
-            ) : null}
-          </div>
-        </div>
+        {/* Saved views as tabs (same row as on Accounts and Leads): the built-in list, then mine, then the team's shared ones. */}
+        <ListViewTabs
+          inset
+          builtIns={[{ href: viewHref(null, EMPTY_CONFIG, keep), label: "All experts", active: !active }]}
+          views={views.map((v) => ({ href: viewHref(v.id, v.config, keep), label: v.name, active: active?.id === v.id, shared: v.shared, title: v.shared ? (v.ownerEmail === user.email ? "Shared with the team" : `Shared by ${v.ownerEmail}`) : v.ownerEmail === user.email ? "Only you see this view" : undefined }))}
+          currentParams={currentParams}
+          active={active ? { id: active.id, name: active.name, dirty, manageable } : null}
+          canShare={can(user.role, "views.share")}
+          placeholder="View name, e.g. US maths bench"
+          hint="Saves the current filters, sort, columns and layout as a tab."
+          save={saveExpertView}
+          update={updateExpertView}
+          remove={deleteExpertView}
+        />
 
         <Toolbar
-          hidden={{ v: active?.id, cols: sp.cols !== undefined ? one(sp.cols) : null, layout: layout !== "table" ? layout : null, size: one(sp.size), sort: one(sp.sort) ? f.sort : null, dir: one(sp.dir) ? f.dir : null }}
+          hidden={{ v: active?.id, cols: sp.cols !== undefined ? one(sp.cols) : null, layout: layout !== "table" ? layout : null, size: layout !== "table" ? one(sp.size) : null, sort: one(sp.sort) ? f.sort : null, dir: one(sp.dir) ? f.dir : null }}
           clearHref={filtered ? clearHref : null}
           end={
             <>
-              <ResultCount n={total} noun="expert" />
+              {layout === "table" ? <PageSummary total={total} page={f.page} pageSize={pageSize} sizes={PAGE_SIZES} /> : <ResultCount n={total} noun="expert" />}
               {layout === "table" ? <ColumnPicker selected={columns} /> : null}
               <ViewSwitch
                 label="Layout"
@@ -272,57 +235,82 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
           <input type="hidden" name="returnTo" value={here} />
         </form>
         {layout === "table" && canBulk && shown.length ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-canvas px-4 py-2.5 sm:px-6">
-            <span className="mr-1 text-[13px] text-muted-foreground">With the ticked:</span>
-            <ChoiceFields
-              form="bulk"
-              name="op"
-              placeholder="Choose an action"
-              className={bulkControl}
-              options={[
-                ...(canEdit ? [{ value: "owner", label: "Assign an owner" }, { value: "outreach", label: "Set outreach" }, { value: "add_tags", label: "Add tags" }, { value: "remove_tags", label: "Remove tags" }] : []),
-                ...(canPipe ? [{ value: "add_job", label: "Add to a job" }] : []),
-                ...(canEdit && can(user.role, "groups.manage") ? [{ value: "add_group", label: "Add to a group" }] : []),
-                ...(can(user.role, "campaigns.manage") && canOpenSection(user, "referrals") ? [{ value: "email", label: "Email them (campaign)" }] : []),
-                ...(can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals") ? [{ value: "refer", label: "Refer them" }] : []),
-                ...(canEdit ? [{ value: "dnc", label: "Mark do not contact" }] : []),
-              ]}
-              fields={{
-                owner: <Select form="bulk" name="ownerTeamMemberId" defaultValue="" options={owners.filter((o) => o.active).map((o) => ({ value: o.id, label: o.name }))} placeholder="No owner" className={bulkControl} aria-label="Owner" />,
-                outreach: <Select form="bulk" name="outreachStatus" defaultValue="" options={OUTREACH_STATUSES.map((o) => ({ value: o, label: OUTREACH_LABELS[o] }))} placeholder="Pick outreach" className={bulkControl} aria-label="Outreach" />,
-                add_tags: <Input form="bulk" name="tags" placeholder="us-sourcing, shortlist" className="h-9 w-48 text-[13px]" aria-label="Tags" />,
-                remove_tags: <Input form="bulk" name="tags" placeholder="us-sourcing" className="h-9 w-48 text-[13px]" aria-label="Tags" />,
-                add_job: (
-                  <>
-                    <Select form="bulk" name="jobId" defaultValue="" options={jobList.filter((j) => j.status === "open" || j.status === "paused" || j.status === "draft").map((j) => ({ value: j.id, label: j.title }))} placeholder="Pick a job" className={cn(bulkControl, "max-w-xs")} aria-label="Job" />
-                    <Select form="bulk" name="startStage" defaultValue="new" options={[{ value: "new", label: "Start at Applied" }, { value: "shortlisted", label: "Start at Shortlisted" }]} className={bulkControl} aria-label="Starting stage" />
-                  </>
-                ),
-                add_group: <Select form="bulk" name="groupId" defaultValue="" options={groups.map((g) => ({ value: g.id, label: g.name }))} placeholder="Pick a group" className={bulkControl} aria-label="Group" />,
-                dnc: <Input form="bulk" name="dncReason" placeholder="Reason, e.g. asked to stop by email" className="h-9 w-64 text-[13px]" aria-label="Reason" />,
-              }}
-            />
-            <SubmitButton form="bulk" size="sm" variant="secondary" pendingText="Applying...">
-              Apply
-            </SubmitButton>
-            {canShortlist ? (
+          <BulkBar form="bulk" noun="expert" exportHref={can(user.role, "experts.export") ? "/api/experts/export" : null}>
+            {canEdit ? (
               <>
-                <ToolbarDivider />
-                <Select
-                  form="bulk"
-                  name="requirementId"
-                  defaultValue=""
-                  options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))}
-                  placeholder={reqs.length ? "Add to requirement..." : "No open requirements"}
-                  className={cn(bulkControl, "max-w-full sm:max-w-xs")}
-                  aria-label="Requirement"
-                />
+                <BulkMenu label="Assign owner">
+                  <Select form="bulk" name="ownerTeamMemberId" defaultValue="" options={owners.filter((o) => o.active).map((o) => ({ value: o.id, label: o.name }))} placeholder="No owner" className={bulkControl} aria-label="Owner" />
+                  <BulkApply form="bulk" op="owner" />
+                </BulkMenu>
+                <BulkMenu label="Tags">
+                  <Input form="bulk" name="tags" placeholder="us-sourcing, shortlist" className={bulkControl} aria-label="Tags" />
+                  <div className="flex gap-2">
+                    <BulkApply form="bulk" op="add_tags">
+                      Add tags
+                    </BulkApply>
+                    <button type="submit" form="bulk" name="op" value="remove_tags" className={buttonClass("secondary", "sm")}>
+                      Remove tags
+                    </button>
+                  </div>
+                </BulkMenu>
+                <BulkMenu label="Outreach">
+                  <Select form="bulk" name="outreachStatus" defaultValue="" options={OUTREACH_STATUSES.map((o) => ({ value: o, label: OUTREACH_LABELS[o] }))} placeholder="Pick outreach" className={bulkControl} aria-label="Outreach" />
+                  <BulkApply form="bulk" op="outreach" />
+                </BulkMenu>
+              </>
+            ) : null}
+            {canPipe ? (
+              <BulkMenu label="Add to a job" wide>
+                <Select form="bulk" name="jobId" defaultValue="" options={jobList.filter((j) => j.status === "open" || j.status === "paused" || j.status === "draft").map((j) => ({ value: j.id, label: j.title }))} placeholder="Pick a job" className={bulkControl} aria-label="Job" />
+                <Select form="bulk" name="startStage" defaultValue="new" options={[{ value: "new", label: "Start at Applied" }, { value: "shortlisted", label: "Start at Shortlisted" }]} className={bulkControl} aria-label="Starting stage" />
+                <BulkApply form="bulk" op="add_job">
+                  Add to job
+                </BulkApply>
+              </BulkMenu>
+            ) : null}
+            {canShortlist ? (
+              <BulkMenu label="Add to requirement" wide>
+                <Select form="bulk" name="requirementId" defaultValue="" options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))} placeholder={reqs.length ? "Pick a requirement" : "No open requirements"} className={bulkControl} aria-label="Requirement" />
                 <PendingButton form="bulk" formAction={addSelectedToRequirement} pendingText="Adding...">
                   Add to requirement
                 </PendingButton>
-              </>
+              </BulkMenu>
             ) : null}
-          </div>
+            {(canEdit && can(user.role, "groups.manage")) || (can(user.role, "campaigns.manage") && canOpenSection(user, "referrals")) || (can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals")) || canEdit ? (
+              <BulkMenu label="More" wide>
+                {canEdit && can(user.role, "groups.manage") ? (
+                  <div className="space-y-2">
+                    <Select form="bulk" name="groupId" defaultValue="" options={groups.map((g) => ({ value: g.id, label: g.name }))} placeholder="Pick a group" className={bulkControl} aria-label="Group" />
+                    <BulkApply form="bulk" op="add_group">
+                      Add to group
+                    </BulkApply>
+                  </div>
+                ) : null}
+                {(can(user.role, "campaigns.manage") && canOpenSection(user, "referrals")) || (can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals")) ? (
+                  <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                    {can(user.role, "campaigns.manage") && canOpenSection(user, "referrals") ? (
+                      <button type="submit" form="bulk" name="op" value="email" className={buttonClass("secondary", "sm")}>
+                        Email them (campaign)
+                      </button>
+                    ) : null}
+                    {can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals") ? (
+                      <button type="submit" form="bulk" name="op" value="refer" className={buttonClass("secondary", "sm")}>
+                        Refer them
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {canEdit ? (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <Input form="bulk" name="dncReason" placeholder="Reason, e.g. asked to stop by email" className={bulkControl} aria-label="Do-not-contact reason" />
+                    <button type="submit" form="bulk" name="op" value="dnc" className={buttonClass("secondary", "sm", "text-danger")}>
+                      Mark do not contact
+                    </button>
+                  </div>
+                ) : null}
+              </BulkMenu>
+            ) : null}
+          </BulkBar>
         ) : null}
 
         {layout === "pipelines" && pipeBoard ? (

@@ -1,6 +1,6 @@
 "use client";
 // Small interactive pieces. Everything else renders on the server.
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
@@ -62,6 +62,7 @@ export function SelectAll({ label = "Select all", form }: { label?: string; form
       type="checkbox"
       form={form}
       aria-label={label}
+      data-select-all=""
       className="h-4 w-4 rounded-sm border-input align-middle"
       onChange={(e) => {
         const f = e.currentTarget.form;
@@ -122,5 +123,30 @@ export function FilterSelect({
         );
       })}
     </select>
+  );
+}
+
+/** A <details> menu or popover that closes on a click outside it or on Escape (Columns, bulk actions, Save view). */
+export function Popover({ className, children }: { className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const el = ref.current;
+      if (el?.open && e.target instanceof Node && !el.contains(e.target)) el.open = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && ref.current?.open) ref.current.open = false;
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+  return (
+    <details ref={ref} className={className}>
+      {children}
+    </details>
   );
 }

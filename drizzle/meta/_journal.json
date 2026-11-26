@@ -64,6 +64,13 @@
       "when": 1795653834375,
       "tag": "0008_expert_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795719844179,
+      "tag": "0009_list_views",
+      "breakpoints": true
     }
   ]
 }

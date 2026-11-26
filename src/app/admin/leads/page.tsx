@@ -1,16 +1,25 @@
 import Link from "next/link";
-import { Building2, CalendarClock, Check, ExternalLink, LayoutGrid, Link2, Mail, Plus, Rows3 } from "lucide-react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { Building2, CalendarClock, Check, Download, ExternalLink, LayoutGrid, Link2, Mail, Plus, Rows3 } from "lucide-react";
 import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardScroller } from "@/components/crm/board";
 import { Avatar } from "@/components/ui/avatar";
 import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { getDb } from "@/db/client";
-import { can, canSeeContact } from "@/lib/auth/permissions";
+import { can, canManageView, canSeeContact } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
 import { CONTACT_KINDS, CONTACT_SOURCES, CONTACT_STAGES } from "@/lib/constants";
 import { addDays, shortDay, todayIST } from "@/lib/crm/dates";
 import { CONTACT_OPEN, CONTACT_TABS, CONTACT_TAB_LABELS, crmLabel } from "@/lib/crm/labels";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
-import { ago } from "@/lib/format";
+import { ago, fmtDate } from "@/lib/format";
+import { LEAD_LIST, columnsCookie, hasListViewParams, listConfigFromParams, listParamsFromConfig, listViewHref, pageOf, sameListConfig } from "@/lib/list-views";
+import { PAGE_SIZES } from "@/lib/views";
+import { getListView, listListViews } from "@/lib/server/views";
+import { ListViewTabs } from "@/components/crm/list-view-tabs";
+import { ColumnPicker } from "@/components/column-picker";
+import { BulkApply, BulkBar, BulkMenu } from "@/components/ui/bulk-bar";
+import { PageSummary, Pagination } from "@/components/ui/pagination";
 import { companyChoices } from "@/lib/server/companies";
 import { allContacts, contactView, getContact, parseContactFilters, visibleContact, type ContactRow } from "@/lib/server/contacts";
 import { ContactStageBar, ContactStageChip, DueChip, Initials } from "@/components/crm/chips";
@@ -19,19 +28,23 @@ import { RowLink } from "@/components/crm/row-link";
 import { ViewSwitch } from "@/components/crm/segments";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
-import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
+import { AutoSubmitSelect, SelectAll, SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
 import { Field, FieldRow, Input, Select, Textarea } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
 import { PanelSection, SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
-import { Tabs } from "@/components/ui/tabs";
+import { deleteListView, saveListView, updateListView } from "../list-view-actions";
 import { removeLead, saveLead, setLeadStage } from "./actions";
+import { bulkLeadsAction } from "./list-actions";
 
 export const metadata = { title: "Leads" };
 
 const opts = (list: readonly string[], ctx?: "contact") => list.map((v) => ({ value: v, label: crmLabel(v, ctx) }));
+const SPEC = LEAD_LIST;
+const BULK = "bulk-leads";
+const field = "h-9 w-full text-[13px]";
 const KIND_HINT = "Client: wants a product built. Partner: AI lab, data partner or staffing firm. Talent: someone who may work with us.";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -49,12 +62,26 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const db = await getDb();
   const today = todayIST();
   const contact = canSeeContact(user.role);
+
+  // Saved view: ?v=<id>. A bare ?v=<id> link opens with that view's tab, filters, columns and layout.
+  const views = await listListViews(db, user, "leads");
+  const vId = one(sp.v);
+  const active = vId ? (views.find((v) => v.id === vId) ?? (await getListView(db, user, vId, "leads"))) : null;
+  if (active && !hasListViewParams(SPEC, sp)) redirect(listViewHref(SPEC, active.id, active.config, { size: one(sp.size) }));
+  const config = listConfigFromParams(SPEC, sp, active ? null : (await cookies()).get(columnsCookie("leads"))?.value);
+  const columns = config.columns;
+  const shownCols = SPEC.columns.filter((c) => columns.includes(c.id));
+
   const [all, companies] = await Promise.all([allContacts(db), companyChoices(db)]);
   const f = parseContactFilters(sp);
-  const layout = one(sp.layout) === "board" ? "board" : "table";
+  const layout = config.layout;
   const view = contactView(all, f, today, { searchEmail: contact });
   const edit = can(user.role, "crm.edit");
+  const canDelete = can(user.role, "crm.delete");
   const rows = view.rows.map((c) => visibleContact(user.role, c));
+  const paged = pageOf(rows, one(sp.page), one(sp.size));
+  const keep = { size: one(sp.size) };
+  const exportParams = new URLSearchParams(Object.entries(config.filters));
   const here = hrefWith("/admin/leads", sp, { ok: null, error: null });
   const close = hrefWith("/admin/leads", sp, { view: null, new: null, ok: null, error: null });
   const viewingRaw = one(sp.view) ? await getContact(db, one(sp.view)) : null;
@@ -62,7 +89,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const filtered = Boolean(f.q || f.kind || f.stage || f.source || f.company || f.followUp);
   const lanes = (f.tab === "open" ? CONTACT_OPEN : f.tab === "won" ? ["won"] : f.tab === "lost" ? ["lost"] : CONTACT_STAGES) as readonly string[];
 
-  const layoutHref = (l: "board" | null) => hrefWith("/admin/leads", sp, { layout: l, view: null, ok: null, error: null });
+  const layoutHref = (l: "board" | null) => hrefWith("/admin/leads", sp, { layout: l, view: null, page: null, ok: null, error: null });
 
   return (
     <>
@@ -71,9 +98,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         subtitle="The people at accounts: who we talk to, where we found them, and the next follow-up."
         actions={
           edit ? (
-            <ButtonLink href={hrefWith("/admin/leads", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
-              <Plus className="h-4 w-4" aria-hidden /> New lead
-            </ButtonLink>
+            <>
+              <ButtonLink href={`/api/admin/leads/export?${exportParams.toString()}`} variant="secondary">
+                <Download className="h-4 w-4" aria-hidden /> Export CSV
+              </ButtonLink>
+              <ButtonLink href={hrefWith("/admin/leads", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
+                <Plus className="h-4 w-4" aria-hidden /> New lead
+              </ButtonLink>
+            </>
           ) : null
         }
       />
@@ -86,15 +118,27 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <Stat label="Follow-ups due" value={view.stats.followUpsDue} href={hrefWith("/admin/leads", {}, { followUp: "due" })} />
         </StatGrid>
       </div>
-      <Tabs tabs={CONTACT_TABS.map((t) => ({ href: hrefWith("/admin/leads", sp, { tab: t === "open" ? null : t, view: null, ok: null, error: null }), label: CONTACT_TAB_LABELS[t], active: f.tab === t, count: view.counts[t] }))} />
+      <ListViewTabs
+        builtIns={CONTACT_TABS.map((t) => ({ href: hrefWith("/admin/leads", sp, { tab: t === "open" ? null : t, v: null, page: null, view: null, ok: null, error: null }), label: CONTACT_TAB_LABELS[t], active: !active && f.tab === t, count: view.counts[t] }))}
+        views={views.map((v) => ({ href: listViewHref(SPEC, v.id, v.config, keep), label: v.name, active: active?.id === v.id, shared: v.shared, title: v.shared ? (v.ownerEmail === user.email ? "Shared with the team" : `Shared by ${v.ownerEmail}`) : "Only you see this view" }))}
+        hidden={{ collection: "leads" }}
+        currentParams={listParamsFromConfig(SPEC, config).toString()}
+        active={active ? { id: active.id, name: active.name, dirty: !sameListConfig(SPEC, active.config, config), manageable: canManageView(user, active) } : null}
+        canShare={can(user.role, "views.share")}
+        placeholder="View name, e.g. Follow-ups this week"
+        save={saveListView}
+        update={updateListView}
+        remove={deleteListView}
+      />
 
-      <Section flush>
+      <Section flush allowOverflow>
         <Toolbar
-          hidden={{ tab: f.tab !== "open" ? f.tab : null, layout: layout === "board" ? "board" : null }}
-          clearHref={filtered ? hrefWith("/admin/leads", {}, { tab: f.tab === "open" ? null : f.tab, layout: layout === "board" ? "board" : null }) : null}
+          hidden={{ v: active?.id, tab: f.tab !== "open" ? f.tab : null, layout: layout === "board" ? "board" : null, cols: sp.cols !== undefined ? one(sp.cols) : null, size: layout === "board" ? one(sp.size) : null }}
+          clearHref={filtered ? hrefWith("/admin/leads", {}, { v: active?.id ?? null, tab: f.tab === "open" ? null : f.tab, layout: layout === "board" ? "board" : null, cols: sp.cols !== undefined ? one(sp.cols) : null }) : null}
           end={
             <>
-              <ResultCount n={rows.length} noun="lead" />
+              {layout === "table" ? <PageSummary total={paged.total} page={paged.page} pageSize={paged.size} sizes={PAGE_SIZES} /> : <ResultCount n={rows.length} noun="lead" />}
+              {layout === "table" ? <ColumnPicker selected={columns} columns={SPEC.columns} defaults={SPEC.defaultColumns} path={SPEC.path} cookie={columnsCookie("leads")} fixed={SPEC.fixed} /> : null}
               <ViewSwitch
                 label="Layout"
                 items={[
@@ -112,6 +156,34 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <FilterSelect name="company" defaultValue={f.company} options={[{ value: "none", label: "No account" }, ...companies.map((c) => ({ value: c.id, label: c.name }))]} placeholder="Any account" label="Account" />
           <FilterSelect name="followUp" defaultValue={f.followUp} options={[{ value: "due", label: "Follow-up due" }, { value: "set", label: "Has a follow-up" }, { value: "none", label: "No follow-up" }]} placeholder="Any follow-up" label="Follow-up" />
         </Toolbar>
+
+        {/* The bulk form has no children: the row checkboxes and the bar's controls point at it with form=. */}
+        <form id={BULK} action={bulkLeadsAction}>
+          <input type="hidden" name="returnTo" value={here} />
+        </form>
+        {layout === "table" && edit && paged.rows.length ? (
+          <BulkBar form={BULK} noun="lead" exportHref="/api/admin/leads/export" deleteOp={canDelete ? "delete" : null}>
+            <BulkMenu label="Change stage">
+              <Select form={BULK} name="stage" defaultValue="" options={opts(CONTACT_STAGES, "contact")} placeholder="Pick a stage" className={field} aria-label="Stage" />
+              <BulkApply form={BULK} op="stage" />
+            </BulkMenu>
+            <BulkMenu label="Change type">
+              <Select form={BULK} name="kind" defaultValue="" options={opts(CONTACT_KINDS)} placeholder="Pick a type" className={field} aria-label="Type" />
+              <BulkApply form={BULK} op="kind" />
+            </BulkMenu>
+            <BulkMenu label="Follow-up">
+              <Input form={BULK} name="followUpDate" type="date" className={field} aria-label="Next follow-up" />
+              <p className="text-[13px] text-muted-foreground">Leave empty to clear the follow-up.</p>
+              <BulkApply form={BULK} op="follow_up">
+                Set follow-up
+              </BulkApply>
+            </BulkMenu>
+            <BulkMenu label="Link to account">
+              <Select form={BULK} name="companyId" defaultValue="" options={[...companies.map((c) => ({ value: c.id, label: c.name })), { value: "none", label: "No account (unlink)" }]} placeholder="Pick an account" className={field} aria-label="Account" />
+              <BulkApply form={BULK} op="account" />
+            </BulkMenu>
+          </BulkBar>
+        ) : null}
         {layout === "board" && all.length ? (
           <BoardScroller label="Leads board">
             {lanes.map((stage) => {
@@ -160,64 +232,52 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               );
             })}
           </BoardScroller>
-        ) : rows.length ? (
-          <Table sticky>
-            <THead>
-              <Th>Person</Th>
-              <Th>Role</Th>
-              <Th>Account</Th>
-              <Th>Stage</Th>
-              <Th>Email / profile</Th>
-              <Th className="hidden 2xl:table-cell">Source</Th>
-              <Th>Next follow-up</Th>
-            </THead>
-            <TBody>
-              {rows.map((c) => (
-                <tr key={c.id} className="row-hover relative">
-                  <Td>
-                    <div className="flex items-center gap-3">
-                      <Initials name={c.name} />
-                      <RowLink href={hrefWith("/admin/leads", sp, { view: c.id, new: null, ok: null, error: null })} className="max-w-48 truncate">
-                        {c.name}
-                      </RowLink>
-                    </div>
-                  </Td>
-                  <Td>
-                    <span className="block max-w-36 truncate" title={c.role ?? undefined}>
-                      {c.role ?? <span className="text-muted-foreground/70">–</span>}
-                    </span>
-                  </Td>
-                  <Td>
-                    {c.companyId ? (
-                      <Link href={`/admin/accounts?view=${c.companyId}`} className="relative z-10 inline-flex max-w-52 items-center gap-2 hover:text-primary">
-                        <OrgLogo name={c.companyName ?? ""} size={22} />
-                        <span className="truncate">{c.companyName}</span>
-                      </Link>
-                    ) : (
-                      <span className="text-foreground/75">{c.company ?? <span className="text-muted-foreground/70">–</span>}</span>
-                    )}
-                  </Td>
-                  <Td>
-                    <ContactStageBar stage={c.stage} />
-                  </Td>
-                  <Td>
-                    <span className="flex items-center gap-2">
-                      <span className="max-w-52 truncate">{c.email ?? <span className="text-muted-foreground/70">–</span>}</span>
-                      {c.profileUrl ? (
-                        <a href={c.profileUrl} target="_blank" rel="noreferrer noopener" className="relative z-10 text-muted-foreground hover:text-primary" aria-label={`Profile of ${c.name}`}>
-                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                        </a>
-                      ) : null}
-                    </span>
-                  </Td>
-                  <Td className="hidden whitespace-nowrap 2xl:table-cell">{crmLabel(c.source)}</Td>
-                  <Td className="whitespace-nowrap">
-                    <DueChip due={c.nextFollowUp} today={today} stage={c.stage === "won" || c.stage === "lost" ? "dropped" : undefined} />
-                  </Td>
-                </tr>
-              ))}
-            </TBody>
-          </Table>
+        ) : paged.rows.length ? (
+          <>
+            <Table sticky>
+              <THead>
+                {edit ? (
+                  <Th className="w-10">
+                    <SelectAll form={BULK} label="Select all on this page" />
+                  </Th>
+                ) : null}
+                <Th>Person</Th>
+                {shownCols.map((c) => (
+                  <Th key={c.id}>{c.label}</Th>
+                ))}
+              </THead>
+              <TBody>
+                {paged.rows.map((c) => (
+                  <tr key={c.id} className="row-hover relative">
+                    {edit ? (
+                      <Td>
+                        <input type="checkbox" form={BULK} name="ids" value={c.id} aria-label={`Select ${c.name}`} className="relative z-10 h-4 w-4 rounded-sm align-middle" />
+                      </Td>
+                    ) : null}
+                    <Td>
+                      <div className="flex items-center gap-3">
+                        <Initials name={c.name} />
+                        <RowLink href={hrefWith("/admin/leads", sp, { view: c.id, new: null, ok: null, error: null })} className="max-w-48 truncate">
+                          {c.name}
+                        </RowLink>
+                      </div>
+                    </Td>
+                    {shownCols.map((col) => (
+                      <LeadCell key={col.id} id={col.id} c={c} today={today} />
+                    ))}
+                  </tr>
+                ))}
+              </TBody>
+            </Table>
+            <Pagination
+              page={paged.page}
+              pageSize={paged.size}
+              total={paged.total}
+              hrefFor={(p) => hrefWith("/admin/leads", sp, { page: p, view: null, ok: null, error: null })}
+              sizes={PAGE_SIZES}
+              sizeHref={(s) => hrefWith("/admin/leads", sp, { size: s === 50 ? null : s, page: null, view: null, ok: null, error: null })}
+            />
+          </>
         ) : all.length ? (
           <EmptyState size="page" title="No leads match this view." description="Try another tab, fewer filters or a shorter search." action={<ButtonLink href="/admin/leads?tab=all">Show all leads</ButtonLink>} />
         ) : (
@@ -269,6 +329,68 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       ) : null}
     </>
   );
+}
+
+function LeadCell({ id, c, today }: { id: string; c: ContactRow; today: string }) {
+  const closed = c.stage === "won" || c.stage === "lost";
+  switch (id) {
+    case "role":
+      return (
+        <Td>
+          <span className="block max-w-36 truncate" title={c.role ?? undefined}>
+            {c.role ?? <span className="text-muted-foreground/70">–</span>}
+          </span>
+        </Td>
+      );
+    case "account":
+      return (
+        <Td>
+          {c.companyId ? (
+            <Link href={`/admin/accounts?view=${c.companyId}`} className="relative z-10 inline-flex max-w-52 items-center gap-2 hover:text-primary">
+              <OrgLogo name={c.companyName ?? ""} size={22} />
+              <span className="truncate">{c.companyName}</span>
+            </Link>
+          ) : (
+            <span className="text-foreground/75">{c.company ?? <span className="text-muted-foreground/70">–</span>}</span>
+          )}
+        </Td>
+      );
+    case "stage":
+      return (
+        <Td>
+          <ContactStageBar stage={c.stage} />
+        </Td>
+      );
+    case "email":
+      return (
+        <Td>
+          <span className="flex items-center gap-2">
+            <span className="max-w-52 truncate">{c.email ?? <span className="text-muted-foreground/70">–</span>}</span>
+            {c.profileUrl ? (
+              <a href={c.profileUrl} target="_blank" rel="noreferrer noopener" className="relative z-10 text-muted-foreground hover:text-primary" aria-label={`Profile of ${c.name}`}>
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            ) : null}
+          </span>
+        </Td>
+      );
+    case "kind":
+      return <Td className="whitespace-nowrap">{crmLabel(c.kind)}</Td>;
+    case "source":
+      return <Td className="whitespace-nowrap">{crmLabel(c.source)}</Td>;
+    case "followUp":
+      return (
+        <Td className="whitespace-nowrap">
+          <DueChip due={c.nextFollowUp} today={today} stage={closed ? "dropped" : undefined} />
+        </Td>
+      );
+    case "added":
+      return <Td className="whitespace-nowrap text-[13px] text-muted-foreground">{fmtDate(c.createdAt)}</Td>;
+    case "updated":
+      return <Td className="whitespace-nowrap text-[13px] text-muted-foreground">{ago(c.updatedAt)}</Td>;
+    default:
+      return <Td>–</Td>;
+  }
 }
 
 /** Under the name: one-click ways to reach them (email, copy, profile) and their account. */

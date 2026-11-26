@@ -1,35 +1,50 @@
 import Link from "next/link";
-import { ArrowRight, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ArrowRight, Download, LayoutGrid, Plus, Rows3 } from "lucide-react";
 import { getDb } from "@/db/client";
-import { can } from "@/lib/auth/permissions";
+import { can, canManageView } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
 import { PARTNER_KINDS, label } from "@/lib/constants";
 import { todayIST } from "@/lib/crm/dates";
 import { COMPANY_STAGES } from "@/lib/constants";
 import { COMPANY_TABS, COMPANY_TAB_LABELS, crmLabel } from "@/lib/crm/labels";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
+import { ago, fmtDate } from "@/lib/format";
+import { ACCOUNT_LIST, columnsCookie, hasListViewParams, listConfigFromParams, listParamsFromConfig, listViewHref, pageOf, sameListConfig } from "@/lib/list-views";
+import { PAGE_SIZES } from "@/lib/views";
 import { allCompanies, companyActivityLog, companyView, getCompany, myTeamMemberId, ownerLabel, ownerOptions, parseCompanyFilters, teamOptions, type CompanyRow } from "@/lib/server/companies";
 import { contactsAt, visibleContact } from "@/lib/server/contacts";
+import { getListView, listListViews } from "@/lib/server/views";
 import { ActivityTimeline } from "@/components/crm/activity-timeline";
 import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardScroller } from "@/components/crm/board";
 import { ContactStageChip, DueChip, Facts, PriorityDot, StageBar, StageChip } from "@/components/crm/chips";
-import { NewAccountFields, stageOptions } from "@/components/crm/company-fields";
+import { NewAccountFields, priorityOptions, stageOptions } from "@/components/crm/company-fields";
+import { ListViewTabs } from "@/components/crm/list-view-tabs";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { RowLink } from "@/components/crm/row-link";
 import { ViewSwitch } from "@/components/crm/segments";
+import { ColumnPicker } from "@/components/column-picker";
 import { Avatar, Person } from "@/components/ui/avatar";
+import { Chips } from "@/components/ui/badge";
+import { BulkApply, BulkBar, BulkMenu } from "@/components/ui/bulk-bar";
 import { ButtonLink } from "@/components/ui/button";
-import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
+import { AutoSubmitSelect, SelectAll, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
-import { Input } from "@/components/ui/field";
+import { Input, Select } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
+import { PageSummary, Pagination } from "@/components/ui/pagination";
 import { PanelSection, SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
-import { Tabs } from "@/components/ui/tabs";
 import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
+import { deleteListView, saveListView, updateListView } from "../list-view-actions";
 import { createAccount, setAccountStage } from "./actions";
+import { bulkAccountsAction } from "./list-actions";
 
 export const metadata = { title: "Accounts" };
+const SPEC = ACCOUNT_LIST;
+const BULK = "bulk-accounts";
+const field = "h-9 w-full text-[13px]";
 
 export default async function AccountsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
@@ -37,18 +52,38 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   if (!allowed) return <NoAccessPage role={user.role} />;
   const db = await getDb();
   const today = todayIST();
+
+  // Saved view: ?v=<id>. A bare ?v=<id> link opens with that view's tab, filters, columns and layout.
+  const views = await listListViews(db, user, "accounts");
+  const vId = one(sp.v);
+  const active = vId ? (views.find((v) => v.id === vId) ?? (await getListView(db, user, vId, "accounts"))) : null;
+  if (active && !hasListViewParams(SPEC, sp)) redirect(listViewHref(SPEC, active.id, active.config, { size: one(sp.size) }));
+  const config = listConfigFromParams(SPEC, sp, active ? null : (await cookies()).get(columnsCookie("accounts"))?.value);
+  const columns = config.columns;
+
   const [all, team, meId] = await Promise.all([allCompanies(db), teamOptions(db), myTeamMemberId(db, user.email)]);
   const f = parseCompanyFilters(sp);
-  const layout = one(sp.layout) === "board" ? "board" : "table";
+  const layout = config.layout;
   const view = companyView(all, f, today, meId);
+  const paged = pageOf(view.rows, one(sp.page), one(sp.size));
   const edit = can(user.role, "crm.edit");
+  const canDelete = can(user.role, "crm.delete");
   const here = hrefWith("/admin/accounts", sp, { ok: null, error: null });
   const close = hrefWith("/admin/accounts", sp, { view: null, new: null, ok: null, error: null });
   const filtered = Boolean(f.q || f.kind || f.stage || f.owner || f.line || f.tag);
   const viewing = one(sp.view) ? await getCompany(db, one(sp.view)) : null;
   const [people, latest] = viewing ? await Promise.all([contactsAt(db, viewing.id), companyActivityLog(db, viewing.id, 5)]) : [[], []];
+  const keep = { size: one(sp.size) };
+  const currentParams = listParamsFromConfig(SPEC, config).toString();
+  const exportParams = new URLSearchParams(Object.entries(config.filters));
 
-  const layoutHref = (l: "board" | null) => hrefWith("/admin/accounts", sp, { layout: l, view: null, ok: null, error: null });
+  const layoutHref = (l: "board" | null) => hrefWith("/admin/accounts", sp, { layout: l, view: null, page: null, ok: null, error: null });
+  const shownCols = SPEC.columns.filter((c) => columns.includes(c.id));
+  const ownerChoices = [
+    ...team.filter((m) => m.active).map((m) => ({ value: `tm:${m.id}`, label: m.name || m.email.split("@")[0] })),
+    ...ownerOptions(all, team, meId).filter((o) => o.value.startsWith("name:")),
+    { value: "none", label: "No owner" },
+  ];
 
   return (
     <>
@@ -56,31 +91,50 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
         title="Accounts"
         subtitle={`${all.length} ${all.length === 1 ? "company" : "companies"}: AI data partners, expert platforms, agencies, clients.`}
         actions={
-          edit ? (
-            <ButtonLink href={hrefWith("/admin/accounts", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
-              <Plus className="h-4 w-4" aria-hidden /> New account
-            </ButtonLink>
-          ) : null
+          <>
+            {edit ? (
+              <ButtonLink href={`/api/admin/accounts/export?${exportParams.toString()}`} variant="secondary">
+                <Download className="h-4 w-4" aria-hidden /> Export CSV
+              </ButtonLink>
+            ) : null}
+            {edit ? (
+              <ButtonLink href={hrefWith("/admin/accounts", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
+                <Plus className="h-4 w-4" aria-hidden /> New account
+              </ButtonLink>
+            ) : null}
+          </>
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <div className="mb-8">
         <StatGrid>
-          <Stat label="Pipeline" value={view.stats.pipeline} hint="Not on hold or dropped" href={hrefWith("/admin/accounts", sp, { tab: null, view: null })} />
+          <Stat label="Pipeline" value={view.stats.pipeline} hint="Not on hold or dropped" href={hrefWith("/admin/accounts", sp, { tab: null, v: null, page: null, view: null })} />
           <Stat label="In talks" value={view.stats.inTalks} hint="Contacted and talking" />
-          <Stat label="Due now" value={view.stats.dueNow} hint="Overdue or due today" href={hrefWith("/admin/accounts", sp, { tab: "due", view: null })} />
+          <Stat label="Due now" value={view.stats.dueNow} hint="Overdue or due today" href={hrefWith("/admin/accounts", sp, { tab: "due", v: null, page: null, view: null })} />
           <Stat label="Pilots & active" value={view.stats.won} />
         </StatGrid>
       </div>
-      <Tabs tabs={COMPANY_TABS.map((t) => ({ href: hrefWith("/admin/accounts", sp, { tab: t === "pipeline" ? null : t, view: null, ok: null, error: null }), label: COMPANY_TAB_LABELS[t], active: f.tab === t, count: view.counts[t] }))} />
+      <ListViewTabs
+        builtIns={COMPANY_TABS.map((t) => ({ href: hrefWith("/admin/accounts", sp, { tab: t === "pipeline" ? null : t, v: null, page: null, view: null, ok: null, error: null }), label: COMPANY_TAB_LABELS[t], active: !active && f.tab === t, count: view.counts[t] }))}
+        views={views.map((v) => ({ href: listViewHref(SPEC, v.id, v.config, keep), label: v.name, active: active?.id === v.id, shared: v.shared, title: v.shared ? (v.ownerEmail === user.email ? "Shared with the team" : `Shared by ${v.ownerEmail}`) : "Only you see this view" }))}
+        hidden={{ collection: "accounts" }}
+        currentParams={currentParams}
+        active={active ? { id: active.id, name: active.name, dirty: !sameListConfig(SPEC, active.config, config), manageable: canManageView(user, active) } : null}
+        canShare={can(user.role, "views.share")}
+        placeholder="View name, e.g. My hot accounts"
+        save={saveListView}
+        update={updateListView}
+        remove={deleteListView}
+      />
 
-      <Section flush>
+      <Section flush allowOverflow>
         <Toolbar
-          hidden={{ tab: f.tab !== "pipeline" ? f.tab : null, layout: layout === "board" ? "board" : null }}
-          clearHref={filtered ? hrefWith("/admin/accounts", {}, { tab: f.tab === "pipeline" ? null : f.tab, layout: layout === "board" ? "board" : null }) : null}
+          hidden={{ v: active?.id, tab: f.tab !== "pipeline" ? f.tab : null, layout: layout === "board" ? "board" : null, cols: sp.cols !== undefined ? one(sp.cols) : null, size: layout === "board" ? one(sp.size) : null }}
+          clearHref={filtered ? hrefWith("/admin/accounts", {}, { v: active?.id ?? null, tab: f.tab === "pipeline" ? null : f.tab, layout: layout === "board" ? "board" : null, cols: sp.cols !== undefined ? one(sp.cols) : null }) : null}
           end={
             <>
-              <ResultCount n={view.rows.length} noun="account" />
+              {layout === "table" ? <PageSummary total={paged.total} page={paged.page} pageSize={paged.size} sizes={PAGE_SIZES} /> : <ResultCount n={view.rows.length} noun="account" />}
+              {layout === "table" ? <ColumnPicker selected={columns} columns={SPEC.columns} defaults={SPEC.defaultColumns} path={SPEC.path} cookie={columnsCookie("accounts")} fixed={SPEC.fixed} /> : null}
               <ViewSwitch
                 label="Layout"
                 items={[
@@ -98,65 +152,101 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
           <FilterSelect name="line" defaultValue={f.line} options={[{ value: "ai_training", label: "AI Training" }, { value: "product", label: "Product Studio" }]} placeholder="Both lines" label="Business line" />
           <Input name="tag" defaultValue={f.tag} placeholder="Tag" aria-label="Tag" className="w-28" />
         </Toolbar>
+
+        {/* The bulk form has no children: the row checkboxes and the bar's controls point at it with form=. */}
+        <form id={BULK} action={bulkAccountsAction}>
+          <input type="hidden" name="returnTo" value={here} />
+        </form>
+        {layout === "table" && edit && paged.rows.length ? (
+          <BulkBar form={BULK} noun="account" exportHref="/api/admin/accounts/export" deleteOp={canDelete ? "delete" : null}>
+            <BulkMenu label="Change stage">
+              <Select form={BULK} name="stage" defaultValue="" options={stageOptions} placeholder="Pick a stage" className={field} aria-label="Stage" />
+              <BulkApply form={BULK} op="stage" />
+            </BulkMenu>
+            <BulkMenu label="Assign owner">
+              <Select form={BULK} name="owner" defaultValue="" options={ownerChoices} placeholder="Pick an owner" className={field} aria-label="Owner" />
+              <BulkApply form={BULK} op="owner" />
+            </BulkMenu>
+            <BulkMenu label="Priority">
+              <Select form={BULK} name="priority" defaultValue="" options={priorityOptions} placeholder="Pick a priority" className={field} aria-label="Priority" />
+              <BulkApply form={BULK} op="priority" />
+            </BulkMenu>
+            <BulkMenu label="Tags">
+              <Input form={BULK} name="addTags" placeholder="Add tags, e.g. q1, warm" className={field} aria-label="Tags to add" />
+              <BulkApply form={BULK} op="add_tags">
+                Add tags
+              </BulkApply>
+              <div className="border-t border-border pt-3">
+                <Input form={BULK} name="removeTags" placeholder="Remove tags" className={field} aria-label="Tags to remove" />
+              </div>
+              <BulkApply form={BULK} op="remove_tags">
+                Remove tags
+              </BulkApply>
+            </BulkMenu>
+          </BulkBar>
+        ) : null}
+
         {layout === "board" ? (
           all.length ? (
             <Board view={view} sp={sp} today={today} edit={edit} here={here} />
           ) : (
             <EmptyAccounts edit={edit} filtered={false} sp={sp} />
           )
-        ) : view.rows.length ? (
-          <Table sticky>
-            <THead>
-              <Th>Account</Th>
-              <Th>Stage</Th>
-              <Th>Owner</Th>
-              <Th>Next step</Th>
-              <Th>Due</Th>
-              <Th className="hidden 2xl:table-cell">Route</Th>
-            </THead>
-            <TBody>
-              {view.rows.map((c) => (
-                <tr key={c.id} className="row-hover relative">
-                  <Td>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <OrgLogo name={c.name} domain={c.domain} size={32} />
-                      <div className="min-w-0">
-                        <span className="flex min-w-0 items-center">
-                          <RowLink href={hrefWith("/admin/accounts", sp, { view: c.id, new: null, ok: null, error: null })} className="block max-w-60 truncate" title={c.name}>
-                            {c.name}
-                          </RowLink>
-                          <PriorityDot priority={c.priority} />
-                        </span>
-                        <div className="max-w-60 truncate text-[13px] text-muted-foreground" title={c.tags.length ? c.tags.join(", ") : undefined}>
-                          {label(c.kind)}
-                          {c.tags.length ? ` · ${c.tags.join(", ")}` : ""}
+        ) : paged.rows.length ? (
+          <>
+            <Table sticky>
+              <THead>
+                {edit ? (
+                  <Th className="w-10">
+                    <SelectAll form={BULK} label="Select all on this page" />
+                  </Th>
+                ) : null}
+                <Th>Account</Th>
+                {shownCols.map((c) => (
+                  <Th key={c.id}>{c.label}</Th>
+                ))}
+              </THead>
+              <TBody>
+                {paged.rows.map((c) => (
+                  <tr key={c.id} className="row-hover relative">
+                    {edit ? (
+                      <Td>
+                        <input type="checkbox" form={BULK} name="ids" value={c.id} aria-label={`Select ${c.name}`} className="relative z-10 h-4 w-4 rounded-sm align-middle" />
+                      </Td>
+                    ) : null}
+                    <Td>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <OrgLogo name={c.name} domain={c.domain} size={32} />
+                        <div className="min-w-0">
+                          <span className="flex min-w-0 items-center">
+                            <RowLink href={hrefWith("/admin/accounts", sp, { view: c.id, new: null, ok: null, error: null })} className="block max-w-60 truncate" title={c.name}>
+                              {c.name}
+                            </RowLink>
+                            <PriorityDot priority={c.priority} />
+                          </span>
+                          <div className="max-w-60 truncate text-[13px] text-muted-foreground" title={c.tags.length ? c.tags.join(", ") : undefined}>
+                            {label(c.kind)}
+                            {c.tags.length ? ` · ${c.tags.join(", ")}` : ""}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Td>
-                  <Td>
-                    <StageBar stage={c.stage} />
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <Person name={ownerLabel(c)} className="max-w-40" />
-                  </Td>
-                  <Td>
-                    <span className="line-clamp-2 block max-w-80 min-w-52" title={c.nextStep ?? undefined}>
-                      {c.nextStep ?? <span className="text-muted-foreground/70">–</span>}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <DueChip due={c.nextStepDue} today={today} stage={c.stage} />
-                  </Td>
-                  <Td className="hidden 2xl:table-cell">
-                    <span className="block max-w-48 truncate text-[13px] text-foreground/75" title={c.bestRoute ?? undefined}>
-                      {c.bestRoute ?? "–"}
-                    </span>
-                  </Td>
-                </tr>
-              ))}
-            </TBody>
-          </Table>
+                    </Td>
+                    {shownCols.map((col) => (
+                      <AccountCell key={col.id} id={col.id} c={c} today={today} />
+                    ))}
+                  </tr>
+                ))}
+              </TBody>
+            </Table>
+            <Pagination
+              page={paged.page}
+              pageSize={paged.size}
+              total={paged.total}
+              hrefFor={(p) => hrefWith("/admin/accounts", sp, { page: p, view: null, ok: null, error: null })}
+              sizes={PAGE_SIZES}
+              sizeHref={(s) => hrefWith("/admin/accounts", sp, { size: s === 50 ? null : s, page: null, view: null, ok: null, error: null })}
+            />
+          </>
         ) : (
           <EmptyAccounts edit={edit} filtered={all.length > 0} sp={sp} />
         )}
@@ -222,6 +312,71 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       ) : null}
     </>
   );
+}
+
+function AccountCell({ id, c, today }: { id: string; c: CompanyRow; today: string }) {
+  switch (id) {
+    case "stage":
+      return (
+        <Td>
+          <StageBar stage={c.stage} />
+        </Td>
+      );
+    case "owner":
+      return (
+        <Td className="whitespace-nowrap">
+          <Person name={ownerLabel(c)} className="max-w-40" />
+        </Td>
+      );
+    case "next":
+      return (
+        <Td>
+          <span className="line-clamp-2 block max-w-80 min-w-52" title={c.nextStep ?? undefined}>
+            {c.nextStep ?? <span className="text-muted-foreground/70">–</span>}
+          </span>
+        </Td>
+      );
+    case "due":
+      return (
+        <Td className="whitespace-nowrap">
+          <DueChip due={c.nextStepDue} today={today} stage={c.stage} />
+        </Td>
+      );
+    case "route":
+      return (
+        <Td>
+          <span className="block max-w-48 truncate text-[13px] text-foreground/75" title={c.bestRoute ?? undefined}>
+            {c.bestRoute ?? "–"}
+          </span>
+        </Td>
+      );
+    case "kind":
+      return <Td className="whitespace-nowrap">{label(c.kind)}</Td>;
+    case "line":
+      return <Td className="whitespace-nowrap">{crmLabel(c.businessLine)}</Td>;
+    case "priority":
+      return <Td className="whitespace-nowrap">{crmLabel(c.priority)}</Td>;
+    case "tags":
+      return <Td>{c.tags.length ? <div className="w-44"><Chips items={c.tags} max={2} oneLine /></div> : <span className="text-muted-foreground/70">–</span>}</Td>;
+    case "people":
+      return <Td className="tabular">{c.people}</Td>;
+    case "location":
+      return (
+        <Td>
+          <span className="block max-w-40 truncate" title={c.location ?? undefined}>
+            {c.location ?? "–"}
+          </span>
+        </Td>
+      );
+    case "activity":
+      return <Td className="whitespace-nowrap text-[13px] text-muted-foreground">{c.lastActivityAt ? ago(c.lastActivityAt) : "–"}</Td>;
+    case "added":
+      return <Td className="whitespace-nowrap text-[13px] text-muted-foreground">{fmtDate(c.createdAt)}</Td>;
+    case "updated":
+      return <Td className="whitespace-nowrap text-[13px] text-muted-foreground">{ago(c.updatedAt)}</Td>;
+    default:
+      return <Td>–</Td>;
+  }
 }
 
 function NoAccessPage({ role }: { role: string }) {

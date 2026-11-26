@@ -151,8 +151,8 @@ function orderFor(f: ExpertFilters): SQL[] {
   }
 }
 
-export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number; contact?: boolean; meEmail?: string }) {
-  const where = and(...expertConditions(f, { contact: opts.contact, meEmail: opts.meEmail }));
+export async function listExperts(db: DB, f: ExpertFilters, opts: { limit: number; offset: number; contact?: boolean; meEmail?: string; ids?: string[] }) {
+  const where = and(...expertConditions(f, { contact: opts.contact, meEmail: opts.meEmail }), opts.ids ? inArray(experts.id, opts.ids.filter(isUuid).length ? opts.ids.filter(isUuid) : ["00000000-0000-0000-0000-000000000000"]) : undefined);
   const [rows, [{ n }]] = await Promise.all([
     db
       .select({ ...expertListColumns, leadingStage: leadingStageSql, ownerMemberName: ownerNameSql })

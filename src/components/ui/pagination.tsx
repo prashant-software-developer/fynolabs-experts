@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonClass } from "./button";
+import { FilterSelect } from "./client";
 import { cn } from "./cn";
 
 /**
@@ -75,5 +76,25 @@ export function Pagination({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Above a table, on the right of its toolbar: "Total N records · Page 1 of M" and a page size
+ * choice. Sits inside the toolbar's GET form, so a new size applies at once (back to page 1).
+ */
+export function PageSummary({ total, page, pageSize, sizes, noun = "records" }: { total: number; page: number; pageSize: number; sizes: readonly number[]; noun?: string }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <span className="flex items-center gap-3">
+      <span className="tabular text-[13px] whitespace-nowrap text-muted-foreground">
+        Total <span className="text-foreground">{total.toLocaleString("en-GB")}</span> {noun}
+        <span className="max-sm:hidden">
+          {" "}
+          · Page {Math.min(page, pages)} of {pages}
+        </span>
+      </span>
+      <FilterSelect name="size" defaultValue={String(pageSize)} options={sizes.map((s) => ({ value: String(s), label: `${s} / page` }))} label="Rows per page" className="h-8 text-[13px]" />
+    </span>
   );
 }

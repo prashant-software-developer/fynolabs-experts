@@ -6,6 +6,7 @@ import { parseExpertFilters } from "@/lib/filters";
 import { apiGuard } from "@/lib/auth/api";
 import { canSeeMoney } from "@/lib/auth/permissions";
 import { logActivity } from "@/lib/server/activity";
+import { idsParam } from "@/lib/server/crm-export";
 import { listExperts } from "@/lib/server/experts";
 
 export const dynamic = "force-dynamic";
@@ -38,15 +39,16 @@ const HEADERS = [
   "Updated",
 ];
 
-/** The current filtered list as CSV (internal use: includes contact details). */
+/** The current filtered list as CSV, or only the ticked experts with ?ids= (internal use: includes contact details). */
 export async function GET(req: NextRequest) {
   const user = await apiGuard("experts.export");
   if (user instanceof NextResponse) return user;
   const money = canSeeMoney(user.role);
-  const sp = Object.fromEntries(req.nextUrl.searchParams.entries());
-  const f = { ...parseExpertFilters(sp), page: 1 };
+  const ids = idsParam(req.nextUrl.searchParams);
+  const sp = Object.fromEntries([...req.nextUrl.searchParams.entries()].filter(([k]) => k !== "ids"));
+  const f = { ...parseExpertFilters(ids.length ? {} : sp), page: 1 };
   const db = await getDb();
-  const { rows, total } = await listExperts(db, f, { limit: MAX_ROWS, offset: 0 });
+  const { rows, total } = await listExperts(db, f, { limit: MAX_ROWS, offset: 0, ...(ids.length ? { ids } : {}) });
   // The rate expectation column only goes to roles that may see money.
   const RATE = HEADERS.indexOf("Rate expectation USD (internal)");
   const keep = <T,>(cells: T[]) => (money ? cells : cells.filter((_, i) => i !== RATE));
