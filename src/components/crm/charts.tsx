@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/components/ui/cn";
 import { shortDay } from "@/lib/crm/dates";
-import { SeriesBars } from "./trend";
+import { SeriesBars, SourceTrend } from "./trend";
 
 /** One row per item: label, a bar against the largest value, the count. */
 export function BarList({ items, emptyText }: { items: { key: string; label: string; value: number; href?: string; hint?: string; tone?: "primary" | "foreground" | "muted" }[]; emptyText?: string }) {
@@ -50,4 +50,10 @@ export type Series = { key: string; label: string; className?: string; color?: s
 export function DayBars({ days, series, stacked = true, label, capSpikes = false }: { days: ({ day: string } & Record<string, number | string>)[]; series: Series[]; stacked?: boolean; height?: number; label: string; capSpikes?: boolean }) {
   const rows = days.map((d) => ({ label: shortDay(d.day), ...Object.fromEntries(series.map((s) => [s.key, Number(d[s.key] ?? 0)])) }));
   return <SeriesBars data={rows} series={series.map((s) => ({ key: s.key, label: s.label, color: s.color, other: s.key === "other" }))} stacked={stacked} name={label} capSpikes={capSpikes} />;
+}
+
+/** Visitors per day: all visitors as one area, with the `focus` sources below on their own scale (SourceTrend). */
+export function VisitorTrend({ days, series, focus, label }: { days: ({ day: string } & Record<string, number | string>)[]; series: { key: string; label: string; color: string }[]; focus: string[]; label: string }) {
+  const rows = days.map((d) => ({ label: shortDay(d.day), ...Object.fromEntries(series.map((s) => [s.key, Number(d[s.key] ?? 0)])) }));
+  return <SourceTrend data={rows} series={series} focus={focus} name={label} />;
 }

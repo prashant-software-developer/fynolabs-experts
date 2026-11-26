@@ -3,7 +3,7 @@ import { requireSection } from "@/lib/auth/section-guard";
 import { isIsoDate, shortDay, todayIST } from "@/lib/crm/dates";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { RANGES, SOURCE_LABELS, rangeFor, visitorAnalytics } from "@/lib/server/analytics";
-import { BarList, DayBars } from "@/components/crm/charts";
+import { BarList, DayBars, VisitorTrend } from "@/components/crm/charts";
 import { Segments } from "@/components/crm/segments";
 import { Button } from "@/components/ui/button";
 import { EmptyState, NoAccess } from "@/components/ui/feedback";
@@ -13,12 +13,13 @@ import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 
 export const metadata = { title: "Analytics" };
 
-// Direct sits at the bottom in a quiet grey so the sources we work on (LinkedIn, Google) stand out on top.
+// One colour per source. Direct is most visits, so the chart shows all visitors as one line and
+// LinkedIn and Google (the sources we work on) below on their own scale.
 const SERIES = [
-  { key: "direct", label: SOURCE_LABELS.direct, color: "hsl(var(--muted-foreground) / 0.28)" },
-  { key: "other", label: SOURCE_LABELS.other, color: "hsl(var(--muted-foreground) / 0.5)" },
-  { key: "google", label: SOURCE_LABELS.google, color: "hsl(38 92% 50%)" },
   { key: "linkedin", label: SOURCE_LABELS.linkedin, color: "hsl(var(--primary))" },
+  { key: "google", label: SOURCE_LABELS.google, color: "hsl(38 92% 50%)" },
+  { key: "direct", label: SOURCE_LABELS.direct, color: "hsl(var(--foreground) / 0.55)" },
+  { key: "other", label: SOURCE_LABELS.other, color: "hsl(var(--muted-foreground) / 0.45)" },
 ];
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -65,8 +66,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <Stat label="Applications" value={a.applications} hint="Job forms and the talent call" />
           <Stat label="Messages" value={a.messages} hint="Contact form" />
         </StatGrid>
-        <Section title="Visitors per day, by source">
-          {hasVisits ? <DayBars label="Visitors per day by source" days={a.days} series={SERIES} /> : <EmptyState title="No visitors in this range." description="Visitor totals come from the FynoLabs site (copied with the FynoLabs data)." padded={false} />}
+        <Section title="Visitors per day">
+          {hasVisits ? <VisitorTrend label="Visitors per day" days={a.days} series={SERIES} focus={["linkedin", "google"]} /> : <EmptyState title="No visitors in this range." description="Visitor totals come from the FynoLabs site (copied with the FynoLabs data)." padded={false} />}
         </Section>
         <Section title="Applications and messages per day">
           {a.applications || a.messages ? (

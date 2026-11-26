@@ -17,13 +17,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
-import { Checkbox } from "@/components/ui/field";
 import { AddMemberForm, ResetPasswordForm } from "@/components/team-forms";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { RoleChip } from "@/components/ui/role-chip";
 import { changeTeamRole, setTeamActive, setTeamScope } from "./actions";
+import { PartnerPicker } from "@/components/partner-picker";
 
 export const metadata = { title: "Team & access" };
 
@@ -236,13 +236,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             <input type="hidden" name="id" value={scopeFor.id} />
             <p className="text-sm text-muted-foreground">Pod leads see submissions and placements only for these partners, and can update hours, tasks and status there.</p>
             {partners.length ? (
-              <div className="space-y-2">
-                {partners.map((p) => (
-                  <div key={p.id}>
-                    <Checkbox name="partnerIds" value={p.id} defaultChecked={scopeFor.partnerIds.includes(p.id)} label={p.name} />
-                  </div>
-                ))}
-              </div>
+              <PartnerPicker partners={partners} defaultSelected={scopeFor.partnerIds} />
             ) : (
               <EmptyState padded={false} title="No partners yet" />
             )}

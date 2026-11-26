@@ -17,8 +17,15 @@ const variants: Record<Variant, string> = {
 };
 const sizes: Record<Size, string> = { sm: "h-[var(--button-sm-h)] px-3 text-[13px]", md: "h-[var(--button-h)] px-4 text-sm" };
 
+// A height or side padding passed in `className` (e.g. "h-11" to match an h-11 input) replaces the
+// size's own, instead of both classes being on the button and the size's winning in the stylesheet.
 export function buttonClass(variant: Variant = "primary", size: Size = "md", className?: string) {
-  return cn(base, variants[variant], sizes[size], className);
+  const own = (className ?? "").split(/\s+/);
+  const sized = sizes[size]
+    .split(" ")
+    .filter((c) => !(c.startsWith("h-") && own.some((o) => o.startsWith("h-"))) && !(c.startsWith("px-") && own.some((o) => o.startsWith("px-"))))
+    .join(" ");
+  return cn(base, variants[variant], sized, className);
 }
 
 export function Button({

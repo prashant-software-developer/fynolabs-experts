@@ -1,13 +1,14 @@
 "use client";
 // Team & access forms that hand out a temporary password. The password arrives once, in the
 // action's answer, and is shown here with a copy button; it is never stored in plain text.
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { addTeamMember, resetTeamPassword, type TempPasswordState } from "@/app/admin/settings/team/actions";
 import { CopyButton } from "@/components/ui/copy-button";
 import { SubmitButton } from "@/components/ui/client";
 import { Notice } from "@/components/ui/feedback";
-import { Checkbox, Field, FieldRow, Input, Select } from "@/components/ui/field";
+import { Field, FieldRow, Input, Select } from "@/components/ui/field";
+import { PartnerPicker } from "@/components/partner-picker";
 
 export function TempPasswordBox({ email, password, signInUrl, note }: { email: string; password: string; signInUrl: string; note?: string }) {
   return (
@@ -33,6 +34,7 @@ export function TempPasswordBox({ email, password, signInUrl, note }: { email: s
 
 export function AddMemberForm({ roles, partners, domain, signInUrl }: { roles: { value: string; label: string }[]; partners: { id: string; name: string }[]; domain: string; signInUrl: string }) {
   const [state, action] = useActionState<TempPasswordState, FormData>(addTeamMember, {});
+  const [role, setRole] = useState(state.values?.role || "recruiter");
   return (
     <div className="space-y-5">
       {state.tempPassword && state.email ? <TempPasswordBox email={state.email} password={state.tempPassword} signInUrl={signInUrl} note={state.note} /> : null}
@@ -48,18 +50,15 @@ export function AddMemberForm({ roles, partners, domain, signInUrl }: { roles: {
         </FieldRow>
         <FieldRow>
           <Field label="Role" htmlFor="tm-role">
-            <Select id="tm-role" name="role" defaultValue={state.values?.role || "recruiter"} options={roles} />
+            <Select id="tm-role" name="role" value={role} onChange={(e) => setRole(e.target.value)} options={roles} />
           </Field>
           <div />
         </FieldRow>
-        {partners.length ? (
+        {role === "pod_lead" && partners.length ? (
           <fieldset className="space-y-2">
-            <legend className="text-[13px] font-medium text-foreground/80">Partner scope (pod leads only)</legend>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {partners.map((p) => (
-                <Checkbox key={p.id} name="partnerIds" value={p.id} label={p.name} />
-              ))}
-            </div>
+            <legend className="text-[13px] font-medium text-foreground/80">Partner scope</legend>
+            <p className="text-[13px] text-muted-foreground">A pod lead sees submissions and placements only for these partners.</p>
+            <PartnerPicker partners={partners} />
           </fieldset>
         ) : null}
         <SubmitButton pendingText="Adding...">Add member</SubmitButton>
