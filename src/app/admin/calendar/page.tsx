@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, Video } from "lucide-react";
+import { Check, CheckSquare, ChevronLeft, ChevronRight, CornerUpRight, Flag, Megaphone, Phone, Plus, Users, Video, type LucideIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
-import { CALENDAR_KINDS, CALENDAR_STATUSES } from "@/lib/constants";
-import { addDays, addMonths, hhmm, isIsoDate, longDay, mediumDay, monthGrid, monthStart, monthTitle, relativeDay, shortDay, todayIST, weekStart } from "@/lib/crm/dates";
+import { CALENDAR_KINDS, CALENDAR_STATUSES, CALENDAR_TIMEZONE } from "@/lib/constants";
+import { addDays, addMonths, hhmm, isIsoDate, longDay, monthGrid, monthStart, monthTitle, relativeDay, shortDay, todayIST, weekStart } from "@/lib/crm/dates";
 import { crmLabel } from "@/lib/crm/labels";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { KIND_FILTERS, SOURCE_LABELS, calendarStats, getEvent, namesFor, timeline, type KindFilter, type TimelineItem } from "@/lib/server/calendar";
@@ -14,7 +14,7 @@ import { Facts, StatusChip } from "@/components/crm/chips";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { Segments } from "@/components/crm/segments";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
+import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/client";
 import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
@@ -85,7 +85,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const [companies, team, contactList] = editing ? await Promise.all([companyChoices(db), teamOptions(db), contactChoices(db, opened?.companyId ?? prefillCompany)]) : [[], [], []];
   const openedNames = opened ? await namesFor(db, [{ contactIds: opened.contactIds.length ? opened.contactIds : opened.contactId ? [opened.contactId] : [], teamMemberIds: opened.teamMemberIds }]) : null;
   const itemHref = (i: TimelineItem) => (i.source === "calendar" ? hrefWith("/admin/calendar", sp, { event: i.id, edit: null, new: null, ok: null, error: null }) : (i.href ?? "#"));
-  const row = (i: TimelineItem, showDate = false) => <ItemRow key={i.key} i={i} today={today} showDate={showDate} href={itemHref(i)} names={names} edit={edit} returnTo={here} />;
+  const now = new Date().toLocaleTimeString("en-GB", { timeZone: CALENDAR_TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false });
+  const entry = (i: TimelineItem, showDate = false) => <TimelineEntry key={i.key} i={i} today={today} showDate={showDate} href={itemHref(i)} names={names} edit={edit} returnTo={here} />;
+  const dayList = (day: string, list: TimelineItem[]) => <DayTimeline list={list} now={day === today ? now : null} entry={entry} />;
 
   return (
     <>
@@ -130,14 +132,18 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
             </Link>
           </div>
           <h2 className="text-base font-medium text-foreground">{title}</h2>
-          <form method="get" className="ml-auto flex flex-wrap items-center gap-2">
+          <form method="get" className="ml-auto flex flex-wrap items-center gap-3">
             {view !== "agenda" ? <input type="hidden" name="view" value={view} /> : null}
             {one(sp.date) ? <input type="hidden" name="date" value={anchor} /> : null}
+            {mine ? <input type="hidden" name="mine" value="1" /> : null}
             <FilterSelect name="kind" defaultValue={kind} options={Object.entries(KIND_FILTERS).filter(([k]) => k).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Everything" label="Show" />
-            <Checkbox name="mine" value="1" defaultChecked={mine} label="Only mine" />
-            <Button type="submit" variant="secondary">
-              Show
-            </Button>
+            <Segments
+              label="Whose"
+              items={[
+                { href: hrefWith("/admin/calendar", sp, { mine: null, event: null, edit: null, new: null, ok: null, error: null }), label: "Everyone", active: !mine },
+                { href: hrefWith("/admin/calendar", sp, { mine: "1", event: null, edit: null, new: null, ok: null, error: null }), label: "Mine", active: mine },
+              ]}
+            />
           </form>
         </div>
 
@@ -145,16 +151,18 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <>
             {overdue.length ? (
               <details className="overflow-hidden rounded-xl border border-danger/30 bg-card shadow-card">
-                <summary className="cursor-pointer list-none bg-danger-soft px-6 py-3.5 text-sm font-medium text-danger [&::-webkit-details-marker]:hidden">
-                  {overdue.length} overdue from earlier days · Show / hide
+                <summary className="flex cursor-pointer list-none items-center gap-3 bg-danger-soft px-4 py-3.5 text-sm text-danger sm:px-6 [&::-webkit-details-marker]:hidden">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger/10"><Flag className="h-3.5 w-3.5" aria-hidden /></span>
+                  <span className="font-medium">{overdue.length} overdue from earlier days</span>
+                  <span className="ml-auto text-[13px] text-danger/80">Show / hide</span>
                 </summary>
-                <ul className="divide-y divide-border border-t border-border bg-card">{overdue.map((i) => row(i, true))}</ul>
+                <ol className="border-t border-danger/20 px-4 py-5 sm:px-6">{overdue.map((i) => entry(i, true))}</ol>
               </details>
             ) : null}
             {[...byDay.keys()].length ? (
               [...byDay.entries()].map(([day, list]) => (
-                <DaySection key={day} day={day} today={today} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
-                  <ul className="divide-y divide-border">{list.map((i) => row(i))}</ul>
+                <DaySection key={day} day={day} today={today} count={list.length} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
+                  {dayList(day, list)}
                 </DaySection>
               ))
             ) : (
@@ -174,12 +182,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           ? Array.from({ length: 7 }, (_, k) => addDays(range.from, k)).map((day) => {
               const list = byDay.get(day) ?? [];
               return (
-                <DaySection key={day} day={day} today={today} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
-                  {list.length ? (
-                    <ul className="divide-y divide-border">{list.map((i) => row(i))}</ul>
-                  ) : (
-                    <EmptyState title={`Nothing planned for ${relativeDay(day, today)?.toLowerCase() ?? mediumDay(day)}.`} />
-                  )}
+                <DaySection key={day} day={day} today={today} count={list.length} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
+                  {list.length ? dayList(day, list) : <p className="px-6 py-4 text-[13px] text-muted-foreground">Nothing planned.</p>}
                 </DaySection>
               );
             })
@@ -213,6 +217,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                               {list.slice(0, 3).map((i) => (
                                 <li key={i.key}>
                                   <Link href={itemHref(i)} scroll={false} title={`${i.start ? `${i.start} ` : ""}${i.title}`} className={cn("block truncate rounded-md px-1.5 py-1 text-[13px] hover:bg-accent", dotTone(i), i.status === "done" && "line-through opacity-60")}>
+                                    <span className={cn("mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle", kindMeta(i.kind).dot)} aria-hidden />
                                     {i.start ? <span className="tabular text-muted-foreground">{i.start} </span> : null}
                                     {i.title}
                                   </Link>
@@ -238,7 +243,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         ) : null}
 
         <Section title={`Unscheduled (${undated.length})`} description="Events without a date yet, such as a call while the other side picks a slot." flush>
-          {undated.length ? <ul className="divide-y divide-border">{undated.map((i) => row(i, true))}</ul> : <EmptyState title="Nothing waiting for a date." />}
+          {undated.length ? <ol className="px-4 py-5 sm:px-6">{undated.map((i) => entry(i, true))}</ol> : <EmptyState title="Nothing waiting for a date." />}
         </Section>
       </Stack>
 
@@ -331,84 +336,147 @@ function whenText(date: string | null, start: string | null, end: string | null)
 
 const dotTone = (i: TimelineItem) => (i.kind === "deadline" ? "text-danger" : i.kind === "call" || i.kind === "meeting" ? "text-primary" : "text-foreground/80");
 
-function DaySection({ day, today, addHref, children }: { day: string; today: string; addHref: string | null; children: React.ReactNode }) {
+/** Icon and colours per event type, used by the timeline node, the type label and the month dots. */
+const KIND_META: Record<string, { icon: LucideIcon; node: string; text: string; dot: string }> = {
+  call: { icon: Phone, node: "bg-primary/10 text-primary", text: "text-primary", dot: "bg-primary" },
+  meeting: { icon: Users, node: "bg-[hsl(262_70%_55%/0.12)] text-[hsl(262_60%_48%)]", text: "text-[hsl(262_60%_48%)]", dot: "bg-[hsl(262_60%_55%)]" },
+  follow_up: { icon: CornerUpRight, node: "bg-warning-soft text-warning", text: "text-warning", dot: "bg-[hsl(38_92%_50%)]" },
+  deadline: { icon: Flag, node: "bg-danger-soft text-danger", text: "text-danger", dot: "bg-danger" },
+  task: { icon: CheckSquare, node: "bg-secondary text-foreground/70", text: "text-foreground/75", dot: "bg-foreground/50" },
+  post: { icon: Megaphone, node: "bg-success-soft text-success", text: "text-success", dot: "bg-success" },
+};
+const kindMeta = (k: string) => KIND_META[k] ?? KIND_META.task;
+
+/** One day: a date block, then the day's items on a vertical line (all-day ones first). */
+function DaySection({ day, today, count, addHref, children }: { day: string; today: string; count: number; addHref: string | null; children: React.ReactNode }) {
   const rel = relativeDay(day, today);
+  const isToday = day === today;
+  const d = new Date(`${day}T00:00:00Z`);
   return (
-    <Section
-      title={
-        <span>
-          {longDay(day)}
-          {rel ? <span className="ml-2 text-small font-normal text-muted-foreground">{rel}</span> : null}
-        </span>
-      }
-      flush
-      actions={
-        addHref ? (
+    <section className={cn("overflow-hidden rounded-xl border bg-card shadow-card", isToday ? "border-primary/30" : "border-border")}>
+      <header className="flex items-center gap-4 border-b border-border px-4 py-3.5 sm:px-6">
+        <div className={cn("flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg leading-none", isToday ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
+          <span className={cn("text-[10px] font-medium tracking-wide uppercase", isToday ? "text-primary-foreground/80" : "text-muted-foreground")}>{d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" })}</span>
+          <span className="tabular mt-1 text-lg font-medium">{d.getUTCDate()}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-medium text-foreground">
+            {longDay(day)}
+            {rel ? <span className={cn("ml-2 rounded-full px-2 py-0.5 text-xs font-normal", isToday ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}>{rel}</span> : null}
+          </h2>
+          <p className="text-[13px] text-muted-foreground">{count ? `${count} ${count === 1 ? "item" : "items"}` : "Free"}</p>
+        </div>
+        {addHref ? (
           <Link href={addHref} scroll={false} className={buttonClass("ghost", "sm")}>
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Add to this day
+            <Plus className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">Add</span>
           </Link>
-        ) : undefined
-      }
-    >
+        ) : null}
+      </header>
       {children}
-    </Section>
+    </section>
   );
 }
 
-function ItemRow({ i, today, showDate, href, names, edit, returnTo }: { i: TimelineItem; today: string; showDate: boolean; href: string; names: Awaited<ReturnType<typeof namesFor>>; edit: boolean; returnTo: string }) {
+function DayTimeline({ list, now, entry }: { list: TimelineItem[]; now: string | null; entry: (i: TimelineItem) => React.ReactNode }) {
+  const allDay = list.filter((i) => !i.start);
+  const timed = list.filter((i) => i.start);
+  const nowAt = now ? timed.findIndex((i) => (i.start ?? "") > now) : -1;
+  const marker = now ? (
+    <li key="now" className="relative grid grid-cols-[4.5rem_1.75rem_1fr] items-center gap-x-3 pb-5 sm:grid-cols-[5.5rem_1.75rem_1fr] sm:gap-x-4" aria-label={`Now, ${now}`}>
+      <span className="tabular text-right text-xs font-medium text-danger">{now}</span>
+      <span className="flex justify-center">
+        <span className="h-2.5 w-2.5 rounded-full bg-danger ring-4 ring-danger/15" />
+      </span>
+      <span className="h-px bg-danger/40" />
+    </li>
+  ) : null;
+  return (
+    <ol className="px-4 py-5 sm:px-6">
+      {allDay.map((i) => entry(i))}
+      {timed.map((i, k) => (
+        <ConditionalMarker key={i.key} show={k === nowAt} marker={marker}>
+          {entry(i)}
+        </ConditionalMarker>
+      ))}
+      {now && timed.length && nowAt === -1 ? marker : null}
+    </ol>
+  );
+}
+
+function ConditionalMarker({ show, marker, children }: { show: boolean; marker: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <>
+      {show ? marker : null}
+      {children}
+    </>
+  );
+}
+
+function TimelineEntry({ i, today, showDate, href, names, edit, returnTo }: { i: TimelineItem; today: string; showDate: boolean; href: string; names: Awaited<ReturnType<typeof namesFor>>; edit: boolean; returnTo: string }) {
   const late = Boolean(i.date && i.date < today && i.status !== "done" && i.status !== "cancelled");
+  const done = i.status === "done";
+  const meta = kindMeta(i.kind);
+  const Icon = done ? Check : meta.icon;
   const theirs = i.source === "calendar" ? i.contactIds.map((id) => names.contacts.get(id)).filter(Boolean) : [];
   const ours = i.teamMemberIds.map((id) => names.team.get(id)).filter(Boolean);
   return (
-    <li className="row-hover relative flex min-h-16 items-start gap-4 px-6 py-3.5">
-      <div className={cn("tabular w-20 shrink-0 pt-0.5 text-sm", late ? "font-medium text-danger" : "text-foreground/80")}>
+    <li className="group/entry relative grid grid-cols-[4.5rem_1.75rem_1fr] gap-x-3 pb-4 last:pb-0 sm:grid-cols-[5.5rem_1.75rem_1fr] sm:gap-x-4">
+      <div className={cn("tabular pt-2 text-right text-[13px] leading-tight", late ? "font-medium text-danger" : "text-foreground/80")}>
         {showDate ? (
-          i.date ? shortDay(i.date, today) : "No date"
+          i.date ? shortDay(i.date, today) : <span className="text-muted-foreground">No date</span>
         ) : i.start ? (
           <>
-            <span className="block">{i.start}</span>
-            {i.end ? <span className="block text-[13px] text-muted-foreground">{i.end}</span> : null}
+            <span className="block font-medium text-foreground">{i.start}</span>
+            {i.end ? <span className="mt-0.5 block text-xs text-muted-foreground">{i.end}</span> : null}
           </>
         ) : (
           <span className="text-muted-foreground">All day</span>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <Link href={href} scroll={false} className={cn("text-[15px] font-medium text-foreground after:absolute after:inset-0 hover:text-primary", i.status === "done" && "line-through opacity-60")}>
-          {i.title}
-        </Link>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-          <span className={dotTone(i)}>{crmLabel(i.kind, "calendar")}</span>
-          {i.source !== "calendar" ? <span>· {SOURCE_LABELS[i.source]}</span> : null}
-          {i.companyName ? (
-            <span className="inline-flex items-center gap-1">
-              · <OrgLogo name={i.companyName} size={16} /> {i.companyName}
-            </span>
-          ) : null}
-          {theirs.length ? <span>· {theirs.join(", ")}</span> : null}
-          {ours.length ? (
-            <span className="inline-flex items-center gap-1.5">
-              · <span className="inline-flex -space-x-1">{ours.slice(0, 3).map((n) => <Avatar key={n} name={n} size="xs" className="ring-2 ring-card" />)}</span> {ours.join(", ")}
-            </span>
-          ) : null}
-          {i.status !== "planned" && i.source === "calendar" ? <span>· {crmLabel(i.status)}</span> : null}
-        </p>
+      <div className="relative flex justify-center">
+        <span className="absolute top-9 -bottom-4 left-1/2 w-px -translate-x-1/2 bg-border group-last/entry:hidden" aria-hidden />
+        <span className={cn("relative z-10 mt-1 flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-card", done ? "bg-success-soft text-success" : late ? "bg-danger-soft text-danger" : meta.node)}>
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
       </div>
-      <div className="relative z-10 flex shrink-0 items-center gap-2">
-        {i.meetingUrl ? (
-          <a href={i.meetingUrl} target="_blank" rel="noreferrer noopener" className={buttonClass("ghost", "sm")}>
-            <Video className="h-3.5 w-3.5" aria-hidden /> Join
-          </a>
-        ) : null}
-        {edit && i.source === "calendar" && i.status !== "done" ? (
-          <form action={markCalendarEventDone}>
-            <input type="hidden" name="id" value={i.id} />
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <SubmitButton size="sm" variant="secondary" pendingText="...">
-              Mark done
-            </SubmitButton>
-          </form>
-        ) : null}
+      <div className={cn("relative flex min-w-0 flex-wrap items-start gap-3 rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-primary/[0.02]", late ? "border-danger/25" : "border-border", done && "opacity-70")}>
+        <div className="min-w-0 flex-1">
+          <Link href={href} scroll={false} className={cn("text-[15px] font-medium text-foreground after:absolute after:inset-0 after:rounded-lg hover:text-primary", done && "line-through")}>
+            {i.title}
+          </Link>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+            <span className={cn("font-medium", meta.text)}>{crmLabel(i.kind, "calendar")}</span>
+            {i.source !== "calendar" ? <span>· {SOURCE_LABELS[i.source]}</span> : null}
+            {i.companyName ? (
+              <span className="inline-flex items-center gap-1">
+                · <OrgLogo name={i.companyName} size={16} /> {i.companyName}
+              </span>
+            ) : null}
+            {theirs.length ? <span>· {theirs.join(", ")}</span> : null}
+            {ours.length ? (
+              <span className="inline-flex items-center gap-1.5">
+                · <span className="inline-flex -space-x-1">{ours.slice(0, 3).map((n) => <Avatar key={n} name={n} size="xs" className="ring-2 ring-card" />)}</span> {ours.join(", ")}
+              </span>
+            ) : null}
+            {i.status !== "planned" && i.source === "calendar" ? <span>· {crmLabel(i.status)}</span> : null}
+          </p>
+        </div>
+        <div className="relative z-10 flex shrink-0 items-center gap-2">
+          {i.meetingUrl ? (
+            <a href={i.meetingUrl} target="_blank" rel="noreferrer noopener" className={buttonClass("secondary", "sm")}>
+              <Video className="h-3.5 w-3.5" aria-hidden /> Join
+            </a>
+          ) : null}
+          {edit && i.source === "calendar" && !done ? (
+            <form action={markCalendarEventDone}>
+              <input type="hidden" name="id" value={i.id} />
+              <input type="hidden" name="returnTo" value={returnTo} />
+              <SubmitButton size="sm" variant="ghost" pendingText="...">
+                <Check className="h-3.5 w-3.5" aria-hidden /> Done
+              </SubmitButton>
+            </form>
+          ) : null}
+        </div>
       </div>
     </li>
   );
