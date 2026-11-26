@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, CheckSquare, ChevronLeft, ChevronRight, CornerUpRight, Flag, Megaphone, Phone, Plus, Users, Video, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, CheckSquare, ChevronLeft, ChevronRight, CornerUpRight, Flag, Megaphone, Phone, Plus, Users, Video, type LucideIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
@@ -147,47 +147,46 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           </form>
         </div>
 
-        {view === "agenda" ? (
-          <>
-            {overdue.length ? (
-              <details className="overflow-hidden rounded-xl border border-danger/30 bg-card shadow-card">
-                <summary className="flex cursor-pointer list-none items-center gap-3 bg-danger-soft px-4 py-3.5 text-sm text-danger sm:px-6 [&::-webkit-details-marker]:hidden">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger/10"><Flag className="h-3.5 w-3.5" aria-hidden /></span>
-                  <span className="font-medium">{overdue.length} overdue from earlier days</span>
-                  <span className="ml-auto text-[13px] text-danger/80">Show / hide</span>
-                </summary>
-                <ol className="border-t border-danger/20 px-4 py-5 sm:px-6">{overdue.map((i) => entry(i, true))}</ol>
-              </details>
-            ) : null}
-            {[...byDay.keys()].length ? (
-              [...byDay.entries()].map(([day, list]) => (
-                <DaySection key={day} day={day} today={today} count={list.length} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
-                  {dayList(day, list)}
-                </DaySection>
-              ))
-            ) : (
-              <Section>
-                <EmptyState
-                  size="page"
-                  title={anchor === today ? "Nothing planned for the next two weeks." : "Nothing planned for these days."}
-                  description={kind || mine ? "Try showing everything." : "Add a call, meeting, follow-up or task."}
-                  action={edit ? <ButtonLink href={hrefWith("/admin/calendar", sp, { new: "1", eventDate: anchor })} variant="primary">Add to {anchor === today ? "today" : "this day"}</ButtonLink> : undefined}
-                />
-              </Section>
-            )}
-          </>
-        ) : null}
-
-        {view === "week"
-          ? Array.from({ length: 7 }, (_, k) => addDays(range.from, k)).map((day) => {
-              const list = byDay.get(day) ?? [];
+        {view === "agenda" || view === "week" ? (
+          (() => {
+            const days = view === "week" ? Array.from({ length: 7 }, (_, k) => addDays(range.from, k)) : [...byDay.keys()];
+            const addFor = (day: string) => (edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null);
+            if (view === "agenda" && !days.length && !overdue.length)
               return (
-                <DaySection key={day} day={day} today={today} count={list.length} addHref={edit ? hrefWith("/admin/calendar", sp, { new: "1", eventDate: day, event: null, edit: null, ok: null, error: null }) : null}>
-                  {list.length ? dayList(day, list) : <p className="px-6 py-4 text-[13px] text-muted-foreground">Nothing planned.</p>}
-                </DaySection>
+                <Section>
+                  <EmptyState
+                    size="page"
+                    title={anchor === today ? "Nothing planned for the next two weeks." : "Nothing planned for these days."}
+                    description={kind || mine ? "Try showing everything." : "Add a call, meeting, follow-up or task."}
+                    action={edit ? <ButtonLink href={hrefWith("/admin/calendar", sp, { new: "1", eventDate: anchor })} variant="primary">Add to {anchor === today ? "today" : "this day"}</ButtonLink> : undefined}
+                  />
+                </Section>
               );
-            })
-          : null}
+            return (
+              <Section flush>
+                {view === "agenda" && overdue.length ? (
+                  <details className="group/over border-b border-border">
+                    <summary className="flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm text-danger hover:bg-canvas sm:px-6 [&::-webkit-details-marker]:hidden">
+                      <Flag className="h-4 w-4" aria-hidden />
+                      <span className="font-medium">{overdue.length} overdue</span>
+                      <span className="text-danger/70">from earlier days</span>
+                      <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open/over:rotate-90" aria-hidden />
+                    </summary>
+                    <ul className="divide-y divide-border">{overdue.map((i) => entry(i, true))}</ul>
+                  </details>
+                ) : null}
+                {days.map((day) => {
+                  const list = byDay.get(day) ?? [];
+                  return (
+                    <DaySection key={day} day={day} today={today} count={list.length} addHref={addFor(day)}>
+                      {list.length ? dayList(day, list) : <p className="px-4 py-3 text-[13px] text-muted-foreground sm:px-6">Nothing planned.</p>}
+                    </DaySection>
+                  );
+                })}
+              </Section>
+            );
+          })()
+        ) : null}
 
         {view === "month" ? (
           <Section flush>
@@ -243,7 +242,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         ) : null}
 
         <Section title={`Unscheduled (${undated.length})`} description="Events without a date yet, such as a call while the other side picks a slot." flush>
-          {undated.length ? <ol className="px-4 py-5 sm:px-6">{undated.map((i) => entry(i, true))}</ol> : <EmptyState title="Nothing waiting for a date." />}
+          {undated.length ? <ul className="divide-y divide-border">{undated.map((i) => entry(i, true))}</ul> : <EmptyState title="Nothing waiting for a date." />}
         </Section>
       </Stack>
 
@@ -336,39 +335,36 @@ function whenText(date: string | null, start: string | null, end: string | null)
 
 const dotTone = (i: TimelineItem) => (i.kind === "deadline" ? "text-danger" : i.kind === "call" || i.kind === "meeting" ? "text-primary" : "text-foreground/80");
 
-/** Icon and colours per event type, used by the timeline node, the type label and the month dots. */
+/** Event types, in the main FynoLabs admin's quiet style: blue only for calls and meetings, red only for
+    deadlines, grey for the rest (month dots). Labels stay grey text. */
 const KIND_META: Record<string, { icon: LucideIcon; node: string; text: string; dot: string }> = {
-  call: { icon: Phone, node: "bg-primary/10 text-primary", text: "text-primary", dot: "bg-primary" },
-  meeting: { icon: Users, node: "bg-[hsl(262_70%_55%/0.12)] text-[hsl(262_60%_48%)]", text: "text-[hsl(262_60%_48%)]", dot: "bg-[hsl(262_60%_55%)]" },
-  follow_up: { icon: CornerUpRight, node: "bg-warning-soft text-warning", text: "text-warning", dot: "bg-[hsl(38_92%_50%)]" },
-  deadline: { icon: Flag, node: "bg-danger-soft text-danger", text: "text-danger", dot: "bg-danger" },
-  task: { icon: CheckSquare, node: "bg-secondary text-foreground/70", text: "text-foreground/75", dot: "bg-foreground/50" },
-  post: { icon: Megaphone, node: "bg-success-soft text-success", text: "text-success", dot: "bg-success" },
+  call: { icon: Phone, node: "", text: "text-muted-foreground", dot: "bg-primary" },
+  meeting: { icon: Users, node: "", text: "text-muted-foreground", dot: "bg-primary" },
+  follow_up: { icon: CornerUpRight, node: "", text: "text-muted-foreground", dot: "bg-foreground/35" },
+  deadline: { icon: Flag, node: "", text: "text-danger", dot: "bg-danger" },
+  task: { icon: CheckSquare, node: "", text: "text-muted-foreground", dot: "bg-foreground/35" },
+  post: { icon: Megaphone, node: "", text: "text-muted-foreground", dot: "bg-foreground/35" },
 };
 const kindMeta = (k: string) => KIND_META[k] ?? KIND_META.task;
 
-/** One day: a date block, then the day's items on a vertical line (all-day ones first). */
+/** One day in the schedule: a slim header row (date, Today, count, Add), then its items as rows. */
 function DaySection({ day, today, count, addHref, children }: { day: string; today: string; count: number; addHref: string | null; children: React.ReactNode }) {
   const rel = relativeDay(day, today);
   const isToday = day === today;
   const d = new Date(`${day}T00:00:00Z`);
   return (
-    <section className={cn("overflow-hidden rounded-xl border bg-card shadow-card", isToday ? "border-primary/30" : "border-border")}>
-      <header className="flex items-center gap-4 border-b border-border px-4 py-3.5 sm:px-6">
-        <div className={cn("flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg leading-none", isToday ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground")}>
-          <span className={cn("text-[10px] font-medium tracking-wide uppercase", isToday ? "text-primary-foreground/80" : "text-muted-foreground")}>{d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" })}</span>
-          <span className="tabular mt-1 text-lg font-medium">{d.getUTCDate()}</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-medium text-foreground">
-            {longDay(day)}
-            {rel ? <span className={cn("ml-2 rounded-full px-2 py-0.5 text-xs font-normal", isToday ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}>{rel}</span> : null}
-          </h2>
-          <p className="text-[13px] text-muted-foreground">{count ? `${count} ${count === 1 ? "item" : "items"}` : "Free"}</p>
-        </div>
+    <section className="border-b border-border last:border-b-0">
+      <header className="flex h-10 items-center gap-3 border-b border-border bg-canvas px-4 sm:px-6">
+        <span className="tabular w-6 text-[15px] text-foreground">{d.getUTCDate()}</span>
+        <h2 className="text-[13px] font-medium text-foreground">
+          {d.toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" })}
+          <span className="ml-1.5 font-normal text-muted-foreground">{d.toLocaleDateString("en-GB", { month: "long", timeZone: "UTC" })}</span>
+          {rel ? <span className={cn("ml-2 text-xs font-normal tracking-wide uppercase", isToday ? "text-primary" : "text-muted-foreground")}>{rel}</span> : null}
+        </h2>
+        <span className="text-xs text-muted-foreground">{count ? `· ${count}` : ""}</span>
         {addHref ? (
-          <Link href={addHref} scroll={false} className={buttonClass("ghost", "sm")}>
-            <Plus className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">Add</span>
+          <Link href={addHref} scroll={false} className="ml-auto inline-flex h-7 items-center gap-1 rounded px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground">
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Add
           </Link>
         ) : null}
       </header>
@@ -377,21 +373,19 @@ function DaySection({ day, today, count, addHref, children }: { day: string; tod
   );
 }
 
+/** A day's items: all-day ones first, then by time, with a thin red "now" line on today. */
 function DayTimeline({ list, now, entry }: { list: TimelineItem[]; now: string | null; entry: (i: TimelineItem) => React.ReactNode }) {
   const allDay = list.filter((i) => !i.start);
   const timed = list.filter((i) => i.start);
   const nowAt = now ? timed.findIndex((i) => (i.start ?? "") > now) : -1;
   const marker = now ? (
-    <li key="now" className="relative grid grid-cols-[4.5rem_1.75rem_1fr] items-center gap-x-3 pb-5 sm:grid-cols-[5.5rem_1.75rem_1fr] sm:gap-x-4" aria-label={`Now, ${now}`}>
-      <span className="tabular text-right text-xs font-medium text-danger">{now}</span>
-      <span className="flex justify-center">
-        <span className="h-2.5 w-2.5 rounded-full bg-danger ring-4 ring-danger/15" />
-      </span>
-      <span className="h-px bg-danger/40" />
+    <li key="now" className="relative flex h-0 items-center px-4 sm:px-6" aria-label={`Now, ${now}`}>
+      <span className="absolute left-4 h-2 w-2 -translate-x-1/2 rounded-full bg-danger sm:left-6" />
+      <span className="h-px flex-1 bg-danger/60" />
     </li>
   ) : null;
   return (
-    <ol className="px-4 py-5 sm:px-6">
+    <ul className="divide-y divide-border">
       {allDay.map((i) => entry(i))}
       {timed.map((i, k) => (
         <ConditionalMarker key={i.key} show={k === nowAt} marker={marker}>
@@ -399,7 +393,7 @@ function DayTimeline({ list, now, entry }: { list: TimelineItem[]; now: string |
         </ConditionalMarker>
       ))}
       {now && timed.length && nowAt === -1 ? marker : null}
-    </ol>
+    </ul>
   );
 }
 
@@ -412,72 +406,62 @@ function ConditionalMarker({ show, marker, children }: { show: boolean; marker: 
   );
 }
 
+/** One row, as in the main FynoLabs calendar: the time, then the title with the type, account and people under it; Join and Mark done as quiet links. */
 function TimelineEntry({ i, today, showDate, href, names, edit, returnTo }: { i: TimelineItem; today: string; showDate: boolean; href: string; names: Awaited<ReturnType<typeof namesFor>>; edit: boolean; returnTo: string }) {
   const late = Boolean(i.date && i.date < today && i.status !== "done" && i.status !== "cancelled");
   const done = i.status === "done";
   const meta = kindMeta(i.kind);
-  const Icon = done ? Check : meta.icon;
   const theirs = i.source === "calendar" ? i.contactIds.map((id) => names.contacts.get(id)).filter(Boolean) : [];
   const ours = i.teamMemberIds.map((id) => names.team.get(id)).filter(Boolean);
   return (
-    <li className="group/entry relative grid grid-cols-[4.5rem_1.75rem_1fr] gap-x-3 pb-4 last:pb-0 sm:grid-cols-[5.5rem_1.75rem_1fr] sm:gap-x-4">
-      <div className={cn("tabular pt-2 text-right text-[13px] leading-tight", late ? "font-medium text-danger" : "text-foreground/80")}>
+    <li className="group/row relative grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-4 px-4 py-3.5 hover:bg-canvas sm:grid-cols-[6rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-6">
+      <div className={cn("tabular pt-px text-[13px]", late ? "text-danger" : "text-muted-foreground")}>
         {showDate ? (
-          i.date ? shortDay(i.date, today) : <span className="text-muted-foreground">No date</span>
+          i.date ? shortDay(i.date, today) : "No date"
         ) : i.start ? (
-          <>
-            <span className="block font-medium text-foreground">{i.start}</span>
-            {i.end ? <span className="mt-0.5 block text-xs text-muted-foreground">{i.end}</span> : null}
-          </>
+          <span className="text-foreground">
+            {i.start}
+            {i.end ? <span className="block text-muted-foreground">{i.end}</span> : null}
+          </span>
         ) : (
-          <span className="text-muted-foreground">All day</span>
+          "All day"
         )}
       </div>
-      <div className="relative flex justify-center">
-        <span className="absolute top-9 -bottom-4 left-1/2 w-px -translate-x-1/2 bg-border group-last/entry:hidden" aria-hidden />
-        <span className={cn("relative z-10 mt-1 flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-card", done ? "bg-success-soft text-success" : late ? "bg-danger-soft text-danger" : meta.node)}>
-          <Icon className="h-3.5 w-3.5" aria-hidden />
-        </span>
+      <div className="min-w-0">
+        <Link href={href} scroll={false} className={cn("block text-sm leading-snug text-foreground after:absolute after:inset-0 hover:underline hover:underline-offset-4", done && "text-muted-foreground line-through")}>
+          {i.title}
+        </Link>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+          <span className={meta.text}>{crmLabel(i.kind, "calendar")}</span>
+          {i.companyName ? (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <OrgLogo name={i.companyName} size={16} /> <span className="truncate">{i.companyName}</span>
+            </span>
+          ) : null}
+          {theirs.length ? <span>{theirs.join(", ")}</span> : null}
+          {ours.length ? <span>Ours: {ours.join(", ")}</span> : null}
+          {i.source !== "calendar" ? <span>{SOURCE_LABELS[i.source]}</span> : null}
+          {i.status !== "planned" && i.source === "calendar" ? <span>{crmLabel(i.status)}</span> : null}
+        </p>
       </div>
-      <div className={cn("relative flex min-w-0 flex-wrap items-start gap-3 rounded-lg border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-primary/[0.02]", late ? "border-danger/25" : "border-border", done && "opacity-70")}>
-        <div className="min-w-0 flex-1">
-          <Link href={href} scroll={false} className={cn("text-[15px] font-medium text-foreground after:absolute after:inset-0 after:rounded-lg hover:text-primary", done && "line-through")}>
-            {i.title}
-          </Link>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-            <span className={cn("font-medium", meta.text)}>{crmLabel(i.kind, "calendar")}</span>
-            {i.source !== "calendar" ? <span>· {SOURCE_LABELS[i.source]}</span> : null}
-            {i.companyName ? (
-              <span className="inline-flex items-center gap-1">
-                · <OrgLogo name={i.companyName} size={16} /> {i.companyName}
-              </span>
-            ) : null}
-            {theirs.length ? <span>· {theirs.join(", ")}</span> : null}
-            {ours.length ? (
-              <span className="inline-flex items-center gap-1.5">
-                · <span className="inline-flex -space-x-1">{ours.slice(0, 3).map((n) => <Avatar key={n} name={n} size="xs" className="ring-2 ring-card" />)}</span> {ours.join(", ")}
-              </span>
-            ) : null}
-            {i.status !== "planned" && i.source === "calendar" ? <span>· {crmLabel(i.status)}</span> : null}
-          </p>
-        </div>
-        <div className="relative z-10 flex shrink-0 items-center gap-2">
+      {i.meetingUrl || (edit && i.source === "calendar" && !done) ? (
+        <div className="relative z-10 col-start-2 mt-2 flex items-center gap-5 sm:col-start-3 sm:mt-0">
           {i.meetingUrl ? (
-            <a href={i.meetingUrl} target="_blank" rel="noreferrer noopener" className={buttonClass("secondary", "sm")}>
-              <Video className="h-3.5 w-3.5" aria-hidden /> Join
+            <a href={i.meetingUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-[13px] text-primary underline-offset-4 hover:underline">
+              Join <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </a>
           ) : null}
           {edit && i.source === "calendar" && !done ? (
             <form action={markCalendarEventDone}>
               <input type="hidden" name="id" value={i.id} />
               <input type="hidden" name="returnTo" value={returnTo} />
-              <SubmitButton size="sm" variant="ghost" pendingText="...">
-                <Check className="h-3.5 w-3.5" aria-hidden /> Done
-              </SubmitButton>
+              <button type="submit" className="text-[13px] text-muted-foreground hover:text-foreground">
+                Mark done
+              </button>
             </form>
           ) : null}
         </div>
-      </div>
+      ) : null}
     </li>
   );
 }
