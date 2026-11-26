@@ -144,7 +144,7 @@ export default async function PlatformPage({ params, searchParams }: { params: P
               <Textarea name="notes" rows={4} defaultValue={p?.notes ?? ""} placeholder="Rates, payment cycle, who to contact, how onboarding works." aria-label="Notes" />
             </Section>
             <div className="flex flex-wrap items-center gap-2">
-              <SubmitButton pendingText="Saving...">{p ? "Save changes" : "Create platform"}</SubmitButton>
+              <SubmitButton pendingText="Saving…">{p ? "Save changes" : "Create platform"}</SubmitButton>
               <ButtonLink href="/admin/platforms">Cancel</ButtonLink>
             </div>
           </form>

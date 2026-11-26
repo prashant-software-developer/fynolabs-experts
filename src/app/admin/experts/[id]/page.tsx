@@ -495,7 +495,7 @@ function OutreachForm({ c, id, owners, dnc, returnTo }: { c: Crm; id: string; ow
         <p className="text-[13px] text-muted-foreground">They won&apos;t be emailed, referred or added to jobs by any tool.{c.emailOptOut ? " They also opted out of bulk emails." : ""}</p>
       </div>
       <div className="flex items-center gap-3">
-        <SubmitButton size="sm" pendingText="Saving...">
+        <SubmitButton size="sm" pendingText="Saving…">
           Save
         </SubmitButton>
         <ButtonLink href={returnTo} size="sm" variant="ghost">
@@ -582,7 +582,7 @@ function ActivityTab({ id, items, pipes, user }: { id: string; items: TimelineIt
           <Textarea name="note" rows={3} placeholder={"Add a note: a call, a trial task result, anything worth remembering.\nThe first line becomes the title on the timeline."} aria-label="Note" className="block min-h-20 resize-y rounded-b-none border-0 bg-transparent px-4 py-3 shadow-none focus:ring-0 focus-visible:ring-0" />
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-canvas/60 px-3 py-2">
             {pipes.length ? <Select name="applicationId" defaultValue="" options={pipes.map((p) => ({ value: p.id, label: p.jobTitle }))} placeholder="Not tied to a job" className="h-8 w-auto max-w-56 text-[13px]" aria-label="Job" /> : null}
-            <SubmitButton size="sm" pendingText="Adding...">
+            <SubmitButton size="sm" pendingText="Adding…">
               Add note
             </SubmitButton>
           </div>
@@ -657,7 +657,7 @@ async function PipelinesTab({ id, pipes, user }: { id: string; pipes: PipelineRo
               <Field label="Starting stage" htmlFor="startStage">
                 <Select id="startStage" name="startStage" defaultValue="new" options={[{ value: "new", label: "Applied" }, { value: "shortlisted", label: "Shortlisted" }]} />
               </Field>
-              <SubmitButton size="md" variant="secondary" pendingText="Adding...">
+              <SubmitButton size="md" variant="secondary" pendingText="Adding…">
                 Add to job
               </SubmitButton>
             </form>
@@ -718,7 +718,7 @@ async function PipelinesTab({ id, pipes, user }: { id: string; pipes: PipelineRo
                       </Field>
                     </FieldRow>
                   ) : null}
-                  <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+                  <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                     Save
                   </SubmitButton>
                 </form>

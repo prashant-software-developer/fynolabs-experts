@@ -153,7 +153,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               <Input id="np-countries" name="countries" placeholder="US, GB" />
             </Field>
             <div className="flex gap-2">
-              <SubmitButton pendingText="Adding...">Add project</SubmitButton>
+              <SubmitButton pendingText="Adding…">Add project</SubmitButton>
               <ButtonLink href={close}>Cancel</ButtonLink>
             </div>
           </form>

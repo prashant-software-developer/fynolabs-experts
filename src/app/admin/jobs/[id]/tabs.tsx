@@ -208,7 +208,7 @@ function FieldCard({ f, i, last, jobId, open, manage }: { f: FieldDef; i: number
             <div className="flex flex-wrap items-center justify-between gap-3">
               {f.type !== "section" ? <Checkbox name="required" value="yes" defaultChecked={f.required} disabled={protectedField} label="Required" /> : <span />}
               {protectedField ? <input type="hidden" name="required" value="yes" /> : null}
-              <SubmitButton size="sm" pendingText="Saving...">
+              <SubmitButton size="sm" pendingText="Saving…">
                 Save question
               </SubmitButton>
             </div>
@@ -266,7 +266,7 @@ export async function FormTab({ job, user, fields, sp }: { job: Job; user: Curre
               <input type="hidden" name="op" value="add" />
               <Select name="type" defaultValue="short_text" options={FIELD_TYPES.map((t) => ({ value: t, label: `${FIELD_TYPE_INFO[t].label} · ${FIELD_TYPE_INFO[t].hint}` }))} aria-label="Question type" />
               <Input name="label" placeholder="Question, e.g. Which area are you strongest in?" aria-label="Question" maxLength={200} />
-              <SubmitButton variant="secondary" pendingText="Adding...">
+              <SubmitButton variant="secondary" pendingText="Adding…">
                 Add
               </SubmitButton>
             </form>
@@ -354,7 +354,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
             <>
               <span className="text-[13px] text-muted-foreground">With the ticked:</span>
               <Select form="bulk-apps" name="status" defaultValue="" options={APPLICATION_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Set status to..." className="h-8 w-auto text-[13px]" aria-label="New status" />
-              <SubmitButton form="bulk-apps" size="sm" variant="secondary" pendingText="Saving...">
+              <SubmitButton form="bulk-apps" size="sm" variant="secondary" pendingText="Saving…">
                 Apply
               </SubmitButton>
             </>
@@ -596,7 +596,7 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
             {shortlist ? (
               <form id="job-shortlist" action={shortlistFromJob} className="flex items-center gap-2 border-b border-border px-4 py-3">
                 <input type="hidden" name="jobId" value={job.id} />
-                <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
+                <SubmitButton size="sm" variant="secondary" pendingText="Adding…">
                   Shortlist ticked to the requirement
                 </SubmitButton>
                 <span className="text-[13px] text-muted-foreground">Shortlisting doesn&apos;t send anything.</span>
@@ -644,7 +644,7 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
                             <form action={inviteToJob}>
                               <input type="hidden" name="jobId" value={job.id} />
                               <input type="hidden" name="expertId" value={m.expertId} />
-                              <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+                              <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                                 {m.invited ? "Invite again" : "Mark invited"}
                               </SubmitButton>
                             </form>
@@ -694,7 +694,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
       <input type="hidden" name="id" value={job.id} />
       <input type="hidden" name="status" value={status} />
       <input type="hidden" name="returnTo" value={here} />
-      <SubmitButton size="sm" variant={variant} disabled={job.status === status} pendingText="Saving...">
+      <SubmitButton size="sm" variant={variant} disabled={job.status === status} pendingText="Saving…">
         {text}
       </SubmitButton>
     </form>
@@ -762,7 +762,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
                 <Checkbox name="featured" value="yes" defaultChecked={job.featured} label="Featured: shown first on the board" />
               </div>
             </FieldRow>
-            <SubmitButton size="sm" pendingText="Saving...">
+            <SubmitButton size="sm" pendingText="Saving…">
               Save
             </SubmitButton>
           </form>

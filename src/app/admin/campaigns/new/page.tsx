@@ -178,7 +178,7 @@ export default async function NewCampaignPage({ searchParams }: { searchParams: 
                   <Textarea id="followUpBody" name="followUpBody" rows={4} maxLength={10000} />
                 </Field>
               </div>
-              <SubmitButton pendingText="Preparing...">Prepare draft</SubmitButton>
+              <SubmitButton pendingText="Preparing…">Prepare draft</SubmitButton>
             </form>
           ) : (
             <EmptyState padded={false} title="Pick who it goes to first" description="Then check who gets it; the email form opens when at least one person can get it." />

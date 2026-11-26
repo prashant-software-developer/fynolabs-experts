@@ -258,7 +258,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
             <input type="hidden" name="returnTo" value={close} />
             <NewAccountFields team={team} meId={meId} />
             <div className="flex gap-2">
-              <SubmitButton pendingText="Adding...">Add account</SubmitButton>
+              <SubmitButton pendingText="Adding…">Add account</SubmitButton>
               <ButtonLink href={close}>Cancel</ButtonLink>
             </div>
           </form>

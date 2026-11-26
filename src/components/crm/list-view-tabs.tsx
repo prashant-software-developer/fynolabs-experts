@@ -83,7 +83,7 @@ export function ListViewTabs({
           <p className="text-[13px] text-muted-foreground">{hint}</p>
           <Input name="name" placeholder={placeholder} maxLength={60} required aria-label="View name" />
           {canShare ? <Checkbox name="shared" value="yes" label="Share with the team" /> : <p className="text-[13px] text-muted-foreground">Personal view (your role can&apos;t share views).</p>}
-          <SubmitButton size="sm" pendingText="Saving...">
+          <SubmitButton size="sm" pendingText="Saving…">
             Save view
           </SubmitButton>
         </form>
@@ -95,7 +95,7 @@ export function ListViewTabs({
             <form action={update}>
               {fields}
               <input type="hidden" name="id" value={active.id} />
-              <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+              <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                 Update view
               </SubmitButton>
             </form>

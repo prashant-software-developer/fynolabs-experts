@@ -189,7 +189,7 @@ export default async function SendReferralsPage({ searchParams }: { searchParams
           </Section>
 
           <div className="flex flex-wrap items-center gap-3">
-            <SubmitButton form="refer" pendingText="Recording...">
+            <SubmitButton form="refer" pendingText="Recording…">
               Record referrals
             </SubmitButton>
             <span className="text-small text-muted-foreground">One referral per ticked person; each one is logged on their timeline.</span>

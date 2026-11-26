@@ -12,7 +12,7 @@ import { cn } from "./cn";
  * then send it. Lives inside a <form action={...}>; the input is named `name`. A file over the
  * upload limit is refused on the spot (with the reason), and the button stays off.
  */
-export function FileDrop({ name, accept, label, hint, submitLabel, pendingText = "Uploading..." }: { name: string; accept?: string; label: string; hint: string; submitLabel: string; pendingText?: string }) {
+export function FileDrop({ name, accept, label, hint, submitLabel, pendingText = "Uploading…" }: { name: string; accept?: string; label: string; hint: string; submitLabel: string; pendingText?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [problem, setProblem] = useState<string | null>(null);

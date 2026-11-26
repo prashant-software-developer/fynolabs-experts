@@ -61,7 +61,7 @@ export function AddMemberForm({ roles, partners, domain, signInUrl }: { roles: {
             <PartnerPicker partners={partners} />
           </fieldset>
         ) : null}
-        <SubmitButton pendingText="Adding...">Add member</SubmitButton>
+        <SubmitButton pendingText="Adding…">Add member</SubmitButton>
       </form>
     </div>
   );
@@ -76,7 +76,7 @@ export function ResetPasswordForm({ id, email, signInUrl }: { id: string; email:
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="email" value={email} />
       <p className="text-sm leading-relaxed text-muted-foreground">This makes a new temporary password and signs {email} out everywhere. Their old password stops working at once.</p>
-      <SubmitButton pendingText="Making a password..." confirm={`Reset the password for ${email}? They are signed out everywhere.`}>
+      <SubmitButton pendingText="Making a password…" confirm={`Reset the password for ${email}? They are signed out everywhere.`}>
         Make a temporary password
       </SubmitButton>
     </form>

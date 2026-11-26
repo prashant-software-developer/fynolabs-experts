@@ -271,7 +271,7 @@ export default async function ExpertsPage({ searchParams }: { searchParams: Prom
             {canShortlist ? (
               <BulkMenu label="Add to requirement" wide>
                 <Select form="bulk" name="requirementId" defaultValue="" options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))} placeholder={reqs.length ? "Pick a requirement" : "No open requirements"} className={bulkControl} aria-label="Requirement" />
-                <PendingButton form="bulk" formAction={addSelectedToRequirement} pendingText="Adding...">
+                <PendingButton form="bulk" formAction={addSelectedToRequirement} pendingText="Adding…">
                   Add to requirement
                 </PendingButton>
               </BulkMenu>

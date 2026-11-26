@@ -5,7 +5,7 @@ import { portalContext } from "@/lib/auth/expert";
 import { todayIST } from "@/lib/crm/dates";
 import { one, type SearchParams } from "@/lib/filters";
 import { dueText, istDay, ownDocuments } from "@/lib/server/portal-documents";
-import { PortalCard, PortalEmpty, PortalHeader } from "@/components/portal/page";
+import { PortalCard, PortalEmpty, PortalHeader, PortalSectionTitle } from "@/components/portal/page";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
@@ -33,7 +33,7 @@ function Progress({ done, total }: { done: number; total: number }) {
 function Row({ href, title, line, overdue, done }: { href: string; title: string; line: string; overdue?: boolean; done?: boolean }) {
   return (
     <li className="flex items-center gap-4 px-5 py-4 sm:px-6">
-      <span className={cn("hidden h-9 w-9 shrink-0 place-items-center rounded-lg sm:grid", done ? "bg-success-soft text-success" : "bg-primary/[0.08] text-primary")} aria-hidden>
+      <span className={cn("hidden h-9 w-9 shrink-0 place-items-center rounded-lg sm:grid", done ? "bg-success-soft text-success" : "bg-secondary text-foreground/70")} aria-hidden>
         <FileSignature className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
@@ -67,37 +67,42 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
       {total === 0 ? (
         <PortalEmpty title="Nothing to sign" description="When we need your signature on an NDA, an agreement or a consent, it shows up here." />
       ) : (
-        <PortalCard className="overflow-hidden">
+        // Two separate sections, each a heading with its own list (27 Nov 2026: one box with label rows read as one list).
+        <div className="space-y-10">
           <section aria-labelledby="to-sign">
-            <h2 id="to-sign" className="eyebrow border-b border-border px-5 py-3 text-muted-foreground sm:px-6">
-              To sign{toSign.length ? ` (${toSign.length})` : ""}
-            </h2>
+            <PortalSectionTitle count={toSign.length}>
+              <span id="to-sign">To sign</span>
+            </PortalSectionTitle>
             {toSign.length ? (
-              <ul className="divide-y divide-border">
-                {toSign.map((d) => {
-                  const line = dueText(d.dueOn, today);
-                  return <Row key={d.ref} href={`/me/documents/${d.ref}`} title={d.title} line={line} overdue={line.startsWith("Overdue")} />;
-                })}
-              </ul>
+              <PortalCard className="overflow-hidden">
+                <ul className="divide-y divide-border">
+                  {toSign.map((d) => {
+                    const line = dueText(d.dueOn, today);
+                    return <Row key={d.ref} href={`/me/documents/${d.ref}`} title={d.title} line={line} overdue={line.startsWith("Overdue")} />;
+                  })}
+                </ul>
+              </PortalCard>
             ) : (
-              <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">All signed. Nothing left to do here.</p>
+              <p className="text-sm text-muted-foreground">All signed. Nothing left to do here.</p>
             )}
           </section>
-          <section aria-labelledby="signed" className="border-t border-border">
-            <h2 id="signed" className="eyebrow border-b border-border px-5 py-3 text-muted-foreground sm:px-6">
-              Signed{signed.length ? ` (${signed.length})` : ""}
-            </h2>
+          <section aria-labelledby="signed">
+            <PortalSectionTitle count={signed.length}>
+              <span id="signed">Signed</span>
+            </PortalSectionTitle>
             {signed.length ? (
-              <ul className="divide-y divide-border">
-                {signed.map((d) => (
-                  <Row key={d.ref} href={`/me/documents/${d.ref}`} title={d.title} line={d.signedAt ? `Signed ${istDay(d.signedAt)}` : "Signed"} done />
-                ))}
-              </ul>
+              <PortalCard className="overflow-hidden">
+                <ul className="divide-y divide-border">
+                  {signed.map((d) => (
+                    <Row key={d.ref} href={`/me/documents/${d.ref}`} title={d.title} line={d.signedAt ? `Signed ${istDay(d.signedAt)}` : "Signed"} done />
+                  ))}
+                </ul>
+              </PortalCard>
             ) : (
-              <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">Nothing signed yet.</p>
+              <p className="text-sm text-muted-foreground">Nothing signed yet. Documents you sign show here, with the date.</p>
             )}
           </section>
-        </PortalCard>
+        </div>
       )}
     </>
   );

@@ -52,7 +52,7 @@ export default async function JobPage({ params, searchParams }: { params: Promis
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="status" value={status} />
       <input type="hidden" name="returnTo" value={here} />
-      <SubmitButton size="sm" variant={variant} pendingText="Saving...">
+      <SubmitButton size="sm" variant={variant} pendingText="Saving…">
         {text}
       </SubmitButton>
     </form>

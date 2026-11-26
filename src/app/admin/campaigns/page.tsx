@@ -143,7 +143,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
                 <form action={approveCampaignAction}>
                   <input type="hidden" name="id" value={camp.id} />
                   <input type="hidden" name="returnTo" value={back} />
-                  <SubmitButton size="sm" variant="secondary" disabled={!counts.pending || !camp.subject.trim()} pendingText="Approving...">
+                  <SubmitButton size="sm" variant="secondary" disabled={!counts.pending || !camp.subject.trim()} pendingText="Approving…">
                     Approve
                   </SubmitButton>
                 </form>
@@ -152,7 +152,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
                 <form action={sendCampaignAction}>
                   <input type="hidden" name="id" value={camp.id} />
                   <input type="hidden" name="returnTo" value={back} />
-                  <SubmitButton size="sm" variant="secondary" pendingText="Checking...">
+                  <SubmitButton size="sm" variant="secondary" pendingText="Checking…">
                     Send {Math.min(50, counts.pending ?? 0)} now
                   </SubmitButton>
                 </form>
@@ -161,7 +161,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
                 <form action={cancelCampaignAction} className="ml-auto">
                   <input type="hidden" name="id" value={camp.id} />
                   <input type="hidden" name="returnTo" value={back} />
-                  <SubmitButton size="sm" variant="ghost" confirm="Cancel this campaign? Nothing more goes out." pendingText="Cancelling...">
+                  <SubmitButton size="sm" variant="ghost" confirm="Cancel this campaign? Nothing more goes out." pendingText="Cancelling…">
                     Cancel campaign
                   </SubmitButton>
                 </form>
@@ -276,7 +276,7 @@ async function TemplatesTab({ sp, manage }: { sp: SearchParams; manage: boolean 
               <Field label="Message" htmlFor="body" hint={`Merge fields: ${MERGE_FIELDS.map((m) => `{{${m}}}`).join(" ")}`}>
                 <Textarea id="body" name="body" rows={10} defaultValue={editing?.body ?? ""} maxLength={10000} required />
               </Field>
-              <SubmitButton pendingText="Saving...">Save</SubmitButton>
+              <SubmitButton pendingText="Saving…">Save</SubmitButton>
             </form>
             {editing ? (
               <form action={deleteTemplateAction} className="border-t border-border pt-4">

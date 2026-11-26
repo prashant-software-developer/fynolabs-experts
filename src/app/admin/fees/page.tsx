@@ -127,7 +127,7 @@ async function FeesTab({ tab, sp, manage, here }: { tab: string; sp: SearchParam
                 void: <Input form="bulk-fees" name="voidReason" placeholder="Why, e.g. already on the partner's platform" className="h-8 w-72 text-small" aria-label="Why" />,
               }}
             />
-            <SubmitButton form="bulk-fees" size="sm" variant="secondary" pendingText="Saving...">
+            <SubmitButton form="bulk-fees" size="sm" variant="secondary" pendingText="Saving…">
               Apply
             </SubmitButton>
             <span className="text-[13px] text-muted-foreground">Paid fees are locked.</span>
@@ -235,7 +235,7 @@ function FeePanel({ fee, sp, manage, here }: { fee: FeeRow; sp: SearchParams; ma
                   <Input id="dueOn" name="dueOn" type="date" />
                 </Field>
               </FieldRow>
-              <SubmitButton size="sm" pendingText="Saving...">
+              <SubmitButton size="sm" pendingText="Saving…">
                 Mark invoiced
               </SubmitButton>
             </form>
@@ -255,7 +255,7 @@ function FeePanel({ fee, sp, manage, here }: { fee: FeeRow; sp: SearchParams; ma
                   <Input id="paidAmount" name="paidAmount" inputMode="decimal" placeholder={String(fee.amount)} />
                 </Field>
               </FieldRow>
-              <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+              <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                 Mark paid
               </SubmitButton>
             </form>
@@ -270,7 +270,7 @@ function FeePanel({ fee, sp, manage, here }: { fee: FeeRow; sp: SearchParams; ma
               <Field label="Why" htmlFor="voidReason">
                 <Input id="voidReason" name="voidReason" required maxLength={300} placeholder="Already on the partner's platform" />
               </Field>
-              <SubmitButton size="sm" variant="danger" pendingText="Saving...">
+              <SubmitButton size="sm" variant="danger" pendingText="Saving…">
                 Void
               </SubmitButton>
             </form>
@@ -406,7 +406,7 @@ async function RulesTab({ sp, manage }: { sp: SearchParams; manage: boolean }) {
             </Field>
             <Checkbox name="active" value="yes" defaultChecked={editing ? editing.active : true} label="On (new fees are added)" />
             <div className="flex items-center gap-3">
-              <SubmitButton pendingText="Saving...">Save</SubmitButton>
+              <SubmitButton pendingText="Saving…">Save</SubmitButton>
               {!editing ? (
                 <SubmitButton formMethod="get" formAction="/admin/fees" variant="ghost" name="tab" value="rules">
                   Load tracks
@@ -435,7 +435,7 @@ async function RulesTab({ sp, manage }: { sp: SearchParams; manage: boolean }) {
             <div className="flex gap-2">
               <form action={addMissingFeesAction}>
                 <input type="hidden" name="ruleId" value={missingFor} />
-                <SubmitButton pendingText="Adding...">Add {missing.length} fees</SubmitButton>
+                <SubmitButton pendingText="Adding…">Add {missing.length} fees</SubmitButton>
               </form>
               <ButtonLink href="/admin/fees?tab=rules&ok=Rule%20saved.">Not now</ButtonLink>
             </div>

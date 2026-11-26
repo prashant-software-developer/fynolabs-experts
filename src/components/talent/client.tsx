@@ -6,15 +6,23 @@ import { useFormStatus } from "react-dom";
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, REJECT_REASONS } from "@/lib/constants";
 import { REJECT_REASON_LABELS } from "@/lib/talent";
 import { buttonClass } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/components/ui/cn";
 
 type Action = (fd: FormData) => void | Promise<void>;
 
-function Pending({ children, pendingText = "Saving...", className, variant = "secondary", formAction, name, value, disabled, form }: { children: ReactNode; pendingText?: string; className?: string; variant?: "primary" | "secondary" | "ghost" | "danger"; formAction?: Action; name?: string; value?: string; disabled?: boolean; form?: string }) {
+function Pending({ children, pendingText = "Saving…", className, variant = "secondary", formAction, name, value, disabled, form }: { children: ReactNode; pendingText?: string; className?: string; variant?: "primary" | "secondary" | "ghost" | "danger"; formAction?: Action; name?: string; value?: string; disabled?: boolean; form?: string }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" form={form} formAction={formAction} name={name} value={value} disabled={pending || disabled} className={buttonClass(variant, "sm", className)}>
-      {pending ? pendingText : children}
+      {pending ? (
+        <>
+          <Spinner className="h-3.5 w-3.5" />
+          {pendingText}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }
@@ -61,7 +69,7 @@ export function StageForm({ action, id, stage, rejectReason, returnTo, compact, 
             ))}
           </select>
           {asking ? (
-            <Pending variant="danger" disabled={!reason} pendingText="Saving...">
+            <Pending variant="danger" disabled={!reason} pendingText="Saving…">
               Reject
             </Pending>
           ) : null}

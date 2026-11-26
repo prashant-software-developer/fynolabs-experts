@@ -80,7 +80,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
                   <Select id="status" name="status" defaultValue={g.status} options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
                 </Field>
               </FieldRow>
-              <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+              <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                 Save changes
               </SubmitButton>
             </form>
@@ -93,7 +93,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
               <form action={addMembers} className="space-y-3">
                 <input type="hidden" name="id" value={id} />
                 <Textarea name="emails" rows={3} placeholder={"asha@example.com\nMarco Sample <marco@example.org>"} aria-label="Emails" />
-                <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
+                <SubmitButton size="sm" variant="secondary" pendingText="Adding…">
                   Add emails
                 </SubmitButton>
               </form>
@@ -118,7 +118,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
                           </li>
                         ))}
                       </ul>
-                      <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
+                      <SubmitButton size="sm" variant="secondary" pendingText="Adding…">
                         Add selected
                       </SubmitButton>
                     </form>
@@ -179,7 +179,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
               </Table>
               {manage ? (
                 <div className="border-t border-border px-4 py-3">
-                  <SubmitButton form="remove" size="sm" variant="ghost" pendingText="Removing..." confirm="Remove the ticked people from this group? Their expert records stay as they are.">
+                  <SubmitButton form="remove" size="sm" variant="ghost" pendingText="Removing…" confirm="Remove the ticked people from this group? Their expert records stay as they are.">
                     Remove selected
                   </SubmitButton>
                 </div>

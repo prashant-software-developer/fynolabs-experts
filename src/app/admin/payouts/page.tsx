@@ -178,7 +178,7 @@ function NextStep({ row, back, panel }: { row: AdminPayout; back: string; panel:
         <input type="hidden" name="id" value={row.id} />
         <input type="hidden" name="to" value="processing" />
         <input type="hidden" name="returnTo" value={back} />
-        <SubmitButton size="sm" variant="ghost" pendingText="Saving...">
+        <SubmitButton size="sm" variant="ghost" pendingText="Saving…">
           {row.status === "failed" ? "Retry" : "Mark processing"}
         </SubmitButton>
       </form>
@@ -198,7 +198,7 @@ function StatusForm({ id, to, here, children, variant = "secondary", confirm }: 
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="to" value={to} />
       <input type="hidden" name="returnTo" value={here} />
-      <SubmitButton size="sm" variant={variant} pendingText="Saving..." confirm={confirm}>
+      <SubmitButton size="sm" variant={variant} pendingText="Saving…" confirm={confirm}>
         {children}
       </SubmitButton>
     </form>
@@ -268,7 +268,7 @@ async function PayoutPanel({ row, sp, manage, closeHref, here }: { row: AdminPay
               <Field label="Reference" htmlFor="reference" hint="UTR or transaction ID. The expert sees it.">
                 <Input id="reference" name="reference" maxLength={120} defaultValue={row.reference ?? ""} />
               </Field>
-              <SubmitButton size="sm" pendingText="Saving...">
+              <SubmitButton size="sm" pendingText="Saving…">
                 Mark paid
               </SubmitButton>
             </form>
@@ -338,7 +338,7 @@ async function AddPayoutPanel({ sp, closeHref }: { sp: SearchParams; closeHref: 
             <Field label="Expert email" htmlFor="email">
               <Input id="email" name="email" type="email" required autoComplete="off" />
             </Field>
-            <SubmitButton size="sm" pendingText="Finding...">
+            <SubmitButton size="sm" pendingText="Finding…">
               Find expert
             </SubmitButton>
           </form>

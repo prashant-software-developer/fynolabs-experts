@@ -134,7 +134,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
             <input type="hidden" name="requirementId" value={id} />
             {canShortlist ? (
               <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-                <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
+                <SubmitButton size="sm" variant="secondary" pendingText="Adding…">
                   Shortlist ticked
                 </SubmitButton>
                 <span className="text-[13px] text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>

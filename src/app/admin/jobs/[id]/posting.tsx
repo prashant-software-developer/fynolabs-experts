@@ -70,7 +70,7 @@ export async function PostingSection({ jobId, user }: { jobId: string; user: Cur
         ) : null}
         <Checkbox name="requireGithub" value="yes" defaultChecked={p.requireGithub} label="Ask for GitHub (applicants must add a GitHub profile)" />
         {radar ? <p className="text-small text-muted-foreground">From the job radar: {radar}</p> : null}
-        <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+        <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
           Save posting details
         </SubmitButton>
       </form>

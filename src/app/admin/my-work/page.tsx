@@ -108,7 +108,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
                     <input type="hidden" name="expertId" value={i.expertId} />
                     <input type="hidden" name="name" value={i.title} />
                     <input type="hidden" name="returnTo" value={here} />
-                    <SubmitButton size="sm" variant="secondary" pendingText="...">
+                    <SubmitButton size="sm" variant="secondary" pendingText="…">
                       Contacted
                     </SubmitButton>
                   </form>

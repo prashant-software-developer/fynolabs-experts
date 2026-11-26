@@ -71,7 +71,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             {approve && draft ? (
               <form action={approveCampaignAction}>
                 <input type="hidden" name="id" value={id} />
-                <SubmitButton size="sm" disabled={!counts.pending || !ready} pendingText="Approving...">
+                <SubmitButton size="sm" disabled={!counts.pending || !ready} pendingText="Approving…">
                   Approve
                 </SubmitButton>
               </form>
@@ -79,7 +79,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             {approve && (camp.status === "approved" || camp.status === "sending") ? (
               <form action={sendCampaignAction}>
                 <input type="hidden" name="id" value={id} />
-                <SubmitButton size="sm" pendingText="Checking...">
+                <SubmitButton size="sm" pendingText="Checking…">
                   Send {Math.min(50, counts.pending ?? 0)} now
                 </SubmitButton>
               </form>
@@ -87,7 +87,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             {manage && camp.status !== "done" && camp.status !== "cancelled" ? (
               <form action={cancelCampaignAction}>
                 <input type="hidden" name="id" value={id} />
-                <SubmitButton size="sm" variant="ghost" confirm="Cancel this campaign? Nothing more goes out." pendingText="Cancelling...">
+                <SubmitButton size="sm" variant="ghost" confirm="Cancel this campaign? Nothing more goes out." pendingText="Cancelling…">
                   Cancel campaign
                 </SubmitButton>
               </form>
@@ -150,7 +150,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   <Textarea id="followUpBody" name="followUpBody" rows={4} defaultValue={camp.followUpBody ?? ""} maxLength={10000} />
                 </Field>
               </div>
-              <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+              <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                 Save draft
               </SubmitButton>
             </form>

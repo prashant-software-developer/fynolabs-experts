@@ -298,7 +298,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                 <Input id="a-date" name="date" type="date" defaultValue={today} aria-label="Date (India time; empty: now)" title="India time. Empty: now." className="h-8 w-36 text-[13px]" />
                 <Input id="a-time" name="time" type="time" aria-label="Time" className="h-8 w-28 text-[13px]" />
                 {people.length ? <Select id="a-contact" name="contactId" defaultValue="" options={people.map((p) => ({ value: p.id, label: p.name }))} placeholder="Whole account" aria-label="Who it was with" className="h-8 w-auto max-w-48 text-[13px]" /> : null}
-                <SubmitButton size="sm" pendingText="Logging..." className="ml-auto">
+                <SubmitButton size="sm" pendingText="Logging…" className="ml-auto">
                   Log it
                 </SubmitButton>
               </div>
@@ -613,7 +613,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
               <DetailFields c={c} platforms={platforms} />
             </PanelSection>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <SubmitButton pendingText="Saving...">Save changes</SubmitButton>
+              <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
               <ButtonLink href={here} variant="ghost">
                 Cancel
               </ButtonLink>

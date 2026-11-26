@@ -585,7 +585,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                   <Field label="Notes" htmlFor="pj-notes">
                     <Textarea id="pj-notes" name="notes" rows={3} defaultValue={p.notes ?? ""} />
                   </Field>
-                  <SubmitButton pendingText="Saving...">Save project</SubmitButton>
+                  <SubmitButton pendingText="Saving…">Save project</SubmitButton>
                 </div>
               </Section>
             </form>

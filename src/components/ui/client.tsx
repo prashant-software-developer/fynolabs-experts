@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { buttonClass } from "./button";
+import { Spinner } from "./spinner";
 
 /** While a side panel is open: Escape goes to `href` (closes it), and the page behind doesn't scroll. */
 export function EscapeTo({ href }: { href: string }) {
@@ -50,7 +51,14 @@ export function SubmitButton({
         if (confirm && !window.confirm(confirm)) e.preventDefault();
       }}
     >
-      {pending && pendingText ? pendingText : children}
+      {pending ? (
+        <>
+          <Spinner className="h-3.5 w-3.5" />
+          {pendingText && !/^[.…]+$/.test(pendingText) ? pendingText : children}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

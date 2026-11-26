@@ -30,7 +30,7 @@ function StarterButton({ returnTo, variant = "secondary" }: { returnTo: string; 
   return (
     <form action={addStarterCoursesForm}>
       <input type="hidden" name="returnTo" value={returnTo} />
-      <SubmitButton variant={variant} pendingText="Adding...">
+      <SubmitButton variant={variant} pendingText="Adding…">
         Add the FynoLabs starter courses
       </SubmitButton>
     </form>
@@ -145,7 +145,7 @@ export default async function AdminLearnPage({ searchParams }: { searchParams: P
                 <input type="hidden" name="id" value={viewing.id} />
                 <input type="hidden" name="published" value={viewing.published ? "no" : "yes"} />
                 <input type="hidden" name="returnTo" value={here} />
-                <SubmitButton variant="secondary" size="sm" pendingText="Saving...">
+                <SubmitButton variant="secondary" size="sm" pendingText="Saving…">
                   {viewing.published ? "Unpublish" : "Publish"}
                 </SubmitButton>
               </form>

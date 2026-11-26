@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { createPortal } from "react-dom";
 import { Avatar } from "@/components/ui/avatar";
 import { RoleChip } from "@/components/ui/role-chip";
+import { Spinner } from "@/components/ui/spinner";
 import {
   BadgeCheck,
   Banknote,
@@ -516,8 +517,8 @@ export function CommandPalette({ access }: { access: NavAccess }) {
         </div>
         <div ref={list} id="admin-search-list" role="listbox" aria-label="Results" className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2">
           {!res ? (
-            <p className="px-4 py-10 text-center text-[13px] text-muted-foreground" role="status">
-              Searching…
+            <p className="flex items-center justify-center gap-2 px-4 py-10 text-[13px] text-muted-foreground" role="status">
+              <Spinner className="h-4 w-4 text-primary" /> Searching…
             </p>
           ) : !count ? (
             <p className="px-4 py-10 text-center text-[13px] text-muted-foreground">Nothing matches “{q}”.</p>

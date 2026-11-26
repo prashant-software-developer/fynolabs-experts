@@ -176,7 +176,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                   <input type="hidden" name="ids" value={open.id} />
                   <input type="hidden" name="returnTo" value={here} />
                   <input type="hidden" name="handled" value={open.handledAt ? "no" : "yes"} />
-                  <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+                  <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                     {open.handledAt ? "Mark as open" : "Mark as handled"}
                   </SubmitButton>
                 </form>

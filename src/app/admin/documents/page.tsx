@@ -128,7 +128,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                 <form action={deleteTemplateForm} className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
                   <input type="hidden" name="id" value={editing.id} />
                   <p className="text-[13px] text-muted-foreground">Deleting is only for templates nobody has a copy of. Otherwise it is turned off, and every signed copy stays.</p>
-                  <SubmitButton variant="danger" size="sm" pendingText="Deleting..." confirm={`Delete “${editing.title}”? If anyone has a copy, it is turned off instead.`}>
+                  <SubmitButton variant="danger" size="sm" pendingText="Deleting…" confirm={`Delete “${editing.title}”? If anyone has a copy, it is turned off instead.`}>
                     Delete
                   </SubmitButton>
                 </form>
@@ -229,7 +229,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                 <Field label="Note" htmlFor="send-note" hint="For the team only. The expert never sees it.">
                   <Textarea id="send-note" name="note" rows={2} maxLength={2000} />
                 </Field>
-                <SubmitButton pendingText="Sending...">Send</SubmitButton>
+                <SubmitButton pendingText="Sending…">Send</SubmitButton>
               </form>
             ) : (
               <Notice tone="info">Your role can see documents but not send them. An admin or recruiter sends them.</Notice>

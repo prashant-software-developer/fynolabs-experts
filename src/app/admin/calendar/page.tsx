@@ -256,7 +256,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                 <form action={markCalendarEventDone}>
                   <input type="hidden" name="id" value={opened.id} />
                   <input type="hidden" name="returnTo" value={here} />
-                  <SubmitButton size="sm" pendingText="Saving...">
+                  <SubmitButton size="sm" pendingText="Saving…">
                     Mark done
                   </SubmitButton>
                 </form>
@@ -551,7 +551,7 @@ function EventForm({
         <Textarea id="ev-notes" name="notes" rows={4} defaultValue={e?.notes ?? ""} />
       </Field>
       <div className="flex gap-2">
-        <SubmitButton pendingText="Saving...">{e ? "Save" : "Add event"}</SubmitButton>
+        <SubmitButton pendingText="Saving…">{e ? "Save" : "Add event"}</SubmitButton>
         <ButtonLink href={returnTo}>Cancel</ButtonLink>
       </div>
     </form>

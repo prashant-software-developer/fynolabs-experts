@@ -240,7 +240,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             ) : (
               <EmptyState padded={false} title="No partners yet" />
             )}
-            <SubmitButton pendingText="Saving...">Save scope</SubmitButton>
+            <SubmitButton pendingText="Saving…">Save scope</SubmitButton>
           </form>
         </SlideOver>
       ) : null}

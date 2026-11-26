@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { chooseNewPassword, forgotPassword, sendNewCode, signInWithPassword, signUp, updatePassword, verifyWithCode, type AuthFormState } from "@/app/(auth)/actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/password-policy";
 import { buttonClass } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Notice } from "@/components/ui/feedback";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "./password-input";
@@ -15,7 +16,14 @@ function Submit({ children, pending: pendingText, variant = "primary" }: { child
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending} className={buttonClass(variant, "md", "h-11 w-full")}>
-      {pending ? pendingText : children}
+      {pending ? (
+        <>
+          <Spinner className="h-3.5 w-3.5" />
+          {pendingText}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }
@@ -146,8 +154,14 @@ export function VerifyForm({ email, next }: { email: string | null; next: string
 function ResendButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className="text-[13px] text-primary underline-offset-4 hover:underline disabled:opacity-50">
-      {pending ? "Sending..." : "Send a new code"}
+    <button type="submit" disabled={pending} className="inline-flex items-center gap-1.5 text-[13px] text-primary underline-offset-4 hover:underline disabled:opacity-50">
+      {pending ? (
+        <>
+          <Spinner className="h-3 w-3" /> Sending…
+        </>
+      ) : (
+        "Send a new code"
+      )}
     </button>
   );
 }

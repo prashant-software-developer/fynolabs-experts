@@ -192,7 +192,7 @@ export function LessonPanel({
               <form action={markLessonDone}>
                 <input type="hidden" name="lessonId" value={lesson.id} />
                 <input type="hidden" name="back" value={`/me/learn/${slug}`} />
-                <SubmitButton pendingText="Saving...">
+                <SubmitButton pendingText="Saving…">
                   <CheckCircle2 className="h-4 w-4" aria-hidden /> Mark as done
                 </SubmitButton>
               </form>

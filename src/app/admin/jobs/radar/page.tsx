@@ -57,7 +57,7 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
           <input type="hidden" name="ids" value={r.id} />
           <input type="hidden" name="status" value="discarded" />
           <input type="hidden" name="returnTo" value={here} />
-          <SubmitButton size="sm" variant="ghost" pendingText="...">
+          <SubmitButton size="sm" variant="ghost" pendingText="…">
             Discard
           </SubmitButton>
         </form>
@@ -67,7 +67,7 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
           <input type="hidden" name="ids" value={r.id} />
           <input type="hidden" name="status" value="approved" />
           <input type="hidden" name="returnTo" value={here} />
-          <SubmitButton size="sm" variant="secondary" pendingText="...">
+          <SubmitButton size="sm" variant="secondary" pendingText="…">
             Approve
           </SubmitButton>
         </form>
@@ -77,7 +77,7 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
           <input type="hidden" name="ids" value={r.id} />
           <input type="hidden" name="status" value="new" />
           <input type="hidden" name="returnTo" value={here} />
-          <SubmitButton size="sm" variant="secondary" pendingText="...">
+          <SubmitButton size="sm" variant="secondary" pendingText="…">
             Restore
           </SubmitButton>
         </form>
@@ -90,7 +90,7 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
         <form action={publishRadarAction}>
           <input type="hidden" name="id" value={r.id} />
           <input type="hidden" name="returnTo" value={here} />
-          <SubmitButton size="sm" variant={compact ? "secondary" : "primary"} pendingText="Publishing...">
+          <SubmitButton size="sm" variant={compact ? "secondary" : "primary"} pendingText="Publishing…">
             Publish as job
           </SubmitButton>
         </form>

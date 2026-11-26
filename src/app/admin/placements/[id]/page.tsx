@@ -134,7 +134,7 @@ export default async function PlacementPage({ params, searchParams }: { params: 
                       <Select id="status" name="status" defaultValue={p.status} options={PLACEMENT_STATUSES.map((s) => ({ value: s, label: label(s) }))} />
                     </Field>
                   </div>
-                  <SubmitButton size="sm" pendingText="Saving...">
+                  <SubmitButton size="sm" pendingText="Saving…">
                     Save progress
                   </SubmitButton>
                 </form>

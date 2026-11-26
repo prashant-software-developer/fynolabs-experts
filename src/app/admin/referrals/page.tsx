@@ -80,7 +80,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
             <span className="text-[13px] text-muted-foreground">With the ticked:</span>
             <Select form="bulk-ref" name="outcome" defaultValue="" options={REFERRAL_OUTCOMES.map((o) => ({ value: o, label: REFERRAL_OUTCOME_LABELS[o] }))} placeholder="Set outcome..." className="w-auto" aria-label="Outcome" />
             <Input form="bulk-ref" name="at" type="date" className="w-auto" aria-label="When (the partner's date)" title="When (the partner's date). Empty: today." />
-            <SubmitButton form="bulk-ref" size="sm" variant="secondary" pendingText="Saving...">
+            <SubmitButton form="bulk-ref" size="sm" variant="secondary" pendingText="Saving…">
               Apply
             </SubmitButton>
           </div>
@@ -182,7 +182,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
                   <input type="hidden" name="returnTo" value={hrefWith("/admin/referrals", sp, { ok: null, error: null })} />
                   <Select name="outcome" defaultValue={open.outcome} options={REFERRAL_OUTCOMES.map((o) => ({ value: o, label: REFERRAL_OUTCOME_LABELS[o] }))} className="w-auto" aria-label="Outcome" />
                   <Input name="at" type="date" className="w-auto" aria-label="When" />
-                  <SubmitButton size="sm" variant="secondary" pendingText="Saving...">
+                  <SubmitButton size="sm" variant="secondary" pendingText="Saving…">
                     Save
                   </SubmitButton>
                 </form>

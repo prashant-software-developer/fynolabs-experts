@@ -99,7 +99,7 @@ export default async function AdminCoursePage({ params, searchParams }: { params
             <input type="hidden" name="id" value={course.id} />
             <input type="hidden" name="published" value={course.published ? "no" : "yes"} />
             <input type="hidden" name="returnTo" value={close} />
-            <SubmitButton variant={course.published ? "secondary" : "primary"} pendingText="Saving...">
+            <SubmitButton variant={course.published ? "secondary" : "primary"} pendingText="Saving…">
               {course.published ? "Unpublish" : "Publish"}
             </SubmitButton>
           </form>
@@ -156,7 +156,7 @@ export default async function AdminCoursePage({ params, searchParams }: { params
         <Section title="Delete this course" description="Removes the course, its lessons and every expert's progress in it. To hide it for a while instead, unpublish it.">
           <form action={deleteCourseForm}>
             <input type="hidden" name="id" value={course.id} />
-            <SubmitButton variant="danger" size="sm" pendingText="Deleting..." confirm={`Delete “${course.title}”, its ${lessons.length} lessons and everyone's progress in it? This can't be undone.`}>
+            <SubmitButton variant="danger" size="sm" pendingText="Deleting…" confirm={`Delete “${course.title}”, its ${lessons.length} lessons and everyone's progress in it? This can't be undone.`}>
               Delete course
             </SubmitButton>
           </form>
@@ -172,7 +172,7 @@ export default async function AdminCoursePage({ params, searchParams }: { params
               <form action={deleteLessonForm} className="mr-auto">
                 <input type="hidden" name="courseId" value={course.id} />
                 <input type="hidden" name="lessonId" value={lesson.id} />
-                <SubmitButton variant="ghost" size="sm" className="text-danger" pendingText="Deleting..." confirm="Delete this lesson? Experts' progress on it goes with it.">
+                <SubmitButton variant="ghost" size="sm" className="text-danger" pendingText="Deleting…" confirm="Delete this lesson? Experts' progress on it goes with it.">
                   Delete lesson
                 </SubmitButton>
               </form>

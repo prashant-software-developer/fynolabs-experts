@@ -45,7 +45,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
           manage ? (
             <form action={newGroup} className="flex flex-wrap items-center gap-2">
               <Input name="name" placeholder="New group name" maxLength={100} aria-label="New group name" className="w-56" />
-              <SubmitButton pendingText="Creating...">
+              <SubmitButton pendingText="Creating…">
                 <Plus className="h-4 w-4" aria-hidden /> New group
               </SubmitButton>
             </form>
