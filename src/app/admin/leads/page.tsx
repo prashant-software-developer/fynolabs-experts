@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { Building2, CalendarClock, Check, ExternalLink, LayoutGrid, Link2, Mail, Plus, Rows3 } from "lucide-react";
 import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardScroller } from "@/components/crm/board";
 import { Avatar } from "@/components/ui/avatar";
 import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
@@ -7,23 +7,24 @@ import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
 import { CONTACT_KINDS, CONTACT_SOURCES, CONTACT_STAGES } from "@/lib/constants";
-import { todayIST } from "@/lib/crm/dates";
+import { addDays, shortDay, todayIST } from "@/lib/crm/dates";
 import { CONTACT_OPEN, CONTACT_TABS, CONTACT_TAB_LABELS, crmLabel } from "@/lib/crm/labels";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { ago } from "@/lib/format";
 import { companyChoices } from "@/lib/server/companies";
 import { allContacts, contactView, getContact, parseContactFilters, visibleContact, type ContactRow } from "@/lib/server/contacts";
-import { ContactStageBar, ContactStageChip, DueChip, Facts, Initials } from "@/components/crm/chips";
+import { ContactStageBar, ContactStageChip, DueChip, Initials } from "@/components/crm/chips";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { RowLink } from "@/components/crm/row-link";
 import { ViewSwitch } from "@/components/crm/segments";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink, buttonClass } from "@/components/ui/button";
+import { cn } from "@/components/ui/cn";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
 import { Field, FieldRow, Input, Select, Textarea } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
-import { SlideOver } from "@/components/ui/slide-over";
+import { PanelSection, SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { removeLead, saveLead, setLeadStage } from "./actions";
@@ -231,27 +232,38 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           media={viewing ? <Avatar name={viewing.name} size="2xl" /> : undefined}
           subtitle={viewing ? [viewing.role, viewing.companyName ?? viewing.company].filter(Boolean).join(" · ") || undefined : "Someone at an account: who they are, where you found them, the next follow-up."}
           addon={viewing ? <ContactStageChip stage={viewing.stage} /> : undefined}
-          meta={viewing?.nextFollowUp ? <DueChip due={viewing.nextFollowUp} today={today} stage={viewing.stage === "won" || viewing.stage === "lost" ? "dropped" : undefined} /> : undefined}
+          meta={viewing ? <LeadQuickLinks c={viewing} contact={contact} /> : undefined}
           closeHref={close}
           footer={
-            viewing && can(user.role, "crm.delete") ? (
-              <form action={removeLead}>
-                <input type="hidden" name="id" value={viewing.id} />
-                <input type="hidden" name="returnTo" value={close} />
-                <SubmitButton variant="ghost" size="sm" className="text-danger" confirm={`Delete ${viewing.name}? This cannot be undone.`}>
-                  Delete lead
-                </SubmitButton>
-              </form>
-            ) : undefined
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {viewing && can(user.role, "crm.delete") ? (
+                <form action={removeLead}>
+                  <input type="hidden" name="id" value={viewing.id} />
+                  <input type="hidden" name="returnTo" value={close} />
+                  <SubmitButton variant="ghost" size="sm" className="text-danger" confirm={`Delete ${viewing.name}? This cannot be undone.`}>
+                    Delete
+                  </SubmitButton>
+                </form>
+              ) : null}
+              {viewing ? <span className="text-[13px] text-muted-foreground">Updated {ago(viewing.updatedAt)}</span> : null}
+              {edit ? (
+                <span className="ml-auto flex items-center gap-2">
+                  <ButtonLink href={close} size="sm">
+                    Cancel
+                  </ButtonLink>
+                  <button type="submit" form="lead-form" className={buttonClass("primary", "sm")}>
+                    {viewing ? "Save changes" : "Add lead"}
+                  </button>
+                </span>
+              ) : null}
+            </div>
           }
         >
-          {viewing ? <LeadSummary c={viewing} today={today} contact={contact} /> : null}
+          {viewing ? <LeadPulse c={viewing} today={today} edit={edit} here={here} /> : null}
           {edit ? (
             <LeadForm c={viewing} companies={companies} close={close} here={here} />
           ) : viewing ? (
-            <div className="mt-6 space-y-4 text-sm">
-              {viewing.notes ? <p className="whitespace-pre-line text-foreground/85">{viewing.notes}</p> : <EmptyState title="No notes" padded={false} />}
-            </div>
+            <PanelSection title="Notes">{viewing.notes ? <p className="text-sm whitespace-pre-line text-foreground/85">{viewing.notes}</p> : <EmptyState title="No notes" size="section" padded={false} />}</PanelSection>
           ) : null}
         </SlideOver>
       ) : null}
@@ -259,29 +271,107 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   );
 }
 
-function LeadSummary({ c, today, contact }: { c: ContactRow; today: string; contact: boolean }) {
+/** Under the name: one-click ways to reach them (email, copy, profile) and their account. */
+function LeadQuickLinks({ c, contact }: { c: ContactRow; contact: boolean }) {
+  const chip = "inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] text-foreground/80 transition-colors hover:border-primary/40 hover:text-primary";
   return (
-    <div className="mb-8 border-b border-border pb-7">
-      <Facts
-        items={[
-          { label: "Account", value: c.companyId ? <Link href={`/admin/accounts/${c.companyId}`} className="text-primary hover:underline">{c.companyName}</Link> : null },
-          {
-            label: "Email",
-            value: c.email ? (
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="break-all">{c.email}</span>
-                {contact ? <CopyButton value={c.email} label="Copy" /> : null}
-              </span>
-            ) : (
-              "–"
-            ),
-          },
-          { label: "Type", value: crmLabel(c.kind) },
-          { label: "Source", value: crmLabel(c.source) },
-          { label: "Next follow-up", value: c.nextFollowUp ? <DueChip due={c.nextFollowUp} today={today} /> : null },
-          { label: "Updated", value: ago(c.updatedAt) },
-        ]}
-      />
+    <>
+      {c.email && contact ? (
+        <>
+          <a href={`mailto:${c.email}`} className={chip}>
+            <Mail className="h-3.5 w-3.5" aria-hidden /> Email
+          </a>
+          <CopyButton value={c.email} label="Copy email" />
+        </>
+      ) : null}
+      {c.profileUrl ? (
+        <a href={c.profileUrl.startsWith("http") ? c.profileUrl : `https://${c.profileUrl}`} target="_blank" rel="noreferrer noopener" className={chip}>
+          <Link2 className="h-3.5 w-3.5" aria-hidden /> Profile
+        </a>
+      ) : null}
+      {c.companyId ? (
+        <Link href={`/admin/accounts/${c.companyId}`} className={chip}>
+          <Building2 className="h-3.5 w-3.5" aria-hidden /> {c.companyName}
+        </Link>
+      ) : null}
+    </>
+  );
+}
+
+/** The lead at a glance: where it is in the pipeline (click a step to move it) and the next follow-up, with quick dates. */
+function LeadPulse({ c, today, edit, here }: { c: ContactRow; today: string; edit: boolean; here: string }) {
+  const closed = c.stage === "won" || c.stage === "lost";
+  const steps = CONTACT_STAGES.filter((s) => s !== "lost");
+  const at = (steps as readonly string[]).indexOf(c.stage);
+  const quick = [
+    { label: "Tomorrow", date: addDays(today, 1) },
+    { label: "In 3 days", date: addDays(today, 3) },
+    { label: "Next week", date: addDays(today, 7) },
+  ];
+  return (
+    <div className="mb-8 space-y-4">
+      <div className="rounded-xl border border-border bg-canvas/60 p-4">
+        <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">Pipeline</p>
+        <ol className="flex flex-wrap items-center gap-1.5">
+          {steps.map((s, k) => {
+            const done = c.stage !== "lost" && k < at;
+            const current = s === c.stage;
+            const cls = cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors",
+              current ? "border-primary bg-primary text-primary-foreground" : done ? "border-primary/25 bg-primary/[0.06] text-primary" : "border-border bg-card text-muted-foreground",
+              edit && !current && "hover:border-primary/50 hover:text-primary",
+            );
+            const body = (
+              <>
+                {done ? <Check className="h-3 w-3" aria-hidden /> : null}
+                {crmLabel(s, "contact")}
+              </>
+            );
+            return (
+              <li key={s}>
+                {edit && !current ? (
+                  <form action={setLeadStage}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="stage" value={s} />
+                    <input type="hidden" name="returnTo" value={here} />
+                    <button type="submit" className={cls} title={`Move to ${crmLabel(s, "contact")}`}>
+                      {body}
+                    </button>
+                  </form>
+                ) : (
+                  <span className={cls} aria-current={current ? "step" : undefined}>
+                    {body}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+          {c.stage === "lost" ? <li className="ml-1 text-[13px] text-muted-foreground">· Lost</li> : null}
+        </ol>
+      </div>
+      <div className={cn("flex flex-wrap items-center gap-3 rounded-xl border p-4", !closed && c.nextFollowUp && c.nextFollowUp < today ? "border-danger/25 bg-danger-soft/50" : "border-border bg-canvas/60")}>
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground/70 ring-1 ring-border">
+          <CalendarClock className="h-4 w-4" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Next follow-up</p>
+          <div className="mt-1 text-sm">{c.nextFollowUp ? <DueChip due={c.nextFollowUp} today={today} stage={closed ? "dropped" : undefined} /> : <span className="text-muted-foreground">Not set</span>}</div>
+        </div>
+        {edit && !closed ? (
+          <div className="flex flex-wrap gap-1.5">
+            {quick.map((q) => (
+              <form key={q.label} action={saveLead}>
+                <input type="hidden" name="id" value={c.id} />
+                <input type="hidden" name="nextFollowUp" value={q.date} />
+                <input type="hidden" name="returnTo" value={here} />
+                <button type="submit" className={buttonClass("secondary", "sm")} title={shortDay(q.date, today)}>
+                  {q.label}
+                </button>
+              </form>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -289,60 +379,65 @@ function LeadSummary({ c, today, contact }: { c: ContactRow; today: string; cont
 function LeadForm({ c, companies, close, here }: { c: ContactRow | null; companies: { id: string; name: string }[]; close: string; here: string }) {
   const id = c?.id ?? "new";
   return (
-    <form action={saveLead} className="space-y-4">
+    <form id="lead-form" action={saveLead}>
       {c ? <input type="hidden" name="id" value={c.id} /> : null}
       <input type="hidden" name="returnTo" value={c ? here : close} />
-      <FieldRow>
-        <Field label="Name" htmlFor={`${id}-name`}>
-          <Input id={`${id}-name`} name="name" defaultValue={c?.name ?? ""} required />
-        </Field>
-        <Field label="Account" htmlFor={`${id}-company`} hint="The company on Accounts. Owner, next step and the activity log live there.">
-          <Select id={`${id}-company`} name="companyId" defaultValue={c?.companyId ?? ""} options={companies.map((x) => ({ value: x.id, label: x.name }))} placeholder="No account" />
-        </Field>
-      </FieldRow>
-      {!c?.companyId ? (
-        <Field label="Company (no account yet)" htmlFor={`${id}-companyText`}>
-          <Input id={`${id}-companyText`} name="company" defaultValue={c?.company ?? ""} />
-        </Field>
-      ) : null}
-      <FieldRow>
-        <Field label="Role" htmlFor={`${id}-role`}>
-          <Input id={`${id}-role`} name="role" defaultValue={c?.role ?? ""} placeholder="Founder" />
-        </Field>
-        <Field label="Email" htmlFor={`${id}-email`}>
-          <Input id={`${id}-email`} name="email" type="email" defaultValue={c?.email ?? ""} />
-        </Field>
-      </FieldRow>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Stage" htmlFor={`${id}-stage`}>
-          <Select id={`${id}-stage`} name="stage" defaultValue={c?.stage ?? "new"} options={opts(CONTACT_STAGES, "contact")} />
-        </Field>
-        <Field label="Type" htmlFor={`${id}-kind`}>
-          <Select id={`${id}-kind`} name="kind" defaultValue={c?.kind ?? "client"} options={opts(CONTACT_KINDS)} />
-        </Field>
-        <Field label="Source" htmlFor={`${id}-source`}>
-          <Select id={`${id}-source`} name="source" defaultValue={c?.source ?? "linkedin"} options={opts(CONTACT_SOURCES)} />
-        </Field>
-      </div>
-      <p className="-mt-2 text-[13px] text-muted-foreground">{KIND_HINT}</p>
-      <FieldRow>
-        <Field label="Profile link" htmlFor={`${id}-profile`} hint="LinkedIn or their website.">
-          <Input id={`${id}-profile`} name="profileUrl" defaultValue={c?.profileUrl ?? ""} placeholder="linkedin.com/in/…" />
-        </Field>
-        <Field label="Source link" htmlFor={`${id}-sourceUrl`} hint="Where you found them: a post, a message thread or a referral.">
-          <Input id={`${id}-sourceUrl`} name="sourceUrl" defaultValue={c?.sourceUrl ?? ""} placeholder="lnkd.in/…" />
-        </Field>
-      </FieldRow>
-      <Field label="Next follow-up" htmlFor={`${id}-fu`} hint="Shows on the calendar and on My work when it's due.">
-        <Input id={`${id}-fu`} name="nextFollowUp" type="date" defaultValue={c?.nextFollowUp ?? ""} className="sm:max-w-56" />
-      </Field>
-      <Field label="Notes" htmlFor={`${id}-notes`}>
-        <Textarea id={`${id}-notes`} name="notes" rows={4} defaultValue={c?.notes ?? ""} placeholder="What they need, what you sent, what comes next." />
-      </Field>
-      <div className="flex gap-2">
-        <SubmitButton pendingText="Saving...">{c ? "Save changes" : "Add lead"}</SubmitButton>
-        <ButtonLink href={close}>Cancel</ButtonLink>
-      </div>
+      <PanelSection title="Person">
+        <div className="space-y-4">
+          <FieldRow>
+            <Field label="Name" htmlFor={`${id}-name`}>
+              <Input id={`${id}-name`} name="name" defaultValue={c?.name ?? ""} required />
+            </Field>
+            <Field label="Role" htmlFor={`${id}-role`}>
+              <Input id={`${id}-role`} name="role" defaultValue={c?.role ?? ""} placeholder="Founder" />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="Email" htmlFor={`${id}-email`}>
+              <Input id={`${id}-email`} name="email" type="email" defaultValue={c?.email ?? ""} />
+            </Field>
+            <Field label="Profile link" htmlFor={`${id}-profile`}>
+              <Input id={`${id}-profile`} name="profileUrl" defaultValue={c?.profileUrl ?? ""} placeholder="linkedin.com/in/…" />
+            </Field>
+          </FieldRow>
+        </div>
+      </PanelSection>
+      <PanelSection title="Account and pipeline">
+        <div className="space-y-4">
+          <Field label="Account" htmlFor={`${id}-company`} hint="Owner, next step and the activity log live on the account.">
+            <Select id={`${id}-company`} name="companyId" defaultValue={c?.companyId ?? ""} options={companies.map((x) => ({ value: x.id, label: x.name }))} placeholder="No account" />
+          </Field>
+          {!c?.companyId ? (
+            <Field label="Company (no account yet)" htmlFor={`${id}-companyText`}>
+              <Input id={`${id}-companyText`} name="company" defaultValue={c?.company ?? ""} />
+            </Field>
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Stage" htmlFor={`${id}-stage`}>
+              <Select id={`${id}-stage`} name="stage" defaultValue={c?.stage ?? "new"} options={opts(CONTACT_STAGES, "contact")} />
+            </Field>
+            <Field label="Type" htmlFor={`${id}-kind`} hint={KIND_HINT}>
+              <Select id={`${id}-kind`} name="kind" defaultValue={c?.kind ?? "client"} options={opts(CONTACT_KINDS)} />
+            </Field>
+            <Field label="Next follow-up" htmlFor={`${id}-fu`}>
+              <Input id={`${id}-fu`} name="nextFollowUp" type="date" defaultValue={c?.nextFollowUp ?? ""} />
+            </Field>
+          </div>
+        </div>
+      </PanelSection>
+      <PanelSection title="Where you found them">
+        <FieldRow>
+          <Field label="Source" htmlFor={`${id}-source`}>
+            <Select id={`${id}-source`} name="source" defaultValue={c?.source ?? "linkedin"} options={opts(CONTACT_SOURCES)} />
+          </Field>
+          <Field label="Source link" htmlFor={`${id}-sourceUrl`} hint="A post, message thread or referral.">
+            <Input id={`${id}-sourceUrl`} name="sourceUrl" defaultValue={c?.sourceUrl ?? ""} placeholder="lnkd.in/…" />
+          </Field>
+        </FieldRow>
+      </PanelSection>
+      <PanelSection title="Notes">
+        <Textarea id={`${id}-notes`} name="notes" rows={5} aria-label="Notes" defaultValue={c?.notes ?? ""} placeholder="What they need, what you sent, what comes next." />
+      </PanelSection>
     </form>
   );
 }
