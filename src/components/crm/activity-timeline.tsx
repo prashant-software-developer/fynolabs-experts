@@ -1,6 +1,6 @@
 // A company's activity log, newest first, grouped by day (Today, Yesterday, "Mon, 3 Nov"): a rail
 // with one round icon per kind (email, call, meeting...), what happened, who logged it and when.
-import { AtSign, CalendarDays, CheckSquare, Mail, Phone, Shuffle, StickyNote, type LucideIcon } from "lucide-react";
+import { AtSign, CalendarDays, CheckSquare, Mail, Phone, Shuffle, StickyNote, type LucideIcon } from "@/components/icons";
 import { cn } from "@/components/ui/cn";
 import { crmLabel } from "@/lib/crm/labels";
 import { dateIST, relativeDay } from "@/lib/crm/dates";

@@ -2,7 +2,7 @@
 // (Pipeline / Due now…, Open / Won…, All experts), then the saved views (mine first, then the
 // team's), then "+ Save view". With a saved view open: "Unsaved changes · Update view · Delete view".
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users } from "@/components/icons";
 import { Checkbox, Input } from "@/components/ui/field";
 import { Popover, SubmitButton } from "@/components/ui/client";
 import { cn } from "@/components/ui/cn";

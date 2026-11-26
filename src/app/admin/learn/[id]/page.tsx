@@ -1,6 +1,6 @@
 // One course in the Learn admin (/admin/learn/<id>): Publish / Unpublish, the lessons (add, edit and
 // delete in a side panel, ?lesson=<id> or ?lesson=new), the course details and Delete. Admins only.
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

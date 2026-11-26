@@ -1,7 +1,7 @@
 // Small display pieces shared by the talent and outreach screens (server components).
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/icons";
 import { maskEmail } from "@/lib/auth/permissions";
 import { SECTIONS, type SectionKey } from "@/lib/auth/sections";
 import { PIPELINE_LINE, STAGE_TONE, stageLabel, type Tone } from "@/lib/talent";

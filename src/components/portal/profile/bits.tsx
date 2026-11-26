@@ -1,7 +1,7 @@
 // Profile building blocks: a section card with its own message line, an on/off switch (a styled
 // checkbox, no JavaScript) and the editable lists (education, experience, projects, certifications).
 import type { ReactNode } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "@/components/icons";
 import { saveProfileSection } from "@/app/(portal)/me/profile/actions";
 import { PortalCard } from "@/components/portal/page";
 import { Notice } from "@/components/ui/feedback";

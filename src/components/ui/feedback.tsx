@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, Lock, XCircle, type LucideIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Lock, XCircle, type LucideIcon } from "@/components/icons";
 import { cn } from "./cn";
 
 type Tone = "info" | "success" | "warning" | "error";

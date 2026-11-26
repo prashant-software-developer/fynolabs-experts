@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Upload } from "@/components/icons";
 import { bytes } from "@/lib/format";
 import { tooBig } from "@/lib/upload-limit";
 import { cn } from "./cn";

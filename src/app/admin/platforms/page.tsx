@@ -1,4 +1,4 @@
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Plus } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

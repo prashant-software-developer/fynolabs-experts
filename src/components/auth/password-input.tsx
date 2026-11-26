@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "@/components/icons";
 import { passwordStrength } from "@/lib/auth/password-policy";
 import { cn } from "@/components/ui/cn";
 

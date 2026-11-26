@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BriefcaseBusiness, ChevronDown, Mail, Send } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, Mail, Send } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { portalContext } from "@/lib/auth/expert";
 import { one, type SearchParams } from "@/lib/filters";

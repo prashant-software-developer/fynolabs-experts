@@ -1,6 +1,6 @@
 // The tabs of a job's admin page: Details, Form (builder), Applicants, Matches, Share.
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Copy, Download, ExternalLink, FileText, Hash, Mail, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Download, ExternalLink, FileText, Hash, Mail, MessageCircle, Share2, Trash2 } from "@/components/icons";
 import { getDb } from "@/db/client";
 import type { Job } from "@/db/schema";
 import { can, canSeeContact, canSeeMoney, maskEmail, maskPhone } from "@/lib/auth/permissions";

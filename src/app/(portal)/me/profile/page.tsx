@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, Download, ExternalLink, FileText, KeyRound, Mail, Wallet } from "lucide-react";
+import { Award, Download, ExternalLink, FileText, KeyRound, Mail, Wallet } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { portalContext } from "@/lib/auth/expert";
 import { AVAILABILITY, DOMAINS, START_AVAILABILITY, START_AVAILABILITY_LABELS, WEEKDAYS, WEEKDAY_LABELS } from "@/lib/constants";

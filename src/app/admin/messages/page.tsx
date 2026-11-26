@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

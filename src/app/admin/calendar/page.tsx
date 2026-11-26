@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, CheckSquare, ChevronLeft, ChevronRight, CornerUpRight, Flag, Megaphone, Phone, Plus, Users, Video, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, CheckSquare, ChevronLeft, ChevronRight, CornerUpRight, Flag, Megaphone, Phone, Plus, Users, Video, type LucideIcon } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

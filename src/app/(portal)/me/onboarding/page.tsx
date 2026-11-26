@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { portalContext } from "@/lib/auth/expert";
 import { one, type SearchParams } from "@/lib/filters";

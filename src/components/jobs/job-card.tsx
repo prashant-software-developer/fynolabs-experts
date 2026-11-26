@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/icons";
 import type { PublicJob } from "@/lib/jobs-public";
 import { Badge } from "@/components/ui/badge";
 import { JobMeta } from "./public-job";

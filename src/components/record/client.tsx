@@ -4,7 +4,7 @@
 // group `data-group`; while searching the panel gets `data-searching`, which opens every group and
 // hides the extras (forms, uploads) so only matching rows show.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "@/components/icons";
 import { cn } from "@/components/ui/cn";
 
 /**

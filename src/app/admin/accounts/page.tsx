@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowRight, Download, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { ArrowRight, Download, LayoutGrid, Plus, Rows3 } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canManageView } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

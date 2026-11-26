@@ -1,7 +1,7 @@
 // A text document as readable paragraphs (headings, numbered clauses, bullets, boxes). Plain markup
 // with no hooks, so both the signed copy (server) and the live sign form (client) use it.
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@/components/icons";
 import type { BodyBlock, BodySeg } from "@/lib/server/portal-documents";
 import { cn } from "@/components/ui/cn";
 
@@ -71,7 +71,7 @@ export function DocumentBody({
                 aria-label={b.ticked ? "Ticked" : "Not ticked"}
                 role="img"
               >
-                {b.ticked ? <Check className="h-3 w-3" strokeWidth={3} aria-hidden /> : null}
+                {b.ticked ? <Check className="h-3 w-3" weight="bold" aria-hidden /> : null}
               </span>
               <span>{text}</span>
             </p>

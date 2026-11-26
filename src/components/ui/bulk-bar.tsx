@@ -4,7 +4,7 @@
 // checkboxes and every control point at one empty <form id=…> with form="…", so the bar and the
 // table can sit anywhere on the page and the board's own forms never nest.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, Download, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Trash2, X } from "@/components/icons";
 import { buttonClass } from "./button";
 import { Popover } from "./client";
 import { cn } from "./cn";

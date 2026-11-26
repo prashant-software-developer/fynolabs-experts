@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "@/components/icons";
 import { oauthMethods } from "@/auth.config";
 import { getDb } from "@/db/client";
 import { getAccount } from "@/lib/auth/session";
@@ -25,7 +25,7 @@ export default async function AppliedPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       <section className="space-y-4 text-center">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-success" strokeWidth={1.5} aria-hidden />
+        <CheckCircle2 className="mx-auto h-10 w-10 text-success" weight="light" aria-hidden />
         <p className="eyebrow text-primary">Application received</p>
         <h1 className="text-title text-foreground">Thank you. We have your application.</h1>
         <p className="mx-auto max-w-lg text-[15px] leading-relaxed text-foreground/70">

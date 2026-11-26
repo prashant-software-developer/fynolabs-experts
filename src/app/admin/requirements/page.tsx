@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { fmtDate } from "@/lib/format";

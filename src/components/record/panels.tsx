@@ -6,7 +6,7 @@
 // 1400px column and padding for these pages (layout.tsx).
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/icons";
 import { cn } from "@/components/ui/cn";
 
 const PANEL = "min-w-0 rounded-lg border border-border bg-card xl:rounded-none xl:border-0 xl:overflow-y-auto xl:overscroll-contain";

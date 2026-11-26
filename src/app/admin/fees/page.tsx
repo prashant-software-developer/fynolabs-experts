@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeMoney, roleLabel } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

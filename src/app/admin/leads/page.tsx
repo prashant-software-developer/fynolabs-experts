@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Building2, CalendarClock, Check, Download, ExternalLink, LayoutGrid, Link2, Mail, Plus, Rows3 } from "lucide-react";
+import { Building2, CalendarClock, Check, Download, ExternalLink, LayoutGrid, Link2, Mail, Plus, Rows3 } from "@/components/icons";
 import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardScroller } from "@/components/crm/board";
 import { Avatar } from "@/components/ui/avatar";
 import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";

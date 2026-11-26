@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Mail, Send } from "lucide-react";
+import { Mail, Send } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

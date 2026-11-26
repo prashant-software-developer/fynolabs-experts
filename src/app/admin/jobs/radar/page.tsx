@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeMoney } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

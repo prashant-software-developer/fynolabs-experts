@@ -1,4 +1,4 @@
-import { ExternalLink, Mail, MapPin, Phone } from "lucide-react";
+import { ExternalLink, Mail, MapPin, Phone } from "@/components/icons";
 import type { ExpertRow } from "@/lib/server/experts";
 import { label } from "@/lib/constants";
 import { place } from "@/lib/format";

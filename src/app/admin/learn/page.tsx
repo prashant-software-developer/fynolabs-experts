@@ -2,7 +2,7 @@
 // started and finished it. A row opens a side panel first ("Open full course" edits it). New course
 // and "Add the FynoLabs starter courses" (inserts only what's missing). Admins only (settings.manage).
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

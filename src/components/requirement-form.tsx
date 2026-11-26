@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useState, useTransition, type FormEvent } from "react";
-import { Wand2 } from "lucide-react";
+import { Wand2 } from "@/components/icons";
 import { saveRequirement, type RequirementFormState } from "@/app/admin/requirements/actions";
 import { DEGREE_LEVELS, DOMAINS, REQUIREMENT_STATUSES, label } from "@/lib/constants";
 import type { RequirementFormValues } from "@/lib/forms/requirement";

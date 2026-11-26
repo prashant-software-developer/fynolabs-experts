@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp } from "@/components/icons";
 import { cn } from "./cn";
 
 /**

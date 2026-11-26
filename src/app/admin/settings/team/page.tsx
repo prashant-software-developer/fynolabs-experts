@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "@/components/icons";
 import { oauthMethods } from "@/auth.config";
 import { getDb } from "@/db/client";
 import { authSettings } from "@/lib/auth/allow";

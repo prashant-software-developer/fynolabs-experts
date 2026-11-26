@@ -1,5 +1,5 @@
 // Stage chips and bars, due-date chips and owner labels for the CRM screens (FynoLabs wording).
-import { CalendarDays } from "lucide-react";
+import { CalendarDays } from "@/components/icons";
 import { Avatar, type AvatarSize } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/components/ui/cn";

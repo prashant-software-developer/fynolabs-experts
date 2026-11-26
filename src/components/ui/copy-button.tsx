@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy } from "@/components/icons";
 import { buttonClass } from "./button";
 
 /** Copies `value` to the clipboard (links, invite links). Shows "Copied" for a moment. */

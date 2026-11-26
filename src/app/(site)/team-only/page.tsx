@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/icons";
 import { signOutNow } from "@/app/(auth)/actions";
 import { getAccount } from "@/lib/auth/session";
 import { buttonClass } from "@/components/ui/button";

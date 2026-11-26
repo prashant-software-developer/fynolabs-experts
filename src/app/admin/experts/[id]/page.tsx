@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AtSign, Briefcase, CheckSquare, Download, FileSignature, FileText, History, Link2, Mail, Pencil, Send, Shield, Shuffle, StickyNote, UserCheck, type LucideIcon } from "lucide-react";
+import { AtSign, Briefcase, CheckSquare, Download, FileSignature, FileText, History, Link2, Mail, Pencil, Send, Shield, Shuffle, StickyNote, UserCheck, type LucideIcon } from "@/components/icons";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { experts } from "@/db/schema";

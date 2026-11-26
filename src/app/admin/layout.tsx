@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Eye } from "lucide-react";
+import { Eye } from "@/components/icons";
 import { signOutNow } from "@/app/(auth)/actions";
 import { AccountMenu, Brand, CommandPalette, MobileNav, ModuleTabs, SearchButton, Sidebar, type NavAccess } from "@/components/nav";
 import { can, canSeeMoney, ROLE_LABELS } from "@/lib/auth/permissions";

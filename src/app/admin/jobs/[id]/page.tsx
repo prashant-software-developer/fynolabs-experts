@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Briefcase, ExternalLink } from "lucide-react";
+import { Briefcase, ExternalLink } from "@/components/icons";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";

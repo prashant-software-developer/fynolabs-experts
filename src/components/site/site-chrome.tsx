@@ -1,6 +1,6 @@
 // The public site's header and footer (job board, job pages, sign-up, expert portal).
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut } from "@/components/icons";
 import { signOutNow } from "@/app/(auth)/actions";
 import type { Account } from "@/lib/auth/session";
 import { buttonClass } from "@/components/ui/button";

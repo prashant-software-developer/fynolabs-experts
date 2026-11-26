@@ -1,6 +1,6 @@
 // A job as the public sees it. Takes only a PublicJob (no partner, requirement or rate note can
 // reach it). Pure and synchronous, so tests render it to HTML.
-import { Briefcase, CalendarClock, Globe2, MapPin, Users } from "lucide-react";
+import { Briefcase, CalendarClock, Globe2, MapPin, Users } from "@/components/icons";
 import type { PublicJob } from "@/lib/jobs-public";
 import { fmtDate } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";

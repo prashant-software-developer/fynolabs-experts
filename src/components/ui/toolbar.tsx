@@ -10,7 +10,7 @@
 //   </Section>
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X } from "@/components/icons";
 import { buttonClass } from "./button";
 import { cn } from "./cn";
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Briefcase, CalendarDays, CalendarPlus, ClipboardList, ExternalLink, FolderKanban, Globe, Pencil, Plus, Shuffle, UserRound, type LucideIcon } from "lucide-react";
+import { Briefcase, CalendarDays, CalendarPlus, ClipboardList, ExternalLink, FolderKanban, Globe, Pencil, Plus, Shuffle, UserRound, type LucideIcon } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";

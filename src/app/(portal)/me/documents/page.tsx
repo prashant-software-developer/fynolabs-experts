@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileSignature } from "lucide-react";
+import { FileSignature } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { portalContext } from "@/lib/auth/expert";
 import { todayIST } from "@/lib/crm/dates";

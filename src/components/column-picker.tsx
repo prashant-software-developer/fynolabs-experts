@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { Columns3 } from "lucide-react";
+import { Columns3 } from "@/components/icons";
 import { DEFAULT_COLUMNS, EXPERT_COLUMNS, serializeColumns } from "@/lib/views";
 import { buttonClass } from "./ui/button";
 import { Popover } from "./ui/client";

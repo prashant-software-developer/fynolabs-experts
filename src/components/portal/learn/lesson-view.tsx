@@ -2,7 +2,7 @@
 // video file), a PDF booklet, a reading, a quiz or a link. Then "Mark as done" (or the quiz's own
 // button) and "Next lesson".
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, CheckCircle2, Download, ExternalLink } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, Download, ExternalLink } from "@/components/icons";
 import { markLessonDone } from "@/app/(portal)/me/learn/actions";
 import { fmtDate } from "@/lib/format";
 import { lessonKindLabel, minutesLabel, videoSource } from "@/lib/learn/labels";

@@ -2,7 +2,7 @@
 // Team & access forms that hand out a temporary password. The password arrives once, in the
 // action's answer, and is shown here with a copy button; it is never stored in plain text.
 import { useActionState, useState } from "react";
-import { KeyRound } from "lucide-react";
+import { KeyRound } from "@/components/icons";
 import { addTeamMember, resetTeamPassword, type TempPasswordState } from "@/app/admin/settings/team/actions";
 import { CopyButton } from "@/components/ui/copy-button";
 import { SubmitButton } from "@/components/ui/client";

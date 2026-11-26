@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, UsersRound } from "lucide-react";
+import { Plus, UsersRound } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

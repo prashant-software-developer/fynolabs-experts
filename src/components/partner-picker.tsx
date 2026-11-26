@@ -3,7 +3,7 @@
 // scrolling list instead of every partner on the page at once. Each choice is a real checkbox named
 // `name`, so the form posts the same values as before (filtered-out boxes keep their state).
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X } from "@/components/icons";
 
 export function PartnerPicker({ partners, name = "partnerIds", defaultSelected = [] }: { partners: { id: string; name: string }[]; name?: string; defaultSelected?: string[] }) {
   const [picked, setPicked] = useState<Set<string>>(new Set(defaultSelected));

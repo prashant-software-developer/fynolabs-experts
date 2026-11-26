@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/icons";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { applications } from "@/db/schema";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { EscapeTo } from "./client";
 
 /**

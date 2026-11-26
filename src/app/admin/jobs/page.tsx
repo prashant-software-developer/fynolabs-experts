@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Plus, Radar, Star } from "lucide-react";
+import { ExternalLink, Plus, Radar, Star } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

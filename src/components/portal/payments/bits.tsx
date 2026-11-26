@@ -1,7 +1,7 @@
 // Payments page pieces: stat cards, the pill links (range, currency), the method status, project
 // cards and the payout history table. Server components; one column, sections stacked.
 import Link from "next/link";
-import { Wallet } from "lucide-react";
+import { Wallet } from "@/components/icons";
 import { PAYOUT_STATUS_LABELS, label } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
 import { moneyText, PAYOUT_STATUS_TONE, periodText, totalsText, type MoneyTotal, type OwnPayout, type OwnProject } from "@/lib/server/payouts";

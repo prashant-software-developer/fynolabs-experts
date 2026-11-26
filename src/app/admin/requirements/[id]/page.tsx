@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, FileArchive, Megaphone } from "lucide-react";
+import { Download, FileArchive, Megaphone } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { REQUIREMENT_STATUSES, label } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";

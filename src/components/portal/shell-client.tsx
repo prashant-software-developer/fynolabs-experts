@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CircleHelp, FileSignature, GraduationCap, House, KeyRound, LogOut, Menu, Search, UserRound, Wallet, X, type LucideIcon } from "lucide-react";
+import { CircleHelp, FileSignature, GraduationCap, House, KeyRound, LogOut, Menu, Search, UserRound, Wallet, X, type LucideIcon } from "@/components/icons";
 import { signOutNow } from "@/app/(auth)/actions";
 import { cn } from "@/components/ui/cn";
 

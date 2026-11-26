@@ -46,7 +46,7 @@ import {
   Wallet,
   X,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { cn } from "@/components/ui/cn";
 
 /** `also`: other paths that belong to this item (Send referrals also covers the sent-referrals list). */
@@ -226,7 +226,7 @@ function ModuleLink({ m, on, onNavigate }: { m: Module; on: boolean; onNavigate?
         on ? "bg-sidebar-accent font-medium text-foreground before:absolute before:inset-y-2 before:-left-3 before:w-0.5 before:rounded-full before:bg-primary" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
       )}
     >
-      <m.icon className={cn("h-4 w-4 shrink-0", on ? "text-primary" : "text-muted-foreground")} aria-hidden />
+      <m.icon weight={on ? "fill" : "regular"} className={cn("h-[18px] w-[18px] shrink-0", on ? "text-primary" : "text-muted-foreground")} aria-hidden />
       {m.label}
     </Link>
   );

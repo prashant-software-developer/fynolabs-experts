@@ -2,7 +2,7 @@ import { REJECT_REASON_LABELS } from "@/lib/talent";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowRight, Download, KanbanSquare, LayoutGrid, Plus, Rows3, SlidersHorizontal, Upload } from "lucide-react";
+import { ArrowRight, Download, KanbanSquare, LayoutGrid, Plus, Rows3, SlidersHorizontal, Upload } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canManageView, canSeeContact, visibleExpert } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";

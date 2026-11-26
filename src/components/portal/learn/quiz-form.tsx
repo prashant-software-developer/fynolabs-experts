@@ -4,7 +4,7 @@
 // 70% or more finishes the lesson. "Try again" starts a fresh attempt; the best score is kept.
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X } from "@/components/icons";
 import { submitQuiz, type QuizState } from "@/app/(portal)/me/learn/actions";
 import { optionLetter } from "@/lib/learn/quiz";
 import { buttonClass } from "@/components/ui/button";

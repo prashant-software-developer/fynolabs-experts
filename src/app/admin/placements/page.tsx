@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { can, canSeeMoney, partnerScope } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
