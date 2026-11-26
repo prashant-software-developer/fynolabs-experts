@@ -13,6 +13,8 @@ export const metadata: Metadata = { title: { default: "Expert Hub", template: "%
  * account) and the page in a 1400px column on the canvas. Phones: the menu button in the top bar.
  * `admin-ui` turns on the admin's flat look (small corners, hairlines: see globals.css). The top bar
  * shows the current module and its pages as tabs (GHL-style; the sidebar lists only the modules).
+ * Record pages (expert, account: three panels) mark themselves `data-record-page` and get the
+ * whole width beside the sidebar, without the column's padding.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -46,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <ModuleTabs access={access} />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-7 sm:px-6 md:px-8 lg:py-9">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-7 sm:px-6 md:px-8 lg:py-9 has-[>[data-record-page]]:max-w-none has-[>[data-record-page]]:p-0!">{children}</main>
       </div>
       <CommandPalette access={access} />
     </div>

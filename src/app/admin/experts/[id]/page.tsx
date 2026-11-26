@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, FileText, Link2, Send } from "lucide-react";
+import { AtSign, Briefcase, CheckSquare, Download, FileSignature, FileText, History, Link2, Mail, Pencil, Send, Shield, Shuffle, StickyNote, UserCheck, type LucideIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { experts } from "@/db/schema";
@@ -9,7 +9,7 @@ import { canOpenSection } from "@/lib/auth/sections";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
 import { CV_CONSENT, DOCUMENT_STATUSES, OUTREACH_STATUSES, REFERRAL_OUTCOMES, SOURCE_CHANNELS, label } from "@/lib/constants";
 import { one, type SearchParams } from "@/lib/filters";
-import { bytes, fmtDate, fmtDateTime } from "@/lib/format";
+import { bytes, fmtDate, fmtDateTime, place } from "@/lib/format";
 import { valuesFromExpert } from "@/lib/forms/expert";
 import { formatMoney, computeMoney } from "@/lib/money";
 import {
@@ -24,6 +24,7 @@ import {
   REJECT_REASON_LABELS,
   SOURCE_CHANNEL_LABELS,
   TIMELINE_KIND_LABELS,
+  stageLabel,
 } from "@/lib/talent";
 import { currentCv, detailsFor, filesFor, getExpert, payoutFor, sourcesFor, type ExpertRow } from "@/lib/server/experts";
 import { documentsOf, earningsOf, engagementsOf, mergedTimeline, type TimelineItem } from "@/lib/server/expert-records";
@@ -37,28 +38,34 @@ import { listPlacements } from "@/lib/server/placements";
 import { listRequirements } from "@/lib/server/requirements";
 import { listSubmissions } from "@/lib/server/submissions";
 import { ExpertForm } from "@/components/expert-form";
-import { ExpertSummary } from "@/components/expert-summary";
 import { DueChip } from "@/components/crm/chips";
 import { todayIST } from "@/lib/crm/dates";
 import { Avatar, Person } from "@/components/ui/avatar";
-import { Badge, StatusBadge } from "@/components/ui/badge";
+import { Badge, Chips, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
+import { cn } from "@/components/ui/cn";
+import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Field, FieldRow, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
-import { DefinitionList, FactsBar, PageHeader, Section, Stack } from "@/components/ui/layout";
+import { DefinitionList, PageHeader, Section, Stack } from "@/components/ui/layout";
+import { SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
+import { FieldGroup, FieldSearch } from "@/components/record/client";
+import { GroupExtra, Prop, RecordCenter, RecordFields, RecordIdentity, RecordLayout, SideBlock, SideCounts, SideItem, quickAction } from "@/components/record/panels";
 import { MapBadge, SectionBlocked, StageBar } from "@/components/talent/bits";
 import { StageForm } from "@/components/talent/client";
 import { addSelectedToRequirement, appendNote, deleteExpert, recordConsent, uploadCv } from "../actions";
 import { addExpertNote, addExpertsToJob, changeDocumentStatus, movePipelineStage, saveOutreach, savePipeline } from "../talent-actions";
 import { changeReferralOutcome } from "../../send-referrals/actions";
 
-const TABS = ["profile", "pipelines", "timeline", "documents", "referrals", "earnings", "applications", "work"] as const;
+// The centre panel's tabs. Activity (the timeline) comes first; the old ?tab=profile and
+// ?tab=timeline open it too (the profile's fields now live in the left panel).
+const TABS = ["activity", "pipelines", "documents", "referrals", "earnings", "applications", "work"] as const;
 type Tab = (typeof TABS)[number];
-
+const OPEN_STAGES = (s: string) => s !== "ended" && s !== "rejected";
 
 export const metadata = { title: "Expert" };
 
@@ -72,12 +79,21 @@ export default async function ExpertPage({ params, searchParams }: { params: Pro
   if (!raw) notFound();
   const e = visibleExpert(user.role, raw);
   const canEdit = can(user.role, "experts.edit");
-  // One way in to editing: the Edit button. ?tab=edit is the edit form (no separate tab).
-  const editing = one(sp.tab) === "edit" && canEdit;
-  const asked = one(sp.tab) === "activity" ? "timeline" : one(sp.tab);
-  const tab: Tab = (TABS as readonly string[]).includes(asked) ? (asked as Tab) : "profile";
+  const base = `/admin/experts/${id}`;
+  // One way in to editing the whole profile: the Edit button. ?tab=edit is the full edit form.
+  if (one(sp.tab) === "edit" && canEdit) {
+    return (
+      <>
+        <PageHeader title={e.fullName} back={{ href: base, label: "Back to profile" }} subtitle="Editing profile" actions={<ButtonLink href={base}>Cancel</ButtonLink>} />
+        <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+        <EditView id={id} e={raw} user={user} />
+      </>
+    );
+  }
+  const asked = one(sp.tab);
+  const tab: Tab = (TABS as readonly string[]).includes(asked) ? (asked as Tab) : "activity";
   const scope = partnerScope(user);
-  const [subs, plcs, pipes, docs, refs, timeline, hubApps, owners] = await Promise.all([
+  const [subs, plcs, pipes, docs, refs, timeline, hubApps, owners, allFiles, deletion, details, payout, crm] = await Promise.all([
     listSubmissions(db, { expertId: id, partnerScope: scope }),
     listPlacements(db, { expertId: id, partnerScope: scope }),
     pipelinesOf(db, id),
@@ -86,91 +102,320 @@ export default async function ExpertPage({ params, searchParams }: { params: Pro
     mergedTimeline(db, id),
     applicationsOf(db, id),
     ownerOptions(db),
+    filesFor(db, id),
+    openDeletionRequest(db, id),
+    detailsFor(db, id, user.role),
+    payoutFor(db, id, user.role),
+    crmFieldsFor(db, id),
   ]);
-  const base = `/admin/experts/${id}`;
-  const open = pipes.filter((p) => p.stage !== "ended" && p.stage !== "rejected").length;
+  const today = todayIST();
+  const tabHref = (t: Tab) => (t === "activity" ? base : `${base}?tab=${t}`);
+  const here = tabHref(tab);
+  const withParam = (href: string, q: string) => `${href}${href.includes("?") ? "&" : "?"}${q}`;
+  const editingOutreach = one(sp.edit) === "outreach" && canEdit && crm;
   const signed = docs.filter((d) => d.status === "signed").length;
   const liveDocs = docs.filter((d) => d.status !== "void").length;
   const owner = (e.ownerTeamMemberId && owners.find((o) => o.id === e.ownerTeamMemberId)?.name) || e.ownerName;
   const cameFrom = e.sourceChannel ? (SOURCE_CHANNEL_LABELS[e.sourceChannel] ?? e.sourceChannel) : label(e.primarySource);
+  const contact = canSeeContact(user.role);
+  const money = canSeeMoney(user.role);
+  // Tax forms are money: only admins and finance see them listed.
+  const files = visibleFiles(user.role, allFiles);
+  const cv = currentCv(e.cvRef, files.filter((f) => f.kind === "cv"));
+  const dnc = e.status === "do_not_contact";
+
+  const left = (
+    <>
+      <RecordIdentity
+        back={{ href: "/admin/experts", label: "Experts" }}
+        media={<Avatar name={e.fullName} size="2xl" />}
+        title={e.fullName}
+        subtitle={e.headline ?? `Expert · ${cameFrom}`}
+        chips={
+          <>
+            <StatusBadge value={e.status} />
+            <StatusBadge value={e.availability} />
+            {e.domain ? <Badge tone="outline">{e.domain}</Badge> : null}
+          </>
+        }
+        actions={
+          <>
+            {e.email && contact && !dnc ? (
+              <a href={`mailto:${e.email}`} className={quickAction} title={`Email ${e.email}`}>
+                <Mail aria-hidden /> Email
+              </a>
+            ) : null}
+            {e.email && contact ? <CopyButton value={e.email} label="Copy" /> : null}
+            {e.linkedinUrl ? (
+              <a href={e.linkedinUrl} target="_blank" rel="noreferrer noopener" className={quickAction}>
+                <Link2 aria-hidden /> LinkedIn
+              </a>
+            ) : null}
+            {can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals") ? (
+              <Link href={`/admin/send-referrals?ids=${id}`} className={quickAction}>
+                <Send aria-hidden /> Refer
+              </Link>
+            ) : null}
+            {canEdit ? (
+              <Link href={`${base}?tab=edit`} className={quickAction}>
+                <Pencil aria-hidden /> Edit
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+      <RecordFields>
+        <FieldSearch />
+        <FieldGroup title="Contact">
+          <Prop label="Email">{e.email ? contact ? <a href={`mailto:${e.email}`} title={e.email} className="block truncate text-primary hover:underline">{e.email}</a> : <span title="Masked for your role">{e.email}</span> : null}</Prop>
+          <Prop label="Phone">{e.phone ? <span className="tabular" title={contact ? undefined : "Masked for your role"}>{e.phone}</span> : null}</Prop>
+          <Prop label="Lives in">{place(e) === "–" ? null : place(e)}</Prop>
+          <Prop label="Based in">{[crm?.location, crm?.timezone].filter(Boolean).join(" · ") || null}</Prop>
+          <Prop label="LinkedIn">{e.linkedinUrl ? <a href={e.linkedinUrl} target="_blank" rel="noreferrer noopener" title={e.linkedinUrl} className="block truncate text-primary hover:underline">{e.linkedinUrl.replace(/^https?:\/\/(www\.)?/, "")}</a> : null}</Prop>
+          <Prop label="Links" stack>{crm?.links ? <span className="whitespace-pre-line break-all">{crm.links}</span> : null}</Prop>
+          {contact && details ? <Prop label="Address">{[details.addressLine1, details.addressLine2, details.postalCode].filter(Boolean).join(", ") || null}</Prop> : null}
+          <Prop label="Bulk emails">{crm?.emailOptOut ? "Opted out" : "Subscribed"}</Prop>
+        </FieldGroup>
+        <FieldGroup
+          title="Pipeline and outreach"
+          actions={
+            canEdit && crm ? (
+              <Link href={withParam(here, "edit=outreach")} scroll={false} className="inline-flex h-7 items-center rounded-md px-2 text-xs text-primary hover:bg-accent">
+                Edit
+              </Link>
+            ) : null
+          }
+        >
+          <Prop label="Owner">{owner ? <Person name={owner} size="xs" /> : null}</Prop>
+          <Prop label="Outreach">{crm?.outreachStatus ? OUTREACH_LABELS[crm.outreachStatus as keyof typeof OUTREACH_LABELS] : null}</Prop>
+          <Prop label="Next action">{crm?.nextAction ?? null}</Prop>
+          <Prop label="Due">{crm?.nextActionDue ? <DueChip due={crm.nextActionDue} today={today} /> : null}</Prop>
+          <Prop label="Came from">{[crm?.sourceChannel ? (SOURCE_CHANNEL_LABELS[crm.sourceChannel] ?? crm.sourceChannel) : label(e.primarySource), crm?.sourceDetail].filter(Boolean).join(": ") || null}</Prop>
+          <Prop label="Do not contact">{dnc ? <span className="text-destructive">Yes{crm?.dncReason ? `: ${crm.dncReason}` : ""}</span> : "No"}</Prop>
+          <Prop label="Last contacted">{e.lastContactedAt ? fmtDate(e.lastContactedAt) : null}</Prop>
+          <Prop label="Last activity">{crm?.lastActivityAt ? fmtDateTime(crm.lastActivityAt) : null}</Prop>
+        </FieldGroup>
+        <FieldGroup title="Profile and skills">
+          <Prop label="Skills" stack>{e.skills.length ? <Chips items={e.skills} max={40} /> : null}</Prop>
+          <Prop label="Experience">{e.yearsExperience != null ? `${e.yearsExperience} years` : null}</Prop>
+          <Prop label="Seniority">{crm?.seniority ? label(crm.seniority) : null}</Prop>
+          <Prop label="Degree">{e.highestDegree}</Prop>
+          <Prop label="Field of study">{e.fieldOfStudy}</Prop>
+          <Prop label="University">{e.university}</Prop>
+          <Prop label="Hours / week">{e.hoursPerWeek ?? null}</Prop>
+          <Prop label="Languages">{e.languages.length ? e.languages.join(", ") : null}</Prop>
+          {money ? <Prop label="Rate (internal)">{e.rateExpectationUsd != null ? `$${e.rateExpectationUsd}/h` : null}</Prop> : null}
+          <Prop label="Tags" stack>{e.tags.length ? <Chips items={e.tags} max={30} /> : null}</Prop>
+          <Prop label="Source">{label(e.primarySource)}</Prop>
+          {details ? (
+            <>
+              <Prop label="Work authorisation">{details.workAuthorized == null ? null : `${details.workAuthorized ? "Yes" : "No"}${details.workAuthorizedAt ? ` (${fmtDate(details.workAuthorizedAt)})` : ""}`}</Prop>
+              <Prop label="Referral code">{details.referralCode}</Prop>
+              <Prop label="Referred by">{details.referredByExpertId ? <Link href={`/admin/experts/${details.referredByExpertId}`} className="text-primary hover:underline">{details.referredByName ?? "Another expert"}</Link> : null}</Prop>
+              <Prop label="Jobs-site login">{details.lastLoginAt ? fmtDateTime(details.lastLoginAt) : null}</Prop>
+            </>
+          ) : null}
+          <Prop label="Added">{fmtDate(e.createdAt)}</Prop>
+          <Prop label="Updated">{fmtDateTime(e.updatedAt)}</Prop>
+        </FieldGroup>
+        <FieldGroup title="CV" count={files.length}>
+          <Prop label="CV consent" stack>
+            <span className="block">{consentLine(e)}</span>
+          </Prop>
+          <GroupExtra>
+            <ConsentControl e={e} canEdit={canEdit} returnTo={here} />
+          </GroupExtra>
+          {files.length ? (
+            <ul className="space-y-2">
+              {files.map((f) => (
+                <li key={f.id} data-field className="flex min-w-0 items-start gap-2 text-[13px]">
+                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-foreground">{f.filename}</span>
+                      {cv?.id === f.id ? <Badge tone="success">Current</Badge> : null}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {f.kind === "attachment" ? "Attachment · " : f.kind === "document" ? "Document · " : f.kind === "tax" ? "Tax form (admins and finance) · " : ""}
+                      {bytes(f.size)} · {f.storage === "jobs_db" || f.externalRef?.startsWith("jobs:") ? "from jobs site" : f.storage === "fynolabs" ? "from the FynoLabs admin" : f.createdBy === "job-form" ? "from a job application" : f.createdBy === "expert-portal" ? "uploaded by the expert" : "uploaded"} · {fmtDate(f.createdAt)}
+                    </div>
+                  </div>
+                  {can(user.role, fileDownloadAction(f.kind)) ? (
+                    <a href={`/api/files/${f.id}`} className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-primary hover:bg-accent" aria-label={`Download ${f.filename}`} title="Download">
+                      <Download className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p data-field className="text-[13px] text-muted-foreground">
+              No CV yet.{can(user.role, "experts.cv_upload") ? " Upload one below, or run the jobs-site sync if they applied there." : ""}
+            </p>
+          )}
+          {can(user.role, "experts.cv_upload") ? (
+            <GroupExtra>
+              <form action={uploadCv}>
+                <input type="hidden" name="id" value={e.id} />
+                <FileDrop name="file" accept=".pdf,.doc,.docx,.txt,.rtf" label="Upload CV" hint="PDF or Word, up to 4 MB" submitLabel="Upload" />
+              </form>
+            </GroupExtra>
+          ) : null}
+        </FieldGroup>
+        {details ? <ExperienceGroup d={details} /> : null}
+        {payout ? (
+          <FieldGroup title="Payout and tax">
+            <p className="text-xs text-muted-foreground">Money: only admins and finance see this.</p>
+            <Prop label="Payout method">{payout.payoutMethod}</Prop>
+            <Prop label="Payout handle">{payout.payoutHandle}</Prop>
+            <Prop label="Tax form">{[payout.taxFormType, payout.taxFormAt ? `sent ${fmtDate(payout.taxFormAt)}` : null].filter(Boolean).join(", ") || null}</Prop>
+            <Prop label="Default commission">{payout.defaultCommissionPercent != null ? `${payout.defaultCommissionPercent}%` : null}</Prop>
+          </FieldGroup>
+        ) : null}
+        <FieldGroup title="Internal notes">
+          <p className="text-xs text-muted-foreground">Kept on the profile. For dated updates, add a note to the activity instead.</p>
+          {e.notes ? (
+            <div data-field>
+              <pre className="max-h-72 overflow-y-auto rounded-md bg-canvas px-3 py-2 font-sans text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85">{e.notes}</pre>
+            </div>
+          ) : (
+            <p data-field className="text-[13px] text-muted-foreground">No notes.</p>
+          )}
+          {can(user.role, "experts.notes") ? (
+            <GroupExtra>
+              <form action={appendNote} className="space-y-2">
+                <input type="hidden" name="id" value={e.id} />
+                <Textarea name="note" rows={2} placeholder="Add to the notes" aria-label="New internal note" className="text-[13px]" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <SubmitButton size="sm" variant="secondary">
+                    Add
+                  </SubmitButton>
+                  <Checkbox name="contacted" value="yes" label="Contacted them today" className="text-[13px]" />
+                </div>
+              </form>
+            </GroupExtra>
+          ) : null}
+        </FieldGroup>
+      </RecordFields>
+    </>
+  );
+
+  // ---- right panel: what's next, the jobs they're in, documents, numbers
+  type Next = { key: string; title: string; sub: string; due: string | null; href: string; icon: LucideIcon };
+  const nexts: Next[] = [];
+  if (crm?.nextAction || crm?.nextActionDue) nexts.push({ key: "expert", title: crm.nextAction ?? "Next action", sub: owner ? `Expert · ${owner}` : "Expert", due: crm.nextActionDue ?? null, href: canEdit ? withParam(here, "edit=outreach") : here, icon: CheckSquare });
+  for (const p of pipes)
+    if (OPEN_STAGES(p.stage) && (p.nextAction || p.nextActionDue))
+      nexts.push({ key: p.id, title: p.nextAction ?? "Next step", sub: `${p.projectCode ? `${p.projectCode} · ` : ""}${p.jobTitle}`, due: p.nextActionDue ?? null, href: `${base}?tab=pipelines`, icon: Briefcase });
+  for (const d of docs) if (d.status === "draft" || d.status === "sent") nexts.push({ key: d.id, title: d.status === "draft" ? `Send ${d.title}` : `Signature: ${d.title}`, sub: DOCUMENT_STATUS_LABELS[d.status as keyof typeof DOCUMENT_STATUS_LABELS] ?? d.status, due: null, href: `${base}?tab=documents`, icon: FileSignature });
+  nexts.sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
+  const openPipes = [...pipes].sort((a, b) => Number(OPEN_STAGES(b.stage)) - Number(OPEN_STAGES(a.stage)));
+
+  const right = (
+    <>
+      <SideBlock title="Up next" action={nexts.length ? <span className="tabular text-muted-foreground">{nexts.length}</span> : null}>
+        {nexts.length ? (
+          <ul className="space-y-0.5">
+            {nexts.slice(0, 8).map((n) => (
+              <SideItem key={n.key} href={n.href} icon={<n.icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />} title={n.title} sub={n.sub} aside={n.due ? <DueChip due={n.due} today={today} /> : null} />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">
+            Nothing planned.{" "}
+            {canEdit && crm ? (
+              <Link href={withParam(here, "edit=outreach")} scroll={false} className="text-primary hover:underline">
+                Set a next action
+              </Link>
+            ) : null}
+          </p>
+        )}
+      </SideBlock>
+      <SideBlock title="Jobs" action={<Link href={`${base}?tab=pipelines`} className="text-primary hover:underline">{pipes.length ? `All ${pipes.length}` : "Add to a job"}</Link>}>
+        {openPipes.length ? (
+          <ul className="space-y-0.5">
+            {openPipes.slice(0, 6).map((p) => (
+              <SideItem key={p.id} href={`/admin/jobs/${p.jobId}?tab=applicants&app=${p.id}`} icon={<Briefcase className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />} title={`${p.projectCode ? `${p.projectCode} · ` : ""}${p.jobTitle}`} sub={`${stageLabel(p.stage)} · since ${fmtDate(p.stageChangedAt)}`} />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">Not in any job yet.</p>
+        )}
+      </SideBlock>
+      <SideBlock title="Documents" action={<Link href={`${base}?tab=documents`} className="text-primary hover:underline">{`${signed} of ${liveDocs} signed`}</Link>}>
+        {liveDocs ? (
+          <ul className="space-y-0.5">
+            {docs
+              .filter((d) => d.status !== "void")
+              .slice(0, 5)
+              .map((d) => (
+                <SideItem key={d.id} href={`${base}?tab=documents`} icon={<FileSignature className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />} title={d.title} sub={d.jobTitle ?? (DOCUMENT_KIND_LABELS[d.kind as keyof typeof DOCUMENT_KIND_LABELS] ?? d.kind)} aside={<MapBadge value={d.status} labels={DOCUMENT_STATUS_LABELS} tones={DOCUMENT_STATUS_TONE} />} />
+              ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">No documents yet.</p>
+        )}
+      </SideBlock>
+      <SideBlock title="At a glance">
+        <SideCounts
+          items={[
+            { label: "Applications", value: hubApps.length, href: `${base}?tab=applications` },
+            { label: "Referrals", value: refs.length, href: `${base}?tab=referrals` },
+            { label: "Submissions", value: subs.length, href: `${base}?tab=work` },
+            { label: "Placements", value: plcs.length, href: `${base}?tab=work` },
+            { label: "Activity", value: timeline.length, href: base },
+            { label: "CV consent", value: label(e.cvConsent) },
+          ]}
+        />
+      </SideBlock>
+    </>
+  );
+
+  const center = (
+    <RecordCenter
+      tabs={
+        <Tabs
+          tabs={[
+            { href: tabHref("activity"), label: "Activity", active: tab === "activity", count: timeline.length },
+            { href: tabHref("pipelines"), label: "Pipelines", active: tab === "pipelines", count: pipes.length },
+            { href: tabHref("documents"), label: "Documents", active: tab === "documents", count: liveDocs },
+            { href: tabHref("referrals"), label: "Referrals", active: tab === "referrals", count: refs.length },
+            { href: tabHref("earnings"), label: "Earnings", active: tab === "earnings" },
+            { href: tabHref("applications"), label: "Applications", active: tab === "applications", count: hubApps.length },
+            { href: tabHref("work"), label: "Submissions", active: tab === "work", count: subs.length + plcs.length },
+          ]}
+        />
+      }
+    >
+      <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+      {deletion ? (
+        <Notice tone="warning" title="Asked us to delete their data">
+          Requested on {fmtDate(deletion.createdAt)} from the expert portal. An admin should delete the profile (Edit → Delete on request) and confirm by email within 30 days.
+        </Notice>
+      ) : null}
+      {dnc ? (
+        <Notice tone="error" title="Do not contact">
+          {crm?.dncReason ? `${crm.dncReason}. ` : ""}They won&apos;t be emailed, referred or added to jobs by any tool.
+        </Notice>
+      ) : null}
+      {tab === "activity" ? <ActivityTab id={id} items={timeline} pipes={pipes} user={user} /> : null}
+      {tab === "pipelines" ? <PipelinesTab id={id} pipes={pipes} user={user} /> : null}
+      {tab === "documents" ? <DocumentsTab id={id} docs={docs} user={user} /> : null}
+      {tab === "referrals" ? <ReferralsTab id={id} refs={refs} user={user} /> : null}
+      {tab === "earnings" ? <EarningsTab id={id} user={user} /> : null}
+      {tab === "applications" ? <ApplicationsTab e={e} apps={hubApps} /> : null}
+      {tab === "work" ? <WorkTab id={id} subs={subs} plcs={plcs} user={user} /> : null}
+    </RecordCenter>
+  );
 
   return (
     <>
-      <PageHeader
-        title={e.fullName}
-        back={editing ? { href: base, label: "Back to profile" } : { href: "/admin/experts", label: "Experts" }}
-        media={editing ? undefined : <Avatar name={e.fullName} size="2xl" />}
-        badge={editing ? undefined : <StatusBadge value={e.status} />}
-        subtitle={editing ? "Editing profile" : (e.headline ?? `Expert · ${cameFrom}`)}
-        meta={
-          editing ? undefined : (
-            <>
-              <StatusBadge value={e.availability} />
-              <StatusBadge value={e.cvConsent} prefix="CV consent:" />
-              {e.domain ? <Badge tone="outline">{e.domain}</Badge> : null}
-              <span className="text-[13px] text-muted-foreground">Came from {cameFrom}</span>
-            </>
-          )
-        }
-        actions={
-          editing ? (
-            <ButtonLink href={base}>Cancel</ButtonLink>
-          ) : (
-            <>
-              {can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals") ? (
-                <ButtonLink href={`/admin/send-referrals?ids=${id}`}>
-                  <Send className="h-4 w-4" /> Refer
-                </ButtonLink>
-              ) : null}
-              {canEdit ? (
-                <ButtonLink href={`${base}?tab=edit`} variant="primary">
-                  Edit
-                </ButtonLink>
-              ) : null}
-            </>
-          )
-        }
-      />
-      <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      {editing ? (
-        <EditView id={id} e={raw} user={user} />
-      ) : (
-        <>
-          <FactsBar
-            items={[
-              { label: "Owner", value: <Person name={owner} empty="No owner" /> },
-              {
-                label: "Next action",
-                value: e.nextActionDue ? <DueChip due={e.nextActionDue} today={todayIST()} /> : e.nextAction ? <span className="truncate">{e.nextAction}</span> : <span className="text-muted-foreground">None</span>,
-                hint: e.nextActionDue ? (e.nextAction ?? undefined) : undefined,
-              },
-              { label: "Open jobs", value: <span className="tabular">{`${open} / ${pipes.length}`}</span>, href: `${base}?tab=pipelines` },
-              { label: "Documents signed", value: <span className="tabular">{`${signed} / ${liveDocs}`}</span>, href: `${base}?tab=documents` },
-              { label: "Last activity", value: fmtDate(e.lastActivityAt ?? e.updatedAt), href: `${base}?tab=timeline` },
-            ]}
-          />
-          <Tabs
-            tabs={[
-              { href: base, label: "Profile", active: tab === "profile" },
-              { href: `${base}?tab=pipelines`, label: "Pipelines", active: tab === "pipelines", count: pipes.length },
-              { href: `${base}?tab=timeline`, label: "Timeline", active: tab === "timeline", count: timeline.length },
-              { href: `${base}?tab=documents`, label: "Documents", active: tab === "documents", count: liveDocs },
-              { href: `${base}?tab=referrals`, label: "Referrals", active: tab === "referrals", count: refs.length },
-              { href: `${base}?tab=earnings`, label: "Engagements & earnings", active: tab === "earnings" },
-              { href: `${base}?tab=applications`, label: "Applications", active: tab === "applications", count: hubApps.length },
-              { href: `${base}?tab=work`, label: "Submissions & placements", active: tab === "work", count: subs.length + plcs.length },
-            ]}
-          />
-          {tab === "profile" ? <ProfileTab e={e} user={user} /> : null}
-          {tab === "pipelines" ? <PipelinesTab id={id} pipes={pipes} user={user} /> : null}
-          {tab === "timeline" ? <TimelineTab id={id} items={timeline} pipes={pipes} user={user} /> : null}
-          {tab === "documents" ? <DocumentsTab id={id} docs={docs} user={user} /> : null}
-          {tab === "referrals" ? <ReferralsTab id={id} refs={refs} user={user} /> : null}
-          {tab === "earnings" ? <EarningsTab id={id} user={user} /> : null}
-          {tab === "applications" ? <ApplicationsTab e={e} apps={hubApps} /> : null}
-          {tab === "work" ? <WorkTab id={id} subs={subs} plcs={plcs} user={user} /> : null}
-        </>
-      )}
+      <RecordLayout left={left} center={center} right={right} />
+      {editingOutreach ? (
+        <SlideOver title="Pipeline and outreach" subtitle={e.fullName} media={<Avatar name={e.fullName} size="xl" />} closeHref={here}>
+          <OutreachForm c={editingOutreach} id={id} owners={owners} dnc={dnc} returnTo={here} />
+        </SlideOver>
+      ) : null}
     </>
   );
 }
@@ -183,12 +428,12 @@ function consentLine(e: ExpertRow): string {
 }
 
 /** "CV consent: Yes" plus a small "Change to..." menu (roles that may edit). */
-function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
+function ConsentControl({ e, canEdit, returnTo }: { e: ExpertRow; canEdit: boolean; returnTo: string }) {
   return (
-    <form action={recordConsent} className="flex items-center gap-2">
+    <form action={recordConsent} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={e.id} />
-      <span className="text-[13px] text-muted-foreground">CV consent:</span>
-      <StatusBadge value={e.cvConsent} />
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <StatusBadge value={e.cvConsent} prefix="CV consent:" />
       {canEdit ? (
         <>
           <AutoSubmitSelect name="consent" defaultValue="" className="control h-8 w-auto text-[13px]" aria-label="Change CV consent">
@@ -210,173 +455,55 @@ function ConsentControl({ e, canEdit }: { e: ExpertRow; canEdit: boolean }) {
   );
 }
 
-async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
-  const db = await getDb();
-  const [allFiles, deletion, details, payout, crm, owners] = await Promise.all([filesFor(db, e.id), openDeletionRequest(db, e.id), detailsFor(db, e.id, user.role), payoutFor(db, e.id, user.role), crmFieldsFor(db, e.id), ownerOptions(db)]);
-  // Tax forms are money: only admins and finance see them listed.
-  const files = visibleFiles(user.role, allFiles);
-  const cv = currentCv(e.cvRef, files.filter((f) => f.kind === "cv"));
-  const canDownloadKind = (kind: string) => can(user.role, fileDownloadAction(kind));
-  const canEdit = can(user.role, "experts.edit");
-  return (
-    <Stack>
-      {deletion ? (
-        <Notice tone="warning" title="Asked us to delete their data">
-          Requested on {fmtDate(deletion.createdAt)} from the expert portal. An admin should delete the profile (Edit → Delete on request) and confirm by email within 30 days.
-        </Notice>
-      ) : null}
-      {e.status === "do_not_contact" ? (
-        <Notice tone="error" title="Do not contact">
-          {crm?.dncReason ? `${crm.dncReason}. ` : ""}They won&apos;t be emailed, referred or added to jobs by any tool.
-        </Notice>
-      ) : null}
-      <Section title="Profile">
-        <ExpertSummary e={e} money={canSeeMoney(user.role)} contact={canSeeContact(user.role)} hideHead />
-      </Section>
-
-      {crm ? <OutreachSection c={crm} id={e.id} canEdit={canEdit} owners={owners} dnc={e.status === "do_not_contact"} /> : null}
-
-      <Section title="CV" description={consentLine(e)} actions={<ConsentControl e={e} canEdit={canEdit} />}>
-        <div className="space-y-4">
-          {files.length ? (
-            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-              {files.map((f) => (
-                <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                    <span className="truncate text-foreground">{f.filename}</span>
-                    {cv?.id === f.id ? <StatusBadge value="active" prefix="Current ·" /> : null}
-                    {f.kind === "attachment" ? <span className="text-[13px] text-muted-foreground">attachment</span> : null}
-                    {f.kind === "document" ? <span className="text-[13px] text-muted-foreground">document</span> : null}
-                    {f.kind === "tax" ? <span className="text-[13px] text-muted-foreground">tax form (money: admins and finance)</span> : null}
-                    <span className="text-[13px] text-muted-foreground/70">
-                      {bytes(f.size)} · {f.storage === "jobs_db" || f.externalRef?.startsWith("jobs:") ? "from jobs site" : f.storage === "fynolabs" ? "from the FynoLabs admin" : f.createdBy === "job-form" ? "from a job application" : f.createdBy === "expert-portal" ? "uploaded by the expert" : "uploaded"} · {fmtDate(f.createdAt)}
-                    </span>
-                  </div>
-                  {canDownloadKind(f.kind) ? (
-                    <a href={`/api/files/${f.id}`} className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline">
-                      <Download className="h-3.5 w-3.5" /> Download
-                    </a>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState padded={false} icon={FileText} title="No CV yet" description={can(user.role, "experts.cv_upload") ? "Upload one below, or run the jobs-site sync if they applied there." : "Nobody has uploaded one."} />
-          )}
-          {can(user.role, "experts.cv_upload") ? (
-            <form action={uploadCv}>
-              <input type="hidden" name="id" value={e.id} />
-              <FileDrop name="file" accept=".pdf,.doc,.docx,.txt,.rtf" label="Upload CV" hint="PDF or Word, up to 4 MB. Click or drop a file; it becomes the current CV." submitLabel="Upload" />
-            </form>
-          ) : null}
-        </div>
-      </Section>
-
-      {details ? <JobsSiteDetails d={details} contact={canSeeContact(user.role)} /> : null}
-
-      {payout ? (
-        <Section title="Payout and tax" description="Money: only admins and finance see this. As the expert entered it on the old jobs site.">
-          <DefinitionList
-            items={[
-              { label: "Payout method", value: payout.payoutMethod },
-              { label: "Payout handle", value: payout.payoutHandle },
-              { label: "Tax form", value: [payout.taxFormType, payout.taxFormAt ? `sent ${fmtDate(payout.taxFormAt)}` : null].filter(Boolean).join(", ") || null },
-              { label: "Default commission", value: payout.defaultCommissionPercent != null ? `${payout.defaultCommissionPercent}%` : null },
-            ]}
-          />
-        </Section>
-      ) : null}
-
-      <Section title="Notes" description="Internal only. For dated updates, add a note on the Timeline instead.">
-        <div className="space-y-4">
-          {can(user.role, "experts.notes") ? (
-            <form action={appendNote} className="space-y-2">
-              <input type="hidden" name="id" value={e.id} />
-              <Textarea name="note" rows={2} placeholder="Add a note (call summary, next step...)" aria-label="New note" />
-              <div className="flex items-center gap-4">
-                <SubmitButton size="sm" variant="secondary">
-                  Add note
-                </SubmitButton>
-                <Checkbox name="contacted" value="yes" label="We contacted them today" />
-              </div>
-            </form>
-          ) : null}
-          {e.notes ? <pre className="prose-box">{e.notes}</pre> : !can(user.role, "experts.notes") ? <EmptyState padded={false} title="No notes" /> : null}
-          <p className="text-[13px] text-muted-foreground/70">
-            Last contacted: {fmtDate(e.lastContactedAt)} · Added {fmtDate(e.createdAt)} · Updated {fmtDateTime(e.updatedAt)}
-          </p>
-        </div>
-      </Section>
-    </Stack>
-  );
-}
-
 type Crm = NonNullable<Awaited<ReturnType<typeof crmFieldsFor>>>;
 
-/** Owner, outreach, next action, where they came from and do not contact (the FynoLabs admin's fields). */
-function OutreachSection({ c, id, canEdit, owners, dnc }: { c: Crm; id: string; canEdit: boolean; owners: { id: string; name: string; active: boolean }[]; dnc: boolean }) {
-  if (!canEdit) {
-    const items = [
-      { label: "Owner", value: c.ownerName },
-      { label: "Outreach", value: c.outreachStatus ? OUTREACH_LABELS[c.outreachStatus as keyof typeof OUTREACH_LABELS] : null },
-      { label: "Next action", value: [c.nextAction, c.nextActionDue ? `by ${fmtDate(c.nextActionDue)}` : null].filter(Boolean).join(" ") || null },
-      { label: "Last activity", value: c.lastActivityAt ? fmtDateTime(c.lastActivityAt) : null },
-      { label: "Based in", value: [c.location, c.timezone].filter(Boolean).join(" · ") || null },
-      { label: "Seniority", value: c.seniority ? label(c.seniority) : null },
-      { label: "Came from", value: [c.sourceChannel ? (SOURCE_CHANNEL_LABELS[c.sourceChannel] ?? c.sourceChannel) : null, c.sourceDetail].filter(Boolean).join(": ") || null },
-      { label: "Links", value: c.links ? <span className="whitespace-pre-line break-all">{c.links}</span> : null },
-      { label: "Emails", value: c.emailOptOut ? "Opted out of bulk emails" : null },
-    ];
-    return (
-      <Section title="Pipeline and outreach" description="Owner, outreach and next action, as the FynoLabs admin keeps them.">
-        <DefinitionList items={items} />
-      </Section>
-    );
-  }
+/** Owner, outreach, next action, where they came from and do not contact (opened from the left panel). */
+function OutreachForm({ c, id, owners, dnc, returnTo }: { c: Crm; id: string; owners: { id: string; name: string; active: boolean }[]; dnc: boolean; returnTo: string }) {
   return (
-    <Section title="Pipeline and outreach" description="Owner, outreach and next action, as the FynoLabs admin keeps them. Changing outreach writes the timeline.">
-      <form action={saveOutreach} className="space-y-4">
-        <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="returnTo" value={`/admin/experts/${id}`} />
-        <input type="hidden" name="dncShown" value="yes" />
-        <FieldRow>
-          <Field label="Owner" htmlFor="ownerTeamMemberId">
-            <Select id="ownerTeamMemberId" name="ownerTeamMemberId" defaultValue={c.ownerTeamMemberId ?? ""} options={owners.filter((o) => o.active || o.id === c.ownerTeamMemberId).map((o) => ({ value: o.id, label: o.name }))} placeholder="No owner" />
-          </Field>
-          <Field label="Outreach" htmlFor="outreachStatus">
-            <Select id="outreachStatus" name="outreachStatus" defaultValue={c.outreachStatus ?? ""} options={OUTREACH_STATUSES.map((o) => ({ value: o, label: OUTREACH_LABELS[o] }))} placeholder="Not set" />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field label="Next action" htmlFor="nextAction">
-            <Input id="nextAction" name="nextAction" defaultValue={c.nextAction ?? ""} placeholder="Follow up on LinkedIn" maxLength={300} />
-          </Field>
-          <Field label="Due" htmlFor="nextActionDue">
-            <Input id="nextActionDue" name="nextActionDue" type="date" defaultValue={c.nextActionDue ?? ""} />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field label="Came from" htmlFor="sourceChannel">
-            <Select id="sourceChannel" name="sourceChannel" defaultValue={c.sourceChannel ?? ""} options={SOURCE_CHANNELS.map((s) => ({ value: s, label: SOURCE_CHANNEL_LABELS[s] }))} placeholder="Not set" />
-          </Field>
-          <Field label="Detail" htmlFor="sourceDetail" hint="Who referred them, which list, which agency.">
-            <Input id="sourceDetail" name="sourceDetail" defaultValue={c.sourceDetail ?? ""} maxLength={300} />
-          </Field>
-        </FieldRow>
-        <div className="space-y-2 rounded-md border border-border p-4">
-          <Checkbox name="dnc" value="yes" defaultChecked={dnc} label="Do not contact" />
-          <Input name="dncReason" defaultValue={c.dncReason ?? ""} placeholder="Reason, e.g. asked to stop by email" aria-label="Do-not-contact reason" maxLength={300} />
-          <p className="text-[13px] text-muted-foreground">They won&apos;t be emailed, referred or added to jobs by any tool.{c.emailOptOut ? " They also opted out of bulk emails." : ""}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <SubmitButton size="sm" pendingText="Saving...">
-            Save
-          </SubmitButton>
-          {c.lastActivityAt ? <span className="text-[13px] text-muted-foreground">Last activity {fmtDateTime(c.lastActivityAt)}</span> : null}
-        </div>
-      </form>
-    </Section>
+    <form action={saveOutreach} className="space-y-4">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <input type="hidden" name="dncShown" value="yes" />
+      <p className="text-[13px] text-muted-foreground">Owner, outreach and next action, as the FynoLabs admin keeps them. Changing outreach writes the timeline.</p>
+      <FieldRow>
+        <Field label="Owner" htmlFor="ownerTeamMemberId">
+          <Select id="ownerTeamMemberId" name="ownerTeamMemberId" defaultValue={c.ownerTeamMemberId ?? ""} options={owners.filter((o) => o.active || o.id === c.ownerTeamMemberId).map((o) => ({ value: o.id, label: o.name }))} placeholder="No owner" />
+        </Field>
+        <Field label="Outreach" htmlFor="outreachStatus">
+          <Select id="outreachStatus" name="outreachStatus" defaultValue={c.outreachStatus ?? ""} options={OUTREACH_STATUSES.map((o) => ({ value: o, label: OUTREACH_LABELS[o] }))} placeholder="Not set" />
+        </Field>
+      </FieldRow>
+      <FieldRow>
+        <Field label="Next action" htmlFor="nextAction">
+          <Input id="nextAction" name="nextAction" defaultValue={c.nextAction ?? ""} placeholder="Follow up on LinkedIn" maxLength={300} />
+        </Field>
+        <Field label="Due" htmlFor="nextActionDue">
+          <Input id="nextActionDue" name="nextActionDue" type="date" defaultValue={c.nextActionDue ?? ""} />
+        </Field>
+      </FieldRow>
+      <FieldRow>
+        <Field label="Came from" htmlFor="sourceChannel">
+          <Select id="sourceChannel" name="sourceChannel" defaultValue={c.sourceChannel ?? ""} options={SOURCE_CHANNELS.map((s) => ({ value: s, label: SOURCE_CHANNEL_LABELS[s] }))} placeholder="Not set" />
+        </Field>
+        <Field label="Detail" htmlFor="sourceDetail" hint="Who referred them, which list, which agency.">
+          <Input id="sourceDetail" name="sourceDetail" defaultValue={c.sourceDetail ?? ""} maxLength={300} />
+        </Field>
+      </FieldRow>
+      <div className="space-y-2 rounded-md border border-border p-4">
+        <Checkbox name="dnc" value="yes" defaultChecked={dnc} label="Do not contact" />
+        <Input name="dncReason" defaultValue={c.dncReason ?? ""} placeholder="Reason, e.g. asked to stop by email" aria-label="Do-not-contact reason" maxLength={300} />
+        <p className="text-[13px] text-muted-foreground">They won&apos;t be emailed, referred or added to jobs by any tool.{c.emailOptOut ? " They also opted out of bulk emails." : ""}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <SubmitButton size="sm" pendingText="Saving...">
+          Save
+        </SubmitButton>
+        <ButtonLink href={returnTo} size="sm" variant="ghost">
+          Cancel
+        </ButtonLink>
+        {c.lastActivityAt ? <span className="text-[13px] text-muted-foreground">Last activity {fmtDateTime(c.lastActivityAt)}</span> : null}
+      </div>
+    </form>
   );
 }
 
@@ -384,47 +511,126 @@ type Details = NonNullable<Awaited<ReturnType<typeof detailsFor>>>;
 /** Experience and education are JSON typed by people on the old site: show only plain text and numbers. */
 const txt = (v: unknown): string | null => (typeof v === "string" ? v.trim() || null : typeof v === "number" ? String(v) : null);
 
-/** Experience, education and the other details the old jobs site kept (copied by npm run copy:engine). */
-function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
-  const address = [d.addressLine1, d.addressLine2, d.postalCode].filter(Boolean).join(", ");
-  const facts = [
-    { label: "Work authorisation", value: d.workAuthorized == null ? null : `${d.workAuthorized ? "Yes" : "No"}${d.workAuthorizedAt ? ` (${fmtDate(d.workAuthorizedAt)})` : ""}` },
-    { label: "Referral code", value: d.referralCode },
-    { label: "Referred by", value: d.referredByExpertId ? <Link href={`/admin/experts/${d.referredByExpertId}`} className="text-primary hover:underline">{d.referredByName ?? "Another expert"}</Link> : null },
-    { label: "Last signed in (jobs site)", value: d.lastLoginAt ? fmtDateTime(d.lastLoginAt) : null },
-    ...(contact ? [{ label: "Address", value: address || null }] : []),
-  ].filter((x) => x.value != null && x.value !== "");
+/** Experience and education the old jobs site kept (copied by npm run copy:engine), as a left-panel group. */
+function ExperienceGroup({ d }: { d: Details }) {
   if (!Array.isArray(d.experience) || !Array.isArray(d.education)) return null;
-  if (!d.experience.length && !d.education.length && !facts.length && !d.noExperience) return null;
+  if (!d.experience.length && !d.education.length && !d.noExperience) return null;
   return (
-    <Section title="Experience and education" description="As the expert entered it on the old jobs site.">
-      <div className="space-y-6">
-        {d.experience.length ? (
-          <ul className="space-y-3">
-            {d.experience.map((x, i) => (
-              <li key={i} className="text-sm">
-                <div className="font-medium text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
-                <div className="text-[13px] text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
-                {txt(x.description) ? <p className="mt-1 whitespace-pre-line text-foreground/80">{txt(x.description)}</p> : null}
-              </li>
+    <FieldGroup title="Experience and education" count={d.experience.length + d.education.length}>
+      {d.experience.length ? (
+        d.experience.map((x, i) => (
+          <div key={`x${i}`} data-field className="text-[13px]">
+            <div className="font-medium text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
+            <div className="text-xs text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
+            {txt(x.description) ? <p className="mt-1 line-clamp-4 whitespace-pre-line text-foreground/80">{txt(x.description)}</p> : null}
+          </div>
+        ))
+      ) : d.noExperience ? (
+        <p data-field className="text-[13px] text-muted-foreground">
+          No work experience yet (said so on the jobs site).
+        </p>
+      ) : null}
+      {d.education.map((x, i) => (
+        <div key={`e${i}`} data-field className="text-[13px]">
+          <div className="font-medium text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
+          <div className="text-xs text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
+        </div>
+      ))}
+    </FieldGroup>
+  );
+}
+
+// ---------------------------------------------------------------- activity (the centre's main tab)
+
+const dayKey = (d: Date) => new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+
+function dayLabel(key: string): string {
+  const today = dayKey(new Date());
+  const yesterday = dayKey(new Date(Date.now() - 86_400_000));
+  if (key === today) return "Today";
+  if (key === yesterday) return "Yesterday";
+  const d = new Date(`${key}T00:00:00Z`);
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", ...(key.slice(0, 4) !== today.slice(0, 4) ? { year: "numeric" } : {}), timeZone: "UTC" });
+}
+
+// One round icon per kind on the rail (as on the account activity).
+const KIND_ICON: Record<string, { icon: LucideIcon; tone: string }> = {
+  note: { icon: StickyNote, tone: "bg-secondary text-foreground/70" },
+  email: { icon: Mail, tone: "bg-info-soft text-info" },
+  stage: { icon: Shuffle, tone: "bg-progress-soft text-progress" },
+  application: { icon: Briefcase, tone: "bg-info-soft text-info" },
+  document: { icon: FileSignature, tone: "bg-warning-soft text-warning" },
+  referral: { icon: Send, tone: "bg-success-soft text-success" },
+  outreach: { icon: AtSign, tone: "bg-info-soft text-info" },
+  consent: { icon: Shield, tone: "bg-success-soft text-success" },
+  history: { icon: History, tone: "bg-secondary text-foreground/70" },
+  system: { icon: UserCheck, tone: "bg-secondary text-foreground/70" },
+};
+
+function ActivityTab({ id, items, pipes, user }: { id: string; items: TimelineItem[]; pipes: PipelineRow[]; user: CurrentUser }) {
+  const days = new Map<string, TimelineItem[]>();
+  for (const t of items) {
+    const k = dayKey(t.at);
+    days.set(k, [...(days.get(k) ?? []), t]);
+  }
+  return (
+    <>
+      {can(user.role, "experts.notes") ? (
+        <form action={addExpertNote} className="rounded-lg border border-border bg-card focus-within:border-ring">
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="returnTo" value={`/admin/experts/${id}`} />
+          <Textarea name="note" rows={3} placeholder={"Add a note: a call, a trial task result, anything worth remembering.\nThe first line becomes the title on the timeline."} aria-label="Note" className="block min-h-20 resize-y rounded-b-none border-0 bg-transparent px-4 py-3 shadow-none focus:ring-0 focus-visible:ring-0" />
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-canvas/60 px-3 py-2">
+            {pipes.length ? <Select name="applicationId" defaultValue="" options={pipes.map((p) => ({ value: p.id, label: p.jobTitle }))} placeholder="Not tied to a job" className="h-8 w-auto max-w-56 text-[13px]" aria-label="Job" /> : null}
+            <SubmitButton size="sm" pendingText="Adding...">
+              Add note
+            </SubmitButton>
+          </div>
+        </form>
+      ) : null}
+      <section className="rounded-lg border border-border bg-card" aria-label="Timeline">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-5 py-3">
+          <h2 className="text-sm font-medium text-foreground">Timeline</h2>
+          <span className="text-xs text-muted-foreground">Applications, stages, documents, emails, referrals, notes and changes, newest first</span>
+        </div>
+        {items.length ? (
+          <div className="divide-y divide-border">
+            {[...days.entries()].map(([k, list]) => (
+              <div key={k} className="px-5 py-4">
+                <div className="mb-3 text-[13px] font-medium text-muted-foreground">{dayLabel(k)}</div>
+                <ol>
+                  {list.map((t, i) => {
+                    const k2 = t.source === "audit" ? { icon: Pencil, tone: "bg-secondary text-foreground/70" } : (KIND_ICON[t.kind] ?? KIND_ICON.note);
+                    const last = i === list.length - 1;
+                    return (
+                      <li key={t.id} className="relative flex gap-3.5 pb-5 last:pb-0">
+                        {!last ? <span className="absolute top-8 bottom-0 left-[13.5px] w-px bg-border" aria-hidden /> : null}
+                        <span className={cn("relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-4 ring-card", k2.tone)}>
+                          <k2.icon className="h-3.5 w-3.5" aria-hidden />
+                        </span>
+                        <div className="min-w-0 flex-1 pt-0.5 text-sm">
+                          <p className="text-foreground">
+                            {t.summary}
+                            {t.jobTitle && t.kind !== "stage" && t.kind !== "application" ? <span className="text-muted-foreground"> · {t.jobTitle}</span> : null}
+                          </p>
+                          <p className="mt-0.5 text-[13px] text-muted-foreground">
+                            {t.source === "audit" ? "Change" : (TIMELINE_KIND_LABELS[t.kind] ?? t.kind)} · {new Date(t.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
+                            {t.by ? ` · ${t.by}` : ""}
+                          </p>
+                          {t.detail ? <p className="mt-2 line-clamp-6 rounded-md bg-canvas px-3 py-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.detail}</p> : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
             ))}
-          </ul>
-        ) : d.noExperience ? (
-          <p className="text-sm text-muted-foreground">No work experience yet (said so on the jobs site).</p>
-        ) : null}
-        {d.education.length ? (
-          <ul className="space-y-2">
-            {d.education.map((x, i) => (
-              <li key={i} className="text-sm">
-                <div className="font-medium text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
-                <div className="text-[13px] text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {facts.length ? <DefinitionList items={facts} /> : null}
-      </div>
-    </Section>
+          </div>
+        ) : (
+          <EmptyState title="Nothing yet" description="Applications, stage changes, documents, emails and notes appear here." />
+        )}
+      </section>
+    </>
   );
 }
 
@@ -534,76 +740,6 @@ async function PipelinesTab({ id, pipes, user }: { id: string; pipes: PipelineRo
           <EmptyState padded={false} title="No job applied for" description={manage ? "Add them to a job above." : "Nobody has added them to a job yet."} />
         </Section>
       )}
-    </Stack>
-  );
-}
-
-// ---------------------------------------------------------------- timeline
-
-const dayKey = (d: Date) => new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
-
-function dayLabel(key: string): string {
-  const today = dayKey(new Date());
-  const yesterday = dayKey(new Date(Date.now() - 86_400_000));
-  if (key === today) return "Today";
-  if (key === yesterday) return "Yesterday";
-  const d = new Date(`${key}T00:00:00Z`);
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", ...(key.slice(0, 4) !== today.slice(0, 4) ? { year: "numeric" } : {}), timeZone: "UTC" });
-}
-
-function TimelineTab({ id, items, pipes, user }: { id: string; items: TimelineItem[]; pipes: PipelineRow[]; user: CurrentUser }) {
-  const days = new Map<string, TimelineItem[]>();
-  for (const t of items) {
-    const k = dayKey(t.at);
-    days.set(k, [...(days.get(k) ?? []), t]);
-  }
-  return (
-    <Stack>
-      {can(user.role, "experts.notes") ? (
-        <Section title="Add a note" description="A call, a trial task result, anything worth remembering. The first line becomes the title on the timeline.">
-          <form action={addExpertNote} className="space-y-3">
-            <input type="hidden" name="id" value={id} />
-            <input type="hidden" name="returnTo" value={`/admin/experts/${id}?tab=timeline`} />
-            <Textarea name="note" rows={3} placeholder={"Call: strong Python, wants 20 h/week\nTrial task next week."} aria-label="Note" />
-            <div className="flex flex-wrap items-center gap-3">
-              {pipes.length ? <Select name="applicationId" defaultValue="" options={pipes.map((p) => ({ value: p.id, label: p.jobTitle }))} placeholder="Not tied to a job" className="h-9 w-auto text-sm" aria-label="Job" /> : null}
-              <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
-                Add note
-              </SubmitButton>
-            </div>
-          </form>
-        </Section>
-      ) : null}
-      <Section title="Timeline" description="Applications, stage changes, documents, emails, referrals, notes and every change to the record, newest first." flush>
-        {items.length ? (
-          <div className="divide-y divide-border">
-            {[...days.entries()].map(([k, list]) => (
-              <div key={k} className="px-6 py-5">
-                <div className="mb-3 text-[13px] font-medium text-muted-foreground">{dayLabel(k)}</div>
-                <ul className="space-y-4">
-                  {list.map((t) => (
-                    <li key={t.id} className="relative border-l-2 border-border pl-4 text-sm">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-foreground">
-                          {t.summary}
-                          {t.jobTitle && t.kind !== "stage" && t.kind !== "application" ? <span className="text-muted-foreground"> · {t.jobTitle}</span> : null}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 text-[13px] text-muted-foreground">
-                        {t.source === "audit" ? "Change" : (TIMELINE_KIND_LABELS[t.kind] ?? t.kind)} · {new Date(t.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
-                        {t.by ? ` · ${t.by}` : ""}
-                      </div>
-                      {t.detail ? <p className="mt-2 line-clamp-6 rounded-lg bg-canvas px-3 py-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.detail}</p> : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Nothing yet" description="Applications, stage changes, documents, emails and notes appear here." />
-        )}
-      </Section>
     </Stack>
   );
 }
