@@ -20,7 +20,9 @@ import { SubmitButton } from "@/components/ui/client";
 import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
 import { Checkbox, Field, FieldRow, Input, Select, Textarea } from "@/components/ui/field";
-import { PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
+import { FactsBar, PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
+import { Person } from "@/components/ui/avatar";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { linkRolesForm, removeProject, saveDocumentsForm, saveFeesForm, saveProjectForm, saveTeamForm, saveTracksForm } from "../actions";
@@ -75,19 +77,31 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
       <PageHeader
         back={{ href: "/admin/projects", label: "Projects" }}
         title={p.name}
+        media={<CodeTile code={p.code} />}
         badge={<StatusChip value={p.status} />}
         subtitle={`${p.code}${p.description ? ` · ${p.description}` : ""}`}
         actions={manage ? <ButtonLink href={tabHref("details")}>Edit</ButtonLink> : undefined}
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+      <FactsBar
+        items={[
+          { label: "Partner", value: p.companyId ? <span className="inline-flex min-w-0 items-center gap-2"><OrgLogo name={p.companyName ?? ""} size={22} /><span className="truncate">{p.companyName}</span></span> : "Our own", href: p.companyId ? `/admin/accounts?view=${p.companyId}` : undefined },
+          { label: "Owner", value: owner ? <Person name={owner} /> : null },
+          { label: "Platform", value: p.platformId ? p.platformName : null, href: p.platformId ? `/admin/platforms/${p.platformId}` : undefined },
+          { label: "Dates", value: p.startsOn || p.endsOn ? `${p.startsOn ? shortDay(p.startsOn, today) : "–"} → ${p.endsOn ? shortDay(p.endsOn, today) : "open"}` : null },
+        ]}
+      />
       <Stack>
-        <Section>
+        <StatGrid>
+          <Stat label="People" value={funnel.people} href={tabHref("people")} />
+          <Stat label={p.targetCount != null ? `Achieved of ${p.targetCount}` : "Achieved"} value={funnel.achieved} />
+          <Stat label="Per week (4 wks)" value={funnel.pace ? funnel.pace.toFixed(1) : "0"} />
+          <Stat label="Target reached" value={funnel.projected ? shortDay(funnel.projected, today) : "–"} hint={funnel.projected ? "At this pace" : undefined} />
+        </StatGrid>
+        <Section title="About">
           <Facts
             items={[
-              { label: "Partner", value: p.companyId ? <Link href={`/admin/accounts?view=${p.companyId}`} className="text-primary hover:underline">{p.companyName}</Link> : "Our own" },
               { label: "Type", value: crmLabel(p.kind) },
-              { label: "Owner", value: owner },
-              { label: "Platform", value: p.platformId ? <Link href={`/admin/platforms/${p.platformId}`} className="text-primary hover:underline">{p.platformName}</Link> : null },
               { label: "Started", value: p.startsOn ? shortDay(p.startsOn, today) : null },
               { label: "Ends", value: p.endsOn ? shortDay(p.endsOn, today) : null },
               { label: "Countries", value: p.countries.length ? p.countries.join(", ") : "Anywhere" },
@@ -96,12 +110,6 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             ]}
           />
         </Section>
-        <StatGrid>
-          <Stat label="People" value={funnel.people} href={tabHref("people")} />
-          <Stat label={p.targetCount != null ? `Achieved of ${p.targetCount}` : "Achieved"} value={funnel.achieved} />
-          <Stat label="Per week (4 wks)" value={funnel.pace ? funnel.pace.toFixed(1) : "0"} />
-          <Stat label="Target reached" value={funnel.projected ? shortDay(funnel.projected, today) : "–"} hint={funnel.projected ? "At this pace" : undefined} />
-        </StatGrid>
       </Stack>
       <div className="mt-8">
         <Tabs tabs={visibleTabs.map((t) => ({ href: tabHref(t), label: TAB_LABELS[t], active: tab === t, count: counts[t] }))} />
@@ -115,8 +123,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                 {PIPELINE_STAGES.filter((s) => s !== "rejected").map((s) => (
                   <Link key={s} href={tabHref("people", { stage: s })} className="group flex items-center gap-3 text-sm">
                     <span className="w-36 shrink-0 text-foreground/70 group-hover:text-foreground">{PIPELINE_STAGE_LABELS[s]}</span>
-                    <span className="h-1.5 flex-1 overflow-hidden bg-secondary">
-                      <span className={cn("block h-1.5", s === "active" || s === "ended" ? "bg-primary" : "bg-foreground/75")} style={{ width: `${((funnel.stages[s] ?? 0) / maxStage) * 100}%` }} />
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/[0.06]">
+                      <span className={cn("block h-2 rounded-full", s === "active" || s === "ended" ? "bg-primary" : "bg-foreground/75")} style={{ width: `${((funnel.stages[s] ?? 0) / maxStage) * 100}%` }} />
                     </span>
                     <span className="tabular w-12 text-foreground/80">{funnel.stages[s] ?? 0}</span>
                   </Link>
@@ -175,13 +183,13 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                       <Link href={`/admin/experts?view=${x.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {x.name}
                       </Link>
-                      <span className="block text-xs text-muted-foreground">{x.email ?? "No email"}</span>
+                      <span className="block text-[13px] text-muted-foreground">{x.email ?? "No email"}</span>
                     </Td>
                     <Td>
                       <Link href={`/admin/jobs/${x.jobId}?tab=applicants`} className="hover:text-primary">
                         {x.jobTitle}
                       </Link>
-                      {parts.tracks.length ? <span className="block text-xs text-muted-foreground">{x.trackName ?? "No track"}</span> : null}
+                      {parts.tracks.length ? <span className="block text-[13px] text-muted-foreground">{x.trackName ?? "No track"}</span> : null}
                     </Td>
                     <Td>
                       <StatusBadge value={x.stage === "new" ? "new" : x.stage} />
@@ -209,7 +217,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                   <ul className="max-h-80 space-y-2 overflow-y-auto">
                     {linkable.map((j) => (
                       <li key={j.id}>
-                        <Checkbox name="jobIds" value={j.id} label={<span>{j.title} <span className="text-xs text-muted-foreground">· {crmLabel(j.status)}{j.projectCode ? ` · now in ${j.projectCode}` : " · not in a project"}</span></span>} />
+                        <Checkbox name="jobIds" value={j.id} label={<span>{j.title} <span className="text-[13px] text-muted-foreground">· {crmLabel(j.status)}{j.projectCode ? ` · now in ${j.projectCode}` : " · not in a project"}</span></span>} />
                       </li>
                     ))}
                   </ul>
@@ -630,4 +638,9 @@ function TracksTable({ tracks }: { tracks: { id: string; name: string; targetCou
       </TBody>
     </Table>
   );
+}
+
+/** A project's code as its picture in the header (P101). */
+function CodeTile({ code }: { code: string }) {
+  return <span className="tabular inline-flex h-12 min-w-12 items-center justify-center rounded-xl border border-border bg-card px-2 font-mono text-[13px] font-medium text-foreground/80 shadow-card">{code}</span>;
 }

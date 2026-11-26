@@ -79,3 +79,48 @@ export function SelectAll({ label = "Select all", form }: { label?: string; form
 export function AutoSubmitSelect(props: React.SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {
   return <select {...props} onChange={(e) => e.currentTarget.form?.requestSubmit()} />;
 }
+
+/**
+ * A list filter in a toolbar (src/components/ui/toolbar.tsx): applies as soon as it changes. A filter
+ * that is set reads darker, so the active ones stand out. Sized to its words.
+ */
+export function FilterSelect({
+  name,
+  defaultValue,
+  options,
+  placeholder,
+  label,
+  className,
+  form,
+}: {
+  name: string;
+  defaultValue?: string;
+  options: readonly (string | { value: string; label: string; disabled?: boolean })[];
+  placeholder?: string;
+  label: string;
+  className?: string;
+  form?: string;
+}) {
+  const on = Boolean(defaultValue);
+  return (
+    <select
+      name={name}
+      form={form}
+      defaultValue={defaultValue ?? ""}
+      aria-label={label}
+      title={label}
+      onChange={(e) => e.currentTarget.form?.requestSubmit()}
+      className={["control w-auto max-w-[15rem] min-w-0", on ? "border-foreground/30 font-medium text-foreground" : "text-foreground/75", className].filter(Boolean).join(" ")}
+    >
+      {placeholder !== undefined ? <option value="">{placeholder}</option> : null}
+      {options.map((o) => {
+        const opt = typeof o === "string" ? { value: o, label: o } : o;
+        return (
+          <option key={opt.value} value={opt.value} disabled={"disabled" in opt ? opt.disabled : undefined}>
+            {opt.label}
+          </option>
+        );
+      })}
+    </select>
+  );
+}

@@ -163,11 +163,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               <div className="space-y-2 rounded-md border border-border p-4 text-sm">
                 <div className="font-medium text-foreground">{renderMerge(camp.subject, sample)}</div>
                 <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.body, sample)}</pre>
-                <p className="text-xs text-muted-foreground">Don&apos;t want these emails? Unsubscribe</p>
+                <p className="text-[13px] text-muted-foreground">Don&apos;t want these emails? Unsubscribe</p>
               </div>
               {camp.followUpBody ? (
                 <div className="space-y-2 rounded-md border border-dashed border-border p-4 text-sm">
-                  <p className="text-xs text-muted-foreground">Follow-up after {camp.followUpAfterDays} days, to anyone who hasn&apos;t answered:</p>
+                  <p className="text-[13px] text-muted-foreground">Follow-up after {camp.followUpAfterDays} days, to anyone who hasn&apos;t answered:</p>
                   <div className="font-medium text-foreground">{renderMerge(camp.followUpSubject || `Re: ${camp.subject}`, sample)}</div>
                   <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.followUpBody, sample)}</pre>
                 </div>
@@ -212,7 +212,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                       <Td>
                         <MapBadge value={r.status} labels={RECIPIENT_STATUS_LABELS} tones={RECIPIENT_STATUS_TONE} />
                       </Td>
-                      <Td className="text-xs text-muted-foreground">{r.reason ?? "–"}</Td>
+                      <Td className="text-[13px] text-muted-foreground">{r.reason ?? "–"}</Td>
                       <Td className="whitespace-nowrap">{r.followedUpAt ? `followed up ${fmtDate(r.followedUpAt)}` : fmtDate(r.sentAt)}</Td>
                     </Tr>
                   ))}

@@ -7,10 +7,11 @@ import { hrefWith, one, type SearchParams } from "@/lib/filters";
 import { myTeamMemberId, teamOptions } from "@/lib/server/companies";
 import { WORK_EMPTY, WORK_TABS, WORK_TAB_LABELS, myWork, type WorkItem, type WorkTab } from "@/lib/server/my-work";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Select } from "@/components/ui/field";
+import { Person } from "@/components/ui/avatar";
+import { FilterSelect } from "@/components/ui/toolbar";
+import { DueChip } from "@/components/crm/chips";
 import { PageHeader, Section, Stat, StatGrid } from "@/components/ui/layout";
 import { Tabs } from "@/components/ui/tabs";
 import { markProspectContacted } from "./actions";
@@ -58,25 +59,24 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
         subtitle={`${whose} list for today, ${shortDay(today)} (India time) · ${work.openPipelines} open ${work.openPipelines === 1 ? "pipeline" : "pipelines"}`}
         actions={
           isAdmin && team.length ? (
-            <form method="get" className="flex items-center gap-2">
+            <form method="get" role="search" aria-label="Whose list" className="flex items-center gap-2">
               {one(sp.tab) ? <input type="hidden" name="tab" value={tab} /> : null}
-              <Select
+              <FilterSelect
                 name="user"
                 defaultValue={pick}
-                aria-label="Whose list"
-                className="h-9 w-auto"
+                label="Whose list"
                 options={[...team.filter((t) => t.id !== meId && t.active).map((t) => ({ value: t.id, label: t.name || t.email.split("@")[0] })), { value: "all", label: "Everyone" }]}
-                placeholder="Mine"
+                placeholder="My list"
               />
-              <Button type="submit" variant="secondary">
+              <button type="submit" className="sr-only">
                 Show
-              </Button>
+              </button>
             </form>
           ) : null
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      <div className="mb-6">
+      <div className="mb-8">
         <StatGrid>
           <Stat label="Follow-ups due" value={work.tabs.follow_ups.length} hint={`${work.tabs.follow_ups.filter((i) => i.late).length} late`} href={hrefWith("/admin/my-work", sp, { tab: "follow_ups" })} />
           <Stat label="Calendar today" value={work.tabs.calendar.length} hint={`${work.tabs.calendar.filter((i) => i.late).length} overdue`} href={hrefWith("/admin/my-work", sp, { tab: "calendar" })} />
@@ -89,20 +89,20 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
         {items.length ? (
           <ul className="divide-y divide-border">
             {items.map((i) => (
-              <li key={i.key} className="row-hover relative flex items-center gap-4 px-5 py-3.5">
-                <Badge tone="outline" className="w-20 justify-center font-normal">
+              <li key={i.key} className="row-hover relative flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3.5 sm:flex-nowrap">
+                <Badge tone="outline" pill className="w-24 shrink-0 justify-center font-normal">
                   {TYPE_LABEL[i.type]}
                 </Badge>
-                <div className="min-w-0 flex-1">
-                  <Link href={i.href} className="text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
+                <div className="min-w-0 flex-1 basis-56">
+                  <Link href={i.href} className="text-[15px] font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
                     {i.title}
                   </Link>
-                  <p className="truncate text-small text-muted-foreground" title={i.detail}>
+                  <p className="mt-0.5 truncate text-[13px] text-muted-foreground" title={i.detail}>
                     {i.detail}
-                    {showOwner && i.owner ? ` · ${i.owner}` : ""}
                   </p>
                 </div>
-                {i.due ? <span className="text-small font-medium whitespace-nowrap text-danger">{i.late ? `Late · ${shortDay(i.due, today)}` : "Today"}</span> : null}
+                {showOwner && i.owner ? <Person name={i.owner} className="hidden w-40 shrink-0 text-[13px] text-foreground/80 md:inline-flex" /> : null}
+                {i.due ? <span className="shrink-0">{i.late ? <DueChip due={i.due} today={today} /> : <DueChip due={today} today={today} />}</span> : null}
                 {i.type === "prospect" && canContact && i.expertId ? (
                   <form action={markProspectContacted} className="relative z-10">
                     <input type="hidden" name="expertId" value={i.expertId} />

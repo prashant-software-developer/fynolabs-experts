@@ -42,7 +42,7 @@ export default async function ImportPage() {
           {jobs ? (
             <>
               <JobsSyncPanel available={available} />
-              <p className="mt-4 text-xs text-muted-foreground/70">Same as running <code>npm run import:jobs</code>.</p>
+              <p className="mt-4 text-[13px] text-muted-foreground/70">Same as running <code>npm run import:jobs</code>.</p>
             </>
           ) : (
             <p className="text-[13px] text-muted-foreground">Admins run the jobs-site sync. Ask one if new applicants are missing.</p>

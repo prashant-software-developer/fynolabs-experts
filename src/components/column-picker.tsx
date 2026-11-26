@@ -23,17 +23,17 @@ export function ColumnPicker({ selected }: { selected: string[] }) {
   const toggle = (id: string) => apply(selected.includes(id) ? selected.filter((c) => c !== id) : [...selected, id]);
   return (
     <details className="relative">
-      <summary className={cn(buttonClass("secondary", "sm"), "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
-        <Columns3 className="h-3.5 w-3.5" aria-hidden /> Columns
+      <summary className={cn(buttonClass("secondary", "md"), "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
+        <Columns3 className="h-4 w-4" aria-hidden /> Columns
         <span className="tabular text-muted-foreground">{selected.length + 1}</span>
       </summary>
-      <div className="absolute left-0 z-40 mt-1 w-56 rounded-md border border-border bg-popover p-2 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)]" aria-busy={pending}>
-        <p className="eyebrow px-2 pt-1 pb-2 text-muted-foreground">Show columns</p>
-        <label className="flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground">
+      <div className="absolute right-0 z-40 mt-2 w-60 rounded-xl border border-border bg-popover p-2 shadow-raised" aria-busy={pending}>
+        <p className="px-2 pt-1 pb-2 text-[13px] font-medium text-foreground">Show columns</p>
+        <label className="flex h-9 items-center gap-2.5 rounded-md px-2 text-sm text-muted-foreground">
           <input type="checkbox" checked disabled className="h-4 w-4" /> Name (always)
         </label>
         {EXPERT_COLUMNS.map((c) => (
-          <label key={c.id} className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-foreground/85 hover:bg-accent">
+          <label key={c.id} className="flex h-9 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm text-foreground/85 hover:bg-accent">
             <input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4" />
             {c.label}
           </label>

@@ -66,7 +66,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               })}
               <div className="flex flex-wrap items-center gap-3">
                 <SubmitButton pendingText="Saving...">Save changes</SubmitButton>
-                {s.updatedAt ? <span className="text-xs text-muted-foreground">Last saved {ago(s.updatedAt)}</span> : null}
+                {s.updatedAt ? <span className="text-[13px] text-muted-foreground">Last saved {ago(s.updatedAt)}</span> : null}
               </div>
             </div>
           </Section>

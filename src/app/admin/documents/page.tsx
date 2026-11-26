@@ -42,7 +42,7 @@ const TAB_LABELS: Record<Tab, string> = { templates: "Templates", send: "Send to
 const KIND_OPTIONS = DOCUMENT_KINDS.map((k) => ({ value: k, label: DOCUMENT_KIND_LABELS[k] }));
 const kindLabel = (k: string) => DOCUMENT_KIND_LABELS[k as keyof typeof DOCUMENT_KIND_LABELS] ?? k;
 const METHOD_SHORT: Record<string, string> = { typed: "Typed name", upload: "Signed copy" };
-const yesNo = (v: boolean) => (v ? <Badge tone="success">Yes</Badge> : <Badge tone="muted">No</Badge>);
+const yesNo = (v: boolean) => (v ? <Badge tone="success" pill dot>Yes</Badge> : <Badge tone="muted" pill dot>No</Badge>);
 
 export default async function AdminDocumentsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
@@ -165,7 +165,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                         ) : (
                           <span className="font-medium text-foreground">{t.title}</span>
                         )}
-                        {t.description ? <div className="max-w-md truncate text-xs text-muted-foreground">{t.description}</div> : null}
+                        {t.description ? <div className="max-w-md truncate text-[13px] text-muted-foreground">{t.description}</div> : null}
                       </Td>
                       <Td>{kindLabel(t.kind)}</Td>
                       <Td className="text-muted-foreground">
@@ -267,15 +267,15 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                       <Link href={`/admin/experts/${r.expertId}?tab=documents`} className="font-medium text-foreground hover:text-primary">
                         {r.expertName}
                       </Link>
-                      <div className="text-xs text-muted-foreground">{contact ? r.expertEmail : maskEmail(r.expertEmail)}</div>
+                      <div className="text-[13px] text-muted-foreground">{contact ? r.expertEmail : maskEmail(r.expertEmail)}</div>
                     </Td>
                     <Td>
                       <div className="max-w-64 truncate text-foreground">{r.title}</div>
-                      <div className="text-xs text-muted-foreground">{kindLabel(r.kind)}</div>
+                      <div className="text-[13px] text-muted-foreground">{kindLabel(r.kind)}</div>
                     </Td>
                     <Td>
                       <MapBadge value={r.status} labels={DOCUMENT_STATUS_LABELS} tones={DOCUMENT_STATUS_TONE} />
-                      {r.status === "sent" ? <div className="mt-0.5 text-xs text-muted-foreground">{r.viewedAt ? `Opened ${istDay(r.viewedAt)}` : "Not opened yet"}</div> : null}
+                      {r.status === "sent" ? <div className="mt-0.5 text-[13px] text-muted-foreground">{r.viewedAt ? `Opened ${istDay(r.viewedAt)}` : "Not opened yet"}</div> : null}
                     </Td>
                     <Td className="whitespace-nowrap">{r.sentAt ? istDay(r.sentAt) : <span className="text-muted-foreground/70">–</span>}</Td>
                     <Td className={r.status === "sent" && r.dueOn && r.dueOn < today ? "whitespace-nowrap text-warning" : "whitespace-nowrap"}>{r.dueOn ? fmtDate(r.dueOn) : <span className="text-muted-foreground/70">–</span>}</Td>

@@ -74,9 +74,9 @@ export function EmptyState({
 }) {
   if (size === "section") {
     return (
-      <div className={cn("flex w-full flex-wrap items-center gap-x-3 gap-y-2", padded && "px-5 py-4")}>
+      <div className={cn("flex w-full flex-wrap items-center gap-x-3 gap-y-2", padded && "px-6 py-5")}>
         {Icon ? <Icon className="h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden /> : <MiniMark />}
-        <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-muted-foreground">
+        <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
           <span className="font-medium text-foreground">{title}</span>
           {description ? <span> · {description}</span> : null}
         </p>
@@ -86,14 +86,14 @@ export function EmptyState({
   }
   return (
     <div className="flex w-full flex-col items-center justify-center gap-5 px-6 py-16 text-center">
-      <div className="h-32 w-32">
+      <div className="h-28 w-28">
         <EmptyIllustration />
       </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        {description ? <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">{description}</p> : null}
+      <div className="space-y-1.5">
+        <p className="text-[15px] font-medium text-foreground">{title}</p>
+        {description ? <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
       </div>
-      {action ? <div className="mt-1">{action}</div> : null}
+      {action ? <div className="mt-1 flex flex-wrap items-center justify-center gap-2">{action}</div> : null}
     </div>
   );
 }
@@ -105,9 +105,9 @@ export function NoAccess({ what, role }: { what: string; role: string }) {
       <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
         <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
       </span>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">{what} isn&apos;t available to your role</p>
-        <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">You&apos;re signed in as {role}. Ask an admin if you need access.</p>
+      <div className="space-y-1.5">
+        <p className="text-[15px] font-medium text-foreground">{what} isn&apos;t available to your role</p>
+        <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">You&apos;re signed in as {role}. Ask an admin if you need access.</p>
       </div>
     </div>
   );

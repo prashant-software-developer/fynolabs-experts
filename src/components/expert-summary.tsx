@@ -9,19 +9,24 @@ import { DefinitionList } from "./ui/layout";
 /**
  * `e` must already be the role's visible copy (visibleExpert): money removed, contact masked.
  * `money` shows the internal rate row; `contact` turns the email into a mail link.
+ * `hideHead`: leave out the headline and status chips (the panel or page header already shows them).
  */
-export function ExpertSummary({ e, compact, money = false, contact = true }: { e: ExpertRow; compact?: boolean; money?: boolean; contact?: boolean }) {
+export function ExpertSummary({ e, compact, money = false, contact = true, hideHead = false }: { e: ExpertRow; compact?: boolean; money?: boolean; contact?: boolean; hideHead?: boolean }) {
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        {e.headline ? <p className="text-sm text-foreground/80">{e.headline}</p> : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge value={e.status} />
-          <StatusBadge value={e.availability} />
-          <StatusBadge value={e.cvConsent} prefix="CV consent:" />
-          {e.domain ? <span className="text-xs text-muted-foreground">{e.domain}</span> : null}
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+    <div className="space-y-6">
+      <div className="space-y-2.5">
+        {hideHead ? null : (
+          <>
+            {e.headline ? <p className="text-sm text-foreground/80">{e.headline}</p> : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge value={e.status} />
+              <StatusBadge value={e.availability} />
+              <StatusBadge value={e.cvConsent} prefix="CV consent:" />
+              {e.domain ? <span className="text-[13px] text-muted-foreground">{e.domain}</span> : null}
+            </div>
+          </>
+        )}
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <MapPin className="h-3.5 w-3.5" />
             {place(e)}
@@ -54,7 +59,7 @@ export function ExpertSummary({ e, compact, money = false, contact = true }: { e
         </div>
       </div>
       <div>
-        <div className="eyebrow mb-2 text-muted-foreground">Skills</div>
+        <div className="quiet-label mb-2">Skills</div>
         <Chips items={e.skills} max={compact ? 12 : 40} />
       </div>
       <DefinitionList

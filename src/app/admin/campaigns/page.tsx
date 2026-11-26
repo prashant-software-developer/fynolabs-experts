@@ -113,7 +113,7 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
                     <Link href={hrefWith("/admin/campaigns", sp, { c: c.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {c.name}
                     </Link>
-                    {c.followUpAfterDays ? <div className="text-xs text-muted-foreground">Follow-up after {c.followUpAfterDays} days</div> : null}
+                    {c.followUpAfterDays ? <div className="text-[13px] text-muted-foreground">Follow-up after {c.followUpAfterDays} days</div> : null}
                   </Td>
                   <Td>{c.kind === "outreach" ? "Outreach" : "Update"}</Td>
                   <Td className="text-muted-foreground">{c.jobTitle ?? (c.projectCode ? c.projectCode : "–")}</Td>
@@ -187,21 +187,21 @@ async function CampaignsTab({ sp, manage, approve }: { sp: SearchParams; manage:
                 ]}
               />
               {skipSummary(skipped.rows.map((r) => r.reason)) ? <p className="text-small text-muted-foreground">{skipSummary(skipped.rows.map((r) => r.reason))}</p> : null}
-              {camp.approvedAt ? <p className="text-xs text-muted-foreground">Approved {fmtDateTime(camp.approvedAt)} by {camp.approvedBy}.</p> : null}
+              {camp.approvedAt ? <p className="text-[13px] text-muted-foreground">Approved {fmtDateTime(camp.approvedAt)} by {camp.approvedBy}.</p> : null}
             </PanelBlock>
             <PanelBlock title="The email (merge fields shown with sample values)">
               {camp.subject.trim() || camp.body.trim() ? (
                 <div className="space-y-2 rounded-md border border-border p-4 text-sm">
                   <div className="font-medium text-foreground">{renderMerge(camp.subject, sample) || "(no subject yet)"}</div>
                   <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.body, sample)}</pre>
-                  <p className="text-xs text-muted-foreground">Don&apos;t want these emails? Unsubscribe (added to every email).</p>
+                  <p className="text-[13px] text-muted-foreground">Don&apos;t want these emails? Unsubscribe (added to every email).</p>
                 </div>
               ) : (
                 <EmptyState padded={false} title="No wording yet" description="Write the subject and message on the campaign's page." />
               )}
               {camp.followUpBody ? (
                 <div className="space-y-2 rounded-md border border-dashed border-border p-4 text-sm">
-                  <p className="text-xs text-muted-foreground">Follow-up after {camp.followUpAfterDays} days, to anyone who hasn&apos;t answered:</p>
+                  <p className="text-[13px] text-muted-foreground">Follow-up after {camp.followUpAfterDays} days, to anyone who hasn&apos;t answered:</p>
                   <div className="font-medium text-foreground">{renderMerge(camp.followUpSubject || `Re: ${camp.subject}`, sample)}</div>
                   <pre className="font-sans whitespace-pre-wrap text-foreground/85">{renderMerge(camp.followUpBody, sample)}</pre>
                 </div>
@@ -324,9 +324,9 @@ async function LogTab({ contact }: { contact: boolean }) {
                 </Td>
                 <Td>{r.templateName}</Td>
                 <Td>
-                  <Badge tone={r.status === "sent" ? "success" : r.status === "pending" ? "info" : "danger"}>{r.status}</Badge>
+                  <Badge tone={r.status === "sent" ? "success" : r.status === "pending" ? "info" : "danger"} pill dot>{r.status}</Badge>
                 </Td>
-                <Td className="max-w-md text-xs text-muted-foreground">{r.errorMessage ?? "–"}</Td>
+                <Td className="max-w-md text-[13px] text-muted-foreground">{r.errorMessage ?? "–"}</Td>
               </Tr>
             ))}
           </TBody>

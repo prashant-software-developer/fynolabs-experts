@@ -19,7 +19,9 @@ import { dashboardData } from "@/lib/server/dashboard";
 import { listJobs } from "@/lib/server/jobs";
 import { ActivityList } from "@/components/activity-list";
 import { LineTrend, StackedTrend } from "@/components/crm/trend";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { Avatar, Person } from "@/components/ui/avatar";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, NoAccess, Notice } from "@/components/ui/feedback";
 import { PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
@@ -80,7 +82,7 @@ export default async function DashboardPage() {
         }
       />
       <Stack>
-        <StatGrid columns="many">
+        <StatGrid columns={4}>
           <Stat label="Experts" value={n(k.experts)} hint={`${n(d.byStatus.bench ?? 0)} on the bench`} href={people ? "/admin/experts" : undefined} />
           <Stat label="New to review" value={n(k.newToReview)} hint="Applicants" href={people ? "/admin/experts?status=applicant" : undefined} />
           <Stat label="In a job pipeline" value={n(k.inJobPipeline)} hint="Not ended or rejected" href={people ? "/admin/experts?layout=pipelines" : undefined} />
@@ -132,7 +134,7 @@ export default async function DashboardPage() {
                         <StatusBadge value={job.status} />
                       </Td>
                       <Td className="tabular text-right">{applicants}</Td>
-                      <Td className="tabular text-right">{fresh ? <span className="font-medium text-info">{fresh}</span> : "–"}</Td>
+                      <Td>{fresh ? <Badge tone="info" pill>{fresh} new</Badge> : <span className="text-muted-foreground/70">–</span>}</Td>
                       <Td className="whitespace-nowrap">{fmtDate(job.closesOn)}</Td>
                     </Tr>
                   ))}
@@ -145,14 +147,16 @@ export default async function DashboardPage() {
         ) : null}
 
         <Section title="Experts by status">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {EXPERT_STATUSES.map((s) => {
               const v = d.byStatus[s] ?? 0;
               const row = (
                 <>
-                  <span className="w-32 shrink-0 text-foreground/70 group-hover:text-foreground">{label(s)}</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                    <div className="h-1.5 rounded-full bg-foreground/75 transition-colors group-hover:bg-foreground" style={{ width: `${(v / maxStatus) * 100}%` }} />
+                  <span className="w-36 shrink-0 text-foreground/75 group-hover:text-foreground">
+                    <StatusBadge value={s} />
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/[0.06]">
+                    <div className="h-2 rounded-full bg-foreground/70 transition-colors group-hover:bg-foreground" style={{ width: `${(v / maxStatus) * 100}%` }} />
                   </div>
                   <span className="tabular w-12 text-foreground/80">{n(v)}</span>
                 </>
@@ -189,7 +193,9 @@ export default async function DashboardPage() {
                         {r.title}
                       </Link>
                     </Td>
-                    <Td>{r.partnerName}</Td>
+                    <Td>
+                        <Partner name={r.partnerName} />
+                      </Td>
                     <Td>
                       <StatusBadge value={r.status} />
                     </Td>
@@ -223,7 +229,8 @@ export default async function DashboardPage() {
                   return (
                     <Tr key={w.id}>
                       <Td>
-                        <Link href={`/admin/experts/${w.expertId}`} className="font-medium text-foreground hover:text-primary">
+                        <Link href={`/admin/experts/${w.expertId}`} className="inline-flex items-center gap-3 font-medium text-foreground hover:text-primary">
+                          <Avatar name={w.expertName} />
                           {w.expertName}
                         </Link>
                       </Td>
@@ -232,11 +239,13 @@ export default async function DashboardPage() {
                           {w.reqTitle}
                         </Link>
                       </Td>
-                      <Td>{w.partnerName}</Td>
+                      <Td>
+                        <Partner name={w.partnerName} />
+                      </Td>
                       <Td>
                         <StatusBadge value={w.status} />
                       </Td>
-                      <Td className={days != null && days >= 5 ? "text-warning" : ""}>{days == null ? "–" : `${days} d`}</Td>
+                      <Td>{days == null ? "–" : days >= 5 ? <Badge tone="warning" pill dot>{days} d</Badge> : `${days} d`}</Td>
                     </Tr>
                   );
                 })}
@@ -264,13 +273,15 @@ export default async function DashboardPage() {
                   const m = computeMoney(a.p);
                   return (
                     <Tr key={a.p.id}>
-                      <Td>{a.expertName ?? <span className="text-muted-foreground/70">Deleted expert</span>}</Td>
+                      <Td>{a.expertName ? <Person name={a.expertName} size="md" className="font-medium text-foreground" /> : <span className="text-muted-foreground/70">Deleted expert</span>}</Td>
                       <Td>
                         <Link href={`/admin/placements/${a.p.id}`} className="hover:text-primary">
                           {a.p.projectName}
                         </Link>
                       </Td>
-                      <Td>{a.partnerName}</Td>
+                      <Td>
+                        <Partner name={a.partnerName} />
+                      </Td>
                       <Td>{fmtDate(a.p.startDate)}</Td>
                       <Td className="tabular text-right">{a.p.basis === "per_task" ? `${a.p.tasksAccepted ?? 0} tasks` : `${a.p.hoursApproved ?? 0} h`}</Td>
                       {money ? <Td className="tabular text-right">{formatMoney(m.earned, a.p.currency)}</Td> : null}
@@ -300,5 +311,15 @@ export default async function DashboardPage() {
         </Section>
       </Stack>
     </>
+  );
+}
+
+function Partner({ name }: { name: string | null | undefined }) {
+  if (!name) return <span className="text-muted-foreground/70">–</span>;
+  return (
+    <span className="inline-flex max-w-56 items-center gap-2">
+      <OrgLogo name={name} size={22} />
+      <span className="truncate">{name}</span>
+    </span>
   );
 }

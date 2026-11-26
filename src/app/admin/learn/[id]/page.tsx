@@ -85,7 +85,7 @@ export default async function AdminCoursePage({ params, searchParams }: { params
       <PageHeader
         back={{ href: "/admin/learn", label: "Learn" }}
         title={course.title}
-        badge={course.published ? <Badge tone="success">Published</Badge> : <Badge tone="muted">Draft</Badge>}
+        badge={course.published ? <Badge tone="success" pill dot>Published</Badge> : <Badge tone="muted" pill dot>Draft</Badge>}
         subtitle={`${courseKindLabel(course.kind)} · ${levelLabel(course.level)}${time ? ` · ${time}` : ""} · experts open it at /me/learn/${course.slug}`}
         meta={
           stats ? (
@@ -130,7 +130,7 @@ export default async function AdminCoursePage({ params, searchParams }: { params
                 {lessons.map((l) => (
                   <tr key={l.id} className="row-hover relative">
                     <Td className="tabular text-right text-muted-foreground">{l.position}</Td>
-                    <Td className="py-2.5">
+                    <Td className=".5">
                       <RowLink href={hrefWith(base, sp, { lesson: l.id, ok: null, error: null })} className="block max-w-96 truncate">
                         {l.title}
                       </RowLink>

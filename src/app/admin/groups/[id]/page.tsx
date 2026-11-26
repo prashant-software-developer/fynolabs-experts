@@ -44,7 +44,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
         back={{ href: "/admin/groups", label: "Groups" }}
         meta={
           <>
-            {g.status === "active" ? <Badge tone="success">Active</Badge> : <Badge tone="muted">Inactive</Badge>}
+            {g.status === "active" ? <Badge tone="success" pill dot>Active</Badge> : <Badge tone="muted" pill dot>Inactive</Badge>}
             <span className="text-muted-foreground">
               {members.length} {members.length === 1 ? "person" : "people"} · created {fmtDate(g.createdAt)}
               {g.updatedBy ? ` · last change by ${g.updatedBy}` : ""}
@@ -99,7 +99,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
               </form>
               <div className="space-y-3 border-t border-border pt-5">
                 <form method="get" className="flex items-center gap-2">
-                  <Input name="q" defaultValue={q} placeholder="Find experts by name, skill or email" aria-label="Find experts" className="h-9" />
+                  <Input name="q" defaultValue={q} placeholder="Find experts by name, skill or email" aria-label="Find experts" />
                   <Button type="submit" variant="secondary">
                     Find
                   </Button>
@@ -109,12 +109,12 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
                     <form action={addMembers} className="space-y-3">
                       <input type="hidden" name="id" value={id} />
                       <input type="hidden" name="returnTo" value={`${base}?q=${encodeURIComponent(q)}`} />
-                      <ul className="divide-y divide-border rounded-md border border-border">
+                      <ul className="divide-y divide-border rounded-lg border border-border">
                         {found.map((e) => (
-                          <li key={e.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                          <li key={e.id} className="flex min-h-12 items-center gap-3 px-4 py-2.5 text-sm">
                             <input type="checkbox" name="expertIds" value={e.id} disabled={inGroup.has(e.id) || !e.email} aria-label={`Add ${e.fullName}`} className="h-4 w-4" />
                             <span className="min-w-0 flex-1 truncate text-foreground">{e.fullName}</span>
-                            <span className="text-xs text-muted-foreground">{inGroup.has(e.id) ? "In the group" : !e.email ? "No email" : <Email value={e.email} contact={contact} />}</span>
+                            <span className="text-[13px] text-muted-foreground">{inGroup.has(e.id) ? "In the group" : !e.email ? "No email" : <Email value={e.email} contact={contact} />}</span>
                           </li>
                         ))}
                       </ul>
@@ -155,24 +155,24 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
                   {members.map((m) => (
                     <Tr key={m.id}>
                       {manage ? (
-                        <Td className="py-2">
+                        <Td>
                           <input type="checkbox" form="remove" name="ids" value={m.id} aria-label={`Select ${m.name ?? m.email}`} className="h-4 w-4 rounded-sm align-middle" />
                         </Td>
                       ) : null}
-                      <Td className="py-2 font-medium text-foreground">{m.expertName ?? m.name ?? "–"}</Td>
-                      <Td className="py-2 text-small">
+                      <Td className="font-medium text-foreground">{m.expertName ?? m.name ?? "–"}</Td>
+                      <Td className="text-small">
                         <Email value={m.email} contact={contact} />
                       </Td>
-                      <Td className="py-2">
+                      <Td>
                         {m.expertId ? (
                           <Link href={`/admin/experts/${m.expertId}`} className="inline-flex items-center gap-2 text-primary hover:underline">
                             Open <StatusBadge value={m.expertStatus} />
                           </Link>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Not an expert yet</span>
+                          <span className="text-[13px] text-muted-foreground">Not an expert yet</span>
                         )}
                       </Td>
-                      <Td className="py-2 whitespace-nowrap text-muted-foreground">{fmtDate(m.createdAt)}</Td>
+                      <Td className="whitespace-nowrap text-muted-foreground">{fmtDate(m.createdAt)}</Td>
                     </Tr>
                   ))}
                 </TBody>

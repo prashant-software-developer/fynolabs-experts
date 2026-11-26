@@ -19,12 +19,13 @@ import { listSubmissions } from "@/lib/server/submissions";
 import { ActivityList } from "@/components/activity-list";
 import { RequirementForm } from "@/components/requirement-form";
 import { SubmissionStatusForm } from "@/components/submission-status-form";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { Badge, Chips, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { AutoSubmitSelect, SelectAll, SubmitButton } from "@/components/ui/client";
 import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
-import { DefinitionList, PageHeader, Section, Stack } from "@/components/ui/layout";
+import { DefinitionList, FactsBar, PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { setRequirementStatus, shortlist } from "../actions";
@@ -53,22 +54,14 @@ export default async function RequirementPage({ params, searchParams }: { params
       <PageHeader
         title={req.title}
         back={{ href: "/admin/requirements", label: "Requirements" }}
-        meta={
-          <>
-            <span className="font-medium text-foreground">{partner.name}</span>
-            {req.externalRef ? <span className="text-muted-foreground">· {req.externalRef}</span> : null}
-            <StatusBadge value={req.status} />
-            <Badge tone={filled >= req.slots ? "success" : "neutral"}>
-              {filled} of {req.slots} filled
-            </Badge>
-            {req.deadline ? <span className="text-muted-foreground">Deadline {fmtDate(req.deadline)}</span> : null}
-          </>
-        }
+        media={<OrgLogo name={partner.name} size={48} />}
+        subtitle={[partner.name, req.externalRef].filter(Boolean).join(" · ")}
+        badge={<StatusBadge value={req.status} />}
         actions={
           <>
             {can(user.role, "jobs.manage") ? (
-              <ButtonLink href={`/admin/jobs/new?requirement=${id}`} size="sm" variant="secondary">
-                <Megaphone className="h-3.5 w-3.5" /> Create job from requirement
+              <ButtonLink href={`/admin/jobs/new?requirement=${id}`} variant="secondary">
+                <Megaphone className="h-4 w-4" /> Create job from requirement
               </ButtonLink>
             ) : null}
             {canEdit ? (
@@ -78,7 +71,7 @@ export default async function RequirementPage({ params, searchParams }: { params
                 <label className="text-[13px] text-muted-foreground" htmlFor="req-status">
                   Status
                 </label>
-                <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control h-8 w-auto text-[13px]">
+                <AutoSubmitSelect id="req-status" name="status" defaultValue={req.status} className="control w-auto">
                   {REQUIREMENT_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {label(s)}
@@ -94,6 +87,21 @@ export default async function RequirementPage({ params, searchParams }: { params
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+      <FactsBar
+        items={[
+          { label: "Partner", value: partner.name },
+          {
+            label: "Filled",
+            value: (
+              <Badge tone={filled >= req.slots ? "success" : "neutral"} pill dot>
+                {filled} of {req.slots} filled
+              </Badge>
+            ),
+          },
+          { label: "Submissions", value: <span className="tabular">{subs.length}</span>, href: `${base}?tab=submissions` },
+          { label: "Deadline", value: req.deadline ? fmtDate(req.deadline) : null },
+        ]}
+      />
       <Tabs
         tabs={[
           { href: base, label: "Matches", active: tab === "matches" },
@@ -129,7 +137,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
                 <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
                   Shortlist ticked
                 </SubmitButton>
-                <span className="text-xs text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
+                <span className="text-[13px] text-muted-foreground">Shortlisting doesn&apos;t send anything. Submitting to the partner needs CV consent.</span>
               </div>
             ) : null}
             <Table>
@@ -156,7 +164,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
                       <Link href={`/admin/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
                         {m.expert.fullName}
                       </Link>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-[13px] text-muted-foreground">
                         {[m.expert.domain, m.expert.country].filter(Boolean).join(" · ") || "–"}
                       </div>
                     </Td>
@@ -191,7 +199,7 @@ async function MatchesTab({ id, user }: { id: string; user: CurrentUser }) {
                 <Link href={`/admin/experts/${m.expertId}`} className="text-foreground hover:text-primary">
                   {m.expert.fullName}
                 </Link>
-                <span className="text-xs text-danger">{m.excludedBecause.join("; ")}</span>
+                <span className="text-[13px] text-danger">{m.excludedBecause.join("; ")}</span>
               </li>
             ))}
           </ul>
@@ -247,7 +255,7 @@ async function SubmissionsTab({
                     <Link href={`/admin/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
                       {s.expertName}
                     </Link>
-                    <div className="text-xs text-muted-foreground">{s.expertCountry ?? "–"}</div>
+                    <div className="text-[13px] text-muted-foreground">{s.expertCountry ?? "–"}</div>
                   </Td>
                   <Td className="tabular">{s.sub.score ?? "–"}</Td>
                   <Td>
@@ -259,7 +267,7 @@ async function SubmissionsTab({
                     ) : (
                       <div className="space-y-0.5">
                         <StatusBadge value={s.sub.status} />
-                        {s.sub.partnerNote ? <div className="text-xs text-muted-foreground">{s.sub.partnerNote}</div> : null}
+                        {s.sub.partnerNote ? <div className="text-[13px] text-muted-foreground">{s.sub.partnerNote}</div> : null}
                       </div>
                     )}
                   </Td>

@@ -38,13 +38,16 @@ import { listRequirements } from "@/lib/server/requirements";
 import { listSubmissions } from "@/lib/server/submissions";
 import { ExpertForm } from "@/components/expert-form";
 import { ExpertSummary } from "@/components/expert-summary";
-import { StatusBadge } from "@/components/ui/badge";
+import { DueChip } from "@/components/crm/chips";
+import { todayIST } from "@/lib/crm/dates";
+import { Avatar, Person } from "@/components/ui/avatar";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Field, FieldRow, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
-import { DefinitionList, PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
+import { DefinitionList, FactsBar, PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { MapBadge, SectionBlocked, StageBar } from "@/components/talent/bits";
@@ -74,7 +77,7 @@ export default async function ExpertPage({ params, searchParams }: { params: Pro
   const asked = one(sp.tab) === "activity" ? "timeline" : one(sp.tab);
   const tab: Tab = (TABS as readonly string[]).includes(asked) ? (asked as Tab) : "profile";
   const scope = partnerScope(user);
-  const [subs, plcs, pipes, docs, refs, timeline, hubApps] = await Promise.all([
+  const [subs, plcs, pipes, docs, refs, timeline, hubApps, owners] = await Promise.all([
     listSubmissions(db, { expertId: id, partnerScope: scope }),
     listPlacements(db, { expertId: id, partnerScope: scope }),
     pipelinesOf(db, id),
@@ -82,29 +85,48 @@ export default async function ExpertPage({ params, searchParams }: { params: Pro
     referralsOf(db, id),
     mergedTimeline(db, id),
     applicationsOf(db, id),
+    ownerOptions(db),
   ]);
   const base = `/admin/experts/${id}`;
   const open = pipes.filter((p) => p.stage !== "ended" && p.stage !== "rejected").length;
   const signed = docs.filter((d) => d.status === "signed").length;
   const liveDocs = docs.filter((d) => d.status !== "void").length;
+  const owner = (e.ownerTeamMemberId && owners.find((o) => o.id === e.ownerTeamMemberId)?.name) || e.ownerName;
+  const cameFrom = e.sourceChannel ? (SOURCE_CHANNEL_LABELS[e.sourceChannel] ?? e.sourceChannel) : label(e.primarySource);
 
   return (
     <>
       <PageHeader
         title={e.fullName}
         back={editing ? { href: base, label: "Back to profile" } : { href: "/admin/experts", label: "Experts" }}
-        subtitle={editing ? "Editing profile" : `Expert · ${e.sourceChannel ? (SOURCE_CHANNEL_LABELS[e.sourceChannel] ?? e.sourceChannel) : label(e.primarySource)}`}
+        media={editing ? undefined : <Avatar name={e.fullName} size="2xl" />}
+        badge={editing ? undefined : <StatusBadge value={e.status} />}
+        subtitle={editing ? "Editing profile" : (e.headline ?? `Expert · ${cameFrom}`)}
+        meta={
+          editing ? undefined : (
+            <>
+              <StatusBadge value={e.availability} />
+              <StatusBadge value={e.cvConsent} prefix="CV consent:" />
+              {e.domain ? <Badge tone="outline">{e.domain}</Badge> : null}
+              <span className="text-[13px] text-muted-foreground">Came from {cameFrom}</span>
+            </>
+          )
+        }
         actions={
           editing ? (
             <ButtonLink href={base}>Cancel</ButtonLink>
           ) : (
             <>
               {can(user.role, "referrals.manage") && canOpenSection(user, "send-referrals") ? (
-                <ButtonLink href={`/admin/send-referrals?ids=${id}`} size="sm">
-                  <Send className="h-3.5 w-3.5" /> Refer
+                <ButtonLink href={`/admin/send-referrals?ids=${id}`}>
+                  <Send className="h-4 w-4" /> Refer
                 </ButtonLink>
               ) : null}
-              {canEdit ? <ButtonLink href={`${base}?tab=edit`}>Edit</ButtonLink> : null}
+              {canEdit ? (
+                <ButtonLink href={`${base}?tab=edit`} variant="primary">
+                  Edit
+                </ButtonLink>
+              ) : null}
             </>
           )
         }
@@ -114,14 +136,19 @@ export default async function ExpertPage({ params, searchParams }: { params: Pro
         <EditView id={id} e={raw} user={user} />
       ) : (
         <>
-          <div className="mb-6">
-            <StatGrid>
-              <Stat label="Status" value={label(e.status)} />
-              <Stat label="Open jobs" value={`${open} / ${pipes.length}`} href={`${base}?tab=pipelines`} />
-              <Stat label="Documents signed" value={`${signed} / ${liveDocs}`} href={`${base}?tab=documents`} />
-              <Stat label="Last activity" value={fmtDate(e.lastActivityAt ?? e.updatedAt)} href={`${base}?tab=timeline`} />
-            </StatGrid>
-          </div>
+          <FactsBar
+            items={[
+              { label: "Owner", value: <Person name={owner} empty="No owner" /> },
+              {
+                label: "Next action",
+                value: e.nextActionDue ? <DueChip due={e.nextActionDue} today={todayIST()} /> : e.nextAction ? <span className="truncate">{e.nextAction}</span> : <span className="text-muted-foreground">None</span>,
+                hint: e.nextActionDue ? (e.nextAction ?? undefined) : undefined,
+              },
+              { label: "Open jobs", value: <span className="tabular">{`${open} / ${pipes.length}`}</span>, href: `${base}?tab=pipelines` },
+              { label: "Documents signed", value: <span className="tabular">{`${signed} / ${liveDocs}`}</span>, href: `${base}?tab=documents` },
+              { label: "Last activity", value: fmtDate(e.lastActivityAt ?? e.updatedAt), href: `${base}?tab=timeline` },
+            ]}
+          />
           <Tabs
             tabs={[
               { href: base, label: "Profile", active: tab === "profile" },
@@ -203,8 +230,8 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
           {crm?.dncReason ? `${crm.dncReason}. ` : ""}They won&apos;t be emailed, referred or added to jobs by any tool.
         </Notice>
       ) : null}
-      <Section>
-        <ExpertSummary e={e} money={canSeeMoney(user.role)} contact={canSeeContact(user.role)} />
+      <Section title="Profile">
+        <ExpertSummary e={e} money={canSeeMoney(user.role)} contact={canSeeContact(user.role)} hideHead />
       </Section>
 
       {crm ? <OutreachSection c={crm} id={e.id} canEdit={canEdit} owners={owners} dnc={e.status === "do_not_contact"} /> : null}
@@ -212,17 +239,17 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
       <Section title="CV" description={consentLine(e)} actions={<ConsentControl e={e} canEdit={canEdit} />}>
         <div className="space-y-4">
           {files.length ? (
-            <ul className="divide-y divide-border rounded-md border border-border">
+            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
               {files.map((f) => (
-                <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <div className="flex min-w-0 items-center gap-2">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                     <span className="truncate text-foreground">{f.filename}</span>
                     {cv?.id === f.id ? <StatusBadge value="active" prefix="Current ·" /> : null}
-                    {f.kind === "attachment" ? <span className="text-xs text-muted-foreground">attachment</span> : null}
-                    {f.kind === "document" ? <span className="text-xs text-muted-foreground">document</span> : null}
-                    {f.kind === "tax" ? <span className="text-xs text-muted-foreground">tax form (money: admins and finance)</span> : null}
-                    <span className="text-xs text-muted-foreground/70">
+                    {f.kind === "attachment" ? <span className="text-[13px] text-muted-foreground">attachment</span> : null}
+                    {f.kind === "document" ? <span className="text-[13px] text-muted-foreground">document</span> : null}
+                    {f.kind === "tax" ? <span className="text-[13px] text-muted-foreground">tax form (money: admins and finance)</span> : null}
+                    <span className="text-[13px] text-muted-foreground/70">
                       {bytes(f.size)} · {f.storage === "jobs_db" || f.externalRef?.startsWith("jobs:") ? "from jobs site" : f.storage === "fynolabs" ? "from the FynoLabs admin" : f.createdBy === "job-form" ? "from a job application" : f.createdBy === "expert-portal" ? "uploaded by the expert" : "uploaded"} · {fmtDate(f.createdAt)}
                     </span>
                   </div>
@@ -276,7 +303,7 @@ async function ProfileTab({ e, user }: { e: ExpertRow; user: CurrentUser }) {
             </form>
           ) : null}
           {e.notes ? <pre className="prose-box">{e.notes}</pre> : !can(user.role, "experts.notes") ? <EmptyState padded={false} title="No notes" /> : null}
-          <p className="text-xs text-muted-foreground/70">
+          <p className="text-[13px] text-muted-foreground/70">
             Last contacted: {fmtDate(e.lastContactedAt)} · Added {fmtDate(e.createdAt)} · Updated {fmtDateTime(e.updatedAt)}
           </p>
         </div>
@@ -340,13 +367,13 @@ function OutreachSection({ c, id, canEdit, owners, dnc }: { c: Crm; id: string; 
         <div className="space-y-2 rounded-md border border-border p-4">
           <Checkbox name="dnc" value="yes" defaultChecked={dnc} label="Do not contact" />
           <Input name="dncReason" defaultValue={c.dncReason ?? ""} placeholder="Reason, e.g. asked to stop by email" aria-label="Do-not-contact reason" maxLength={300} />
-          <p className="text-xs text-muted-foreground">They won&apos;t be emailed, referred or added to jobs by any tool.{c.emailOptOut ? " They also opted out of bulk emails." : ""}</p>
+          <p className="text-[13px] text-muted-foreground">They won&apos;t be emailed, referred or added to jobs by any tool.{c.emailOptOut ? " They also opted out of bulk emails." : ""}</p>
         </div>
         <div className="flex items-center gap-3">
           <SubmitButton size="sm" pendingText="Saving...">
             Save
           </SubmitButton>
-          {c.lastActivityAt ? <span className="text-xs text-muted-foreground">Last activity {fmtDateTime(c.lastActivityAt)}</span> : null}
+          {c.lastActivityAt ? <span className="text-[13px] text-muted-foreground">Last activity {fmtDateTime(c.lastActivityAt)}</span> : null}
         </div>
       </form>
     </Section>
@@ -377,7 +404,7 @@ function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
             {d.experience.map((x, i) => (
               <li key={i} className="text-sm">
                 <div className="font-medium text-foreground">{[txt(x.title), txt(x.company)].filter(Boolean).join(" at ") || "Role"}</div>
-                <div className="text-xs text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
+                <div className="text-[13px] text-muted-foreground">{[txt(x.location), [txt(x.start), x.current === true ? "now" : txt(x.end)].filter(Boolean).join(" to ")].filter(Boolean).join(" · ")}</div>
                 {txt(x.description) ? <p className="mt-1 whitespace-pre-line text-foreground/80">{txt(x.description)}</p> : null}
               </li>
             ))}
@@ -390,7 +417,7 @@ function JobsSiteDetails({ d, contact }: { d: Details; contact: boolean }) {
             {d.education.map((x, i) => (
               <li key={i} className="text-sm">
                 <div className="font-medium text-foreground">{[txt(x.degree), txt(x.field)].filter(Boolean).join(", ") || "Education"}</div>
-                <div className="text-xs text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
+                <div className="text-[13px] text-muted-foreground">{[txt(x.school), [txt(x.start_year), txt(x.end_year)].filter(Boolean).join(" to "), txt(x.grade)].filter(Boolean).join(" · ")}</div>
               </li>
             ))}
           </ul>
@@ -443,7 +470,7 @@ async function PipelinesTab({ id, pipes, user }: { id: string; pipes: PipelineRo
                   {p.projectCode ? `${p.projectCode} · ` : ""}
                   {p.jobTitle}
                 </Link>
-                {p.jobVisibility === "internal" ? <span className="text-xs font-normal text-muted-foreground">(internal)</span> : null}
+                {p.jobVisibility === "internal" ? <span className="text-[13px] font-normal text-muted-foreground">(internal)</span> : null}
               </span>
             }
             description={`${p.channel === "applied" ? "Applied" : "Added by us"} ${fmtDate(p.createdAt)}${p.channel === "applied" || p.channel === "manual" ? "" : ` · ${APPLICATION_CHANNEL_LABELS[p.channel] ?? p.channel}`} · in this stage since ${fmtDate(p.stageChangedAt)}${p.consentAt ? ` · consent ${fmtDate(p.consentAt)}` : " · no consent on file: ask before sharing"}`}
@@ -539,7 +566,7 @@ function TimelineTab({ id, items, pipes, user }: { id: string; items: TimelineIt
             <input type="hidden" name="returnTo" value={`/admin/experts/${id}?tab=timeline`} />
             <Textarea name="note" rows={3} placeholder={"Call: strong Python, wants 20 h/week\nTrial task next week."} aria-label="Note" />
             <div className="flex flex-wrap items-center gap-3">
-              {pipes.length ? <Select name="applicationId" defaultValue="" options={pipes.map((p) => ({ value: p.id, label: p.jobTitle }))} placeholder="Not tied to a job" className="h-8 w-auto text-small" aria-label="Job" /> : null}
+              {pipes.length ? <Select name="applicationId" defaultValue="" options={pipes.map((p) => ({ value: p.id, label: p.jobTitle }))} placeholder="Not tied to a job" className="h-9 w-auto text-sm" aria-label="Job" /> : null}
               <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
                 Add note
               </SubmitButton>
@@ -551,22 +578,22 @@ function TimelineTab({ id, items, pipes, user }: { id: string; items: TimelineIt
         {items.length ? (
           <div className="divide-y divide-border">
             {[...days.entries()].map(([k, list]) => (
-              <div key={k} className="px-5 py-4">
-                <div className="eyebrow mb-3 text-muted-foreground">{dayLabel(k)}</div>
-                <ul className="space-y-3">
+              <div key={k} className="px-6 py-5">
+                <div className="mb-3 text-[13px] font-medium text-muted-foreground">{dayLabel(k)}</div>
+                <ul className="space-y-4">
                   {list.map((t) => (
-                    <li key={t.id} className="text-sm">
+                    <li key={t.id} className="relative border-l-2 border-border pl-4 text-sm">
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="text-foreground">
                           {t.summary}
                           {t.jobTitle && t.kind !== "stage" && t.kind !== "application" ? <span className="text-muted-foreground"> · {t.jobTitle}</span> : null}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground/80">
+                      <div className="mt-0.5 text-[13px] text-muted-foreground">
                         {t.source === "audit" ? "Change" : (TIMELINE_KIND_LABELS[t.kind] ?? t.kind)} · {new Date(t.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
                         {t.by ? ` · ${t.by}` : ""}
                       </div>
-                      {t.detail ? <p className="mt-1 line-clamp-6 border-l-2 border-border pl-3 whitespace-pre-line text-foreground/75">{t.detail}</p> : null}
+                      {t.detail ? <p className="mt-2 line-clamp-6 rounded-lg bg-canvas px-3 py-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.detail}</p> : null}
                     </li>
                   ))}
                 </ul>
@@ -603,7 +630,7 @@ function DocumentsTab({ id, docs, user }: { id: string; docs: Awaited<ReturnType
               <Tr key={d.id} className={d.status === "void" ? "opacity-60" : undefined}>
                 <Td>
                   <div className="font-medium text-foreground">{d.title}</div>
-                  <div className="text-xs text-muted-foreground">{DOCUMENT_KIND_LABELS[d.kind as keyof typeof DOCUMENT_KIND_LABELS] ?? d.kind}</div>
+                  <div className="text-[13px] text-muted-foreground">{DOCUMENT_KIND_LABELS[d.kind as keyof typeof DOCUMENT_KIND_LABELS] ?? d.kind}</div>
                 </Td>
                 <Td className="text-muted-foreground">{d.jobTitle ?? "Not tied to a job"}</Td>
                 <Td>
@@ -681,7 +708,7 @@ function ReferralsTab({ id, refs, user }: { id: string; refs: Awaited<ReturnType
               <Tr key={r.id}>
                 <Td>
                   <div className="font-medium text-foreground">{r.platform}</div>
-                  {r.projectCode ? <div className="text-xs text-muted-foreground">{r.projectCode}</div> : null}
+                  {r.projectCode ? <div className="text-[13px] text-muted-foreground">{r.projectCode}</div> : null}
                 </Td>
                 <Td>{REFERRAL_METHOD_LABELS[r.method as keyof typeof REFERRAL_METHOD_LABELS] ?? r.method}</Td>
                 <Td>
@@ -705,7 +732,7 @@ function ReferralsTab({ id, refs, user }: { id: string; refs: Awaited<ReturnType
                 <Td className="tabular text-right">
                   {r.openCount} / {r.clickCount}
                 </Td>
-                <Td className="text-xs text-muted-foreground">{r.submittedBy ?? "–"}</Td>
+                <Td className="text-[13px] text-muted-foreground">{r.submittedBy ?? "–"}</Td>
               </Tr>
             ))}
           </TBody>
@@ -778,7 +805,7 @@ async function EarningsTab({ id, user }: { id: string; user: CurrentUser }) {
                   <Td className="tabular text-right">{Number(r.grossInr).toLocaleString("en-IN")}</Td>
                   <Td className="tabular text-right">
                     {Number(r.commissionInr).toLocaleString("en-IN")}
-                    {r.commissionPercent != null ? <span className="text-xs text-muted-foreground"> ({r.commissionPercent}%)</span> : null}
+                    {r.commissionPercent != null ? <span className="text-[13px] text-muted-foreground"> ({r.commissionPercent}%)</span> : null}
                   </Td>
                 </Tr>
               ))}
@@ -824,7 +851,7 @@ async function ApplicationsTab({ e, apps }: { e: ExpertRow; apps: Awaited<Return
                   <Td>
                     <StatusBadge value={a.status} />
                   </Td>
-                  <Td className="text-xs text-muted-foreground">{[a.nextAction, a.nextActionDue ? `by ${fmtDate(a.nextActionDue)}` : null].filter(Boolean).join(" ") || "–"}</Td>
+                  <Td className="text-[13px] text-muted-foreground">{[a.nextAction, a.nextActionDue ? `by ${fmtDate(a.nextActionDue)}` : null].filter(Boolean).join(" ") || "–"}</Td>
                   <Td className="whitespace-nowrap">{fmtDate(a.createdAt)}</Td>
                 </Tr>
               ))}
@@ -856,14 +883,14 @@ async function ApplicationsTab({ e, apps }: { e: ExpertRow; apps: Awaited<Return
           <EmptyState icon={Link2} title={`Added by hand (${label(e.primarySource)})`} description="No import has matched this person yet." />
         )}
         {jobsSite.length ? (
-          <div className="border-t border-border px-5 py-4">
-            <div className="eyebrow mb-2 text-muted-foreground">Jobs-site applications (live, read only)</div>
+          <div className="border-t border-border px-6 py-5">
+            <div className="mb-2 text-sm font-medium text-foreground">Jobs-site applications (live, read only)</div>
             <ul className="space-y-1 text-sm">
               {jobsSite.map((a) => (
                 <li key={a.id} className="flex items-center gap-2">
                   <span className="text-foreground">{a.title}</span>
-                  <span className="text-xs text-muted-foreground">{a.status.replace(/_/g, " ")}</span>
-                  <span className="text-xs text-muted-foreground/70">{fmtDate(a.created_at)}</span>
+                  <span className="text-[13px] text-muted-foreground">{a.status.replace(/_/g, " ")}</span>
+                  <span className="text-[13px] text-muted-foreground/70">{fmtDate(a.created_at)}</span>
                 </li>
               ))}
             </ul>
@@ -937,7 +964,7 @@ async function WorkTab({
                   </Td>
                   <Td className="tabular">{s.sub.score ?? "–"}</Td>
                   <Td>{fmtDate(s.sub.submittedAt)}</Td>
-                  <Td className="max-w-xs text-xs text-muted-foreground">{s.sub.partnerNote ?? "–"}</Td>
+                  <Td className="max-w-xs text-[13px] text-muted-foreground">{s.sub.partnerNote ?? "–"}</Td>
                 </Tr>
               ))}
             </TBody>

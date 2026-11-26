@@ -9,11 +9,12 @@ import { fmtDate, fmtDateTime } from "@/lib/format";
 import { RADAR_STATUS_LABELS } from "@/lib/talent";
 import { listRadar, radarCounts, radarPlatforms, scanInfo, type RadarRow, type RadarTab } from "@/lib/server/radar";
 import { Badge, Chips } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
+import { OrgLogo } from "@/components/crm/org-logo";
+import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { SelectAll, SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Input, Select } from "@/components/ui/field";
 import { DefinitionList, PageHeader, Section } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
 import { CountTabs, Facts, PanelBlock, SectionBlocked } from "@/components/talent/bits";
@@ -113,32 +114,19 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
         />
       </Section>
       <CountTabs tabs={TABS.map((t) => ({ href: hrefWith("/admin/jobs/radar", sp, { tab: t === "new" ? null : t, r: null, ok: null, error: null }), label: RADAR_STATUS_LABELS[t], active: tab === t, count: counts[t as keyof typeof counts] }))} />
-      <Section className="mb-6">
-        <form method="get" className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-          {tab !== "new" ? <input type="hidden" name="tab" value={tab} /> : null}
-          <Input name="q" defaultValue={f.q} placeholder="Search roles" aria-label="Search roles" />
-          <Select name="platform" defaultValue={f.platform} options={platforms.map((p) => ({ value: p.platform, label: `${p.platform} · ${p.n}` }))} placeholder="Every platform" aria-label="Platform" className="sm:w-48" />
-          <Select name="keyword" defaultValue={f.keyword} options={info.keywords.map((k) => ({ value: k, label: k }))} placeholder="Any keyword" aria-label="Keyword" className="sm:w-44" />
-          <div className="flex items-center gap-3">
-            <Button type="submit" variant="secondary">
-              Apply
-            </Button>
-            {filtered ? (
-              <Link href={tab === "new" ? "/admin/jobs/radar" : `/admin/jobs/radar?tab=${tab}`} className="text-sm text-muted-foreground hover:text-foreground">
-                Clear
-              </Link>
-            ) : null}
-          </div>
-        </form>
-      </Section>
       <Section flush>
+        <Toolbar hidden={{ tab: tab !== "new" ? tab : null }} clearHref={filtered ? (tab === "new" ? "/admin/jobs/radar" : `/admin/jobs/radar?tab=${tab}`) : null} end={<ResultCount n={rows.length} noun="role" />}>
+          <SearchField defaultValue={f.q} placeholder="Search roles" label="Search roles" />
+          <FilterSelect name="platform" defaultValue={f.platform} options={platforms.map((p) => ({ value: p.platform, label: `${p.platform} · ${p.n}` }))} placeholder="Every platform" label="Platform" />
+          <FilterSelect name="keyword" defaultValue={f.keyword} options={info.keywords.map((k) => ({ value: k, label: k }))} placeholder="Any keyword" label="Keyword" />
+        </Toolbar>
         <form id="bulk-radar" action={setRadarStatusAction}>
           <input type="hidden" name="returnTo" value={here} />
         </form>
         {manage && rows.length && tab !== "published" ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-canvas px-6 py-2.5">
             <SelectAll form="bulk-radar" />
-            <span className="text-small text-muted-foreground">Ticked:</span>
+            <span className="text-[13px] text-muted-foreground">With the ticked:</span>
             {tab !== "approved" ? (
               <PendingButton form="bulk-radar" name="status" value="approved">
                 Approve
@@ -160,19 +148,20 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
             {rows.map((r) => {
               const p = pay(r);
               return (
-                <li key={r.id} className="row-hover flex flex-wrap items-start gap-3 px-4 py-3">
+                <li key={r.id} className="row-hover flex flex-wrap items-start gap-x-4 gap-y-3 px-6 py-4">
                   {manage && tab !== "published" ? <input type="checkbox" form="bulk-radar" name="ids" value={r.id} aria-label={`Select ${r.title}`} className="mt-1 h-4 w-4 rounded-sm" /> : null}
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <Link href={hrefWith("/admin/jobs/radar", sp, { r: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
+                  <OrgLogo name={r.platform} size={32} />
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Link href={hrefWith("/admin/jobs/radar", sp, { r: r.id, ok: null, error: null })} scroll={false} className="text-[15px] font-medium text-foreground hover:text-primary">
                       {r.title}
                     </Link>
-                    <p className="text-small text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       {[r.company && r.company !== r.platform ? `${r.platform} · ${r.company}` : r.platform, r.location, p, posted(r.postedAt), r.applyUrl ? "Referral link" : "No referral"].filter(Boolean).join(" · ")}
                     </p>
                     {r.matchedKeywords.length ? <Chips items={r.matchedKeywords} max={6} /> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {r.publishedJobId ? <Badge tone="success">Published</Badge> : <Badge tone={r.status === "new" ? "info" : r.status === "approved" ? "progress" : "muted"}>{RADAR_STATUS_LABELS[r.status] ?? r.status}</Badge>}
+                    {r.publishedJobId ? <Badge tone="success" pill dot>Published</Badge> : <Badge tone={r.status === "new" ? "info" : r.status === "approved" ? "progress" : "muted"} pill dot>{RADAR_STATUS_LABELS[r.status] ?? r.status}</Badge>}
                     {actions(r)}
                   </div>
                 </li>
@@ -189,7 +178,10 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
       </Section>
       {open ? (
         <SlideOver
-          title="Role"
+          title={open.title}
+          media={<OrgLogo name={open.platform} size={44} />}
+          subtitle={[open.company && open.company !== open.platform ? `${open.platform} · ${open.company}` : open.platform, open.location].filter(Boolean).join(" · ")}
+          addon={open.publishedJobId ? <Badge tone="success" pill dot>Published</Badge> : <Badge tone="info" pill dot>{RADAR_STATUS_LABELS[open.status] ?? open.status}</Badge>}
           closeHref={hrefWith("/admin/jobs/radar", sp, { r: null })}
           footer={
             <div className="flex flex-wrap items-center gap-2">
@@ -201,13 +193,6 @@ export default async function JobRadarPage({ searchParams }: { searchParams: Pro
           }
         >
           <div className="space-y-6">
-            <div className="space-y-1">
-              <div className="text-lg font-light text-foreground">{open.title}</div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {open.platform}
-                {open.publishedJobId ? <Badge tone="success">Published</Badge> : <Badge tone="info">{RADAR_STATUS_LABELS[open.status] ?? open.status}</Badge>}
-              </div>
-            </div>
             <PanelBlock title="Details">
               <Facts
                 items={[

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
@@ -10,14 +9,14 @@ import { PLATFORM_TABS, PLATFORM_TAB_LABELS, allPlatforms, getPlatform, platform
 import { Facts, StatusChip } from "@/components/crm/chips";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { RowLink } from "@/components/crm/row-link";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
-import { Input } from "@/components/ui/field";
 import { PageHeader, Section } from "@/components/ui/layout";
-import { SlideOver } from "@/components/ui/slide-over";
+import { PanelSection, SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
+import { ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 
 export const metadata = { title: "Platforms" };
 
@@ -61,21 +60,10 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Tabs tabs={PLATFORM_TABS.map((t) => ({ href: hrefWith("/admin/platforms", sp, { tab: t === "all" ? null : t, view: null, ok: null, error: null }), label: PLATFORM_TAB_LABELS[t], active: tab === t, count: view.counts[t] }))} />
-      <Section className="mb-6">
-        <form method="get" className="flex gap-2">
-          {tab !== "all" ? <input type="hidden" name="tab" value={tab} /> : null}
-          <Input name="q" defaultValue={q} placeholder="Search platforms" aria-label="Search platforms" className="flex-1" />
-          <Button type="submit" variant="secondary">
-            Search
-          </Button>
-          {q ? (
-            <Link href={hrefWith("/admin/platforms", sp, { q: null })} className="self-center text-sm text-muted-foreground hover:text-foreground">
-              Clear
-            </Link>
-          ) : null}
-        </form>
-      </Section>
       <Section flush>
+        <Toolbar hidden={{ tab: tab !== "all" ? tab : null }} clearHref={q ? hrefWith("/admin/platforms", sp, { q: null }) : null} end={<ResultCount n={view.rows.length} noun="platform" />}>
+          <SearchField defaultValue={q} placeholder="Search platforms" />
+        </Toolbar>
         {view.rows.length ? (
           <Table sticky>
             <THead>
@@ -90,9 +78,9 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
             <TBody>
               {view.rows.map((p) => (
                 <tr key={p.id} className="row-hover relative">
-                  <Td className="py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <OrgLogo name={p.name} logoUrl={p.logoUrl} domain={p.domain} size={26} />
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <OrgLogo name={p.name} logoUrl={p.logoUrl} domain={p.domain} size={32} />
                       <RowLink href={hrefWith("/admin/platforms", sp, { view: p.id, ok: null, error: null })} className="max-w-56 truncate">
                         {p.name}
                       </RowLink>
@@ -102,10 +90,10 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
                   <Td>
                     <StatusChip value={p.status} ctx="platform_status" />
                   </Td>
-                  <Td className="text-small text-foreground/75">{p.domain ?? <span className="text-muted-foreground/70">No website yet</span>}</Td>
-                  <Td className="text-small">{p.referralUrl ? <span className="text-foreground/85">Referral link saved</span> : <span className="text-muted-foreground/70">No referral link</span>}</Td>
-                  <Td className="tabular text-right">{p.referred}</Td>
-                  <Td className="text-xs whitespace-nowrap text-muted-foreground">{updatedText(p)}</Td>
+                  <Td className="text-foreground/80">{p.domain ?? <span className="text-muted-foreground/70">No website yet</span>}</Td>
+                  <Td>{p.referralUrl ? <span className="text-foreground/85">Referral link saved</span> : <span className="text-muted-foreground/70">No referral link</span>}</Td>
+                  <Td className="tabular">{p.referred}</Td>
+                  <Td className="text-[13px] whitespace-nowrap text-muted-foreground">{updatedText(p)}</Td>
                 </tr>
               ))}
             </TBody>
@@ -122,47 +110,42 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
 
       {viewing && links ? (
         <SlideOver
-          title="Platform"
+          title={viewing.name}
+          media={<OrgLogo name={viewing.name} logoUrl={viewing.logoUrl} domain={viewing.domain} size={44} />}
+          subtitle={crmLabel(viewing.kind)}
+          addon={<StatusChip value={viewing.status} ctx="platform_status" />}
           closeHref={close}
           footer={
-            <ButtonLink href={`/admin/platforms/${viewing.id}`} variant="primary" size="sm">
-              Open full platform →
+            <ButtonLink href={`/admin/platforms/${viewing.id}`} variant="primary">
+              Open full platform <ArrowRight className="h-4 w-4" aria-hidden />
             </ButtonLink>
           }
         >
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <OrgLogo name={viewing.name} logoUrl={viewing.logoUrl} domain={viewing.domain} size={40} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-lg text-foreground">{viewing.name}</p>
-                <p className="text-small text-muted-foreground">{crmLabel(viewing.kind)}</p>
-              </div>
-              <StatusChip value={viewing.status} ctx="platform_status" />
-            </div>
-            <Facts
-              items={[
-                { label: "Website", value: viewing.websiteUrl ? <a href={viewing.websiteUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">{viewing.domain ?? viewing.websiteUrl}</a> : null },
-                { label: "Jobs page", value: viewing.jobsUrl ? <a href={viewing.jobsUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">Open</a> : null },
-                { label: "People referred", value: String(links.people.length) },
-                { label: "Accounts", value: links.companies.map((c) => c.name).join(", ") || null },
-                { label: "Projects", value: links.projects.map((p) => p.code).join(", ") || null },
-              ]}
-            />
-            <div>
-              <p className="eyebrow mb-1.5 text-muted-foreground">Referral link</p>
+          <div>
+            <PanelSection title="Details">
+              <Facts
+                items={[
+                  { label: "Website", value: viewing.websiteUrl ? <a href={viewing.websiteUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">{viewing.domain ?? viewing.websiteUrl}</a> : null },
+                  { label: "Jobs page", value: viewing.jobsUrl ? <a href={viewing.jobsUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">Open</a> : null },
+                  { label: "People referred", value: String(links.people.length) },
+                  { label: "Accounts", value: links.companies.map((c) => c.name).join(", ") || null },
+                  { label: "Projects", value: links.projects.map((p) => p.code).join(", ") || null },
+                ]}
+              />
+            </PanelSection>
+            <PanelSection title="Referral link">
               {viewing.referralUrl ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 flex-1 truncate rounded-sm bg-secondary px-2 py-1.5 text-xs">{viewing.referralUrl}</code>
+                  <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-canvas px-3 py-2 text-[13px]">{viewing.referralUrl}</code>
                   <CopyButton value={viewing.referralUrl} label="Copy" />
                 </div>
               ) : (
-                <EmptyState title="No referral link" padded={false} />
+                <EmptyState title="No referral link" description="Add it on the platform's page." padded={false} />
               )}
-            </div>
+            </PanelSection>
             {referenceLinksOf(viewing.referenceLinks).length ? (
-              <div>
-                <p className="eyebrow mb-1.5 text-muted-foreground">Reference links</p>
-                <ul className="space-y-1 text-sm">
+              <PanelSection title="Reference links">
+                <ul className="space-y-1.5 text-sm">
                   {referenceLinksOf(viewing.referenceLinks).map((l) => (
                     <li key={l.url}>
                       <a href={l.url} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
@@ -171,13 +154,12 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
                     </li>
                   ))}
                 </ul>
-              </div>
+              </PanelSection>
             ) : null}
             {viewing.notes ? (
-              <div>
-                <p className="eyebrow mb-1.5 text-muted-foreground">Notes</p>
+              <PanelSection title="Notes">
                 <p className="text-sm whitespace-pre-line text-foreground/85">{viewing.notes}</p>
-              </div>
+              </PanelSection>
             ) : null}
           </div>
         </SlideOver>

@@ -8,10 +8,12 @@ import { ago, fmtDateTime } from "@/lib/format";
 import { isOpenInbound } from "@/lib/talent";
 import { INBOUND_KINDS, INBOUND_STATES, inboundAnswers, inboundCounts, listInbound, type InboundKind, type InboundState } from "@/lib/server/inbound";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
+import { Segments } from "@/components/crm/segments";
+import { ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { SelectAll, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Input } from "@/components/ui/field";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { Pagination } from "@/components/ui/pagination";
 import { SlideOver } from "@/components/ui/slide-over";
@@ -60,30 +62,25 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           { href: tab("kind", "all"), label: KIND_LABEL.all, active: kind === "all", count: talentCounts.open + jobCounts.open },
         ]}
       />
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-md border border-input p-0.5" role="group" aria-label="New or handled">
-          {INBOUND_STATES.map((s) => (
-            <Link key={s} href={tab("state", s)} aria-current={state === s ? "true" : undefined} className={`inline-flex h-7 items-center gap-1.5 px-2.5 text-small transition-colors ${state === s ? "bg-foreground/[0.06] text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {STATE_LABEL[s]} <span className="tabular text-muted-foreground">{s === "open" ? counts.open : s === "handled" ? counts.handled : counts.all}</span>
-            </Link>
-          ))}
-        </div>
-        <form method="get" className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-md">
-          <input type="hidden" name="kind" value={kind} />
-          <input type="hidden" name="state" value={state} />
-          <Input name="q" defaultValue={q} placeholder="Search name, email, headline or job" aria-label="Search applications" className="h-9" />
-          <Button type="submit" variant="secondary">
-            Search
-          </Button>
-        </form>
-      </div>
       <Section flush>
+        <Toolbar
+          hidden={{ kind, state }}
+          clearHref={q ? hrefWith("/admin/applications", sp, { q: null, page: null, a: null, ok: null, error: null }) : null}
+          end={
+            <>
+              <ResultCount n={total} noun="application" />
+              <Segments label="New or handled" items={INBOUND_STATES.map((s) => ({ href: tab("state", s), active: state === s, label: <>{STATE_LABEL[s]} <span className="tabular text-muted-foreground">{s === "open" ? counts.open : s === "handled" ? counts.handled : counts.all}</span></> }))} />
+            </>
+          }
+        >
+          <SearchField defaultValue={q} placeholder="Search name, email, headline or job" label="Search applications" />
+        </Toolbar>
         <form id="bulk-app" action={markHandled}>
           <input type="hidden" name="returnTo" value={here} />
         </form>
         {manage && rows.length ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-            <span className="text-small text-muted-foreground">Ticked:</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-canvas px-6 py-2.5">
+            <span className="text-[13px] text-muted-foreground">With the ticked:</span>
             <PendingButton form="bulk-app" name="handled" value="yes">
               Mark handled
             </PendingButton>
@@ -113,28 +110,33 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                   return (
                     <Tr key={r.id}>
                       {manage ? (
-                        <Td className="py-2">
+                        <Td>
                           <input type="checkbox" form="bulk-app" name="ids" value={r.id} aria-label={`Select ${r.name}`} className="h-4 w-4 rounded-sm align-middle" />
                         </Td>
                       ) : null}
-                      <Td className="py-2">
-                        <Link href={hrefWith("/admin/applications", sp, { a: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
-                          {r.name}
-                        </Link>
-                        <div className="max-w-xs truncate text-xs text-muted-foreground">
-                          <Email value={r.email} contact={contact} />
-                          {r.headline ? ` · ${r.headline}` : ""}
+                      <Td>
+                        <div className="flex items-center gap-3">
+                          <Avatar name={r.name} />
+                          <div className="min-w-0">
+                            <Link href={hrefWith("/admin/applications", sp, { a: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
+                              {r.name}
+                            </Link>
+                            <div className="max-w-xs truncate text-[13px] text-muted-foreground">
+                              <Email value={r.email} contact={contact} />
+                              {r.headline ? ` · ${r.headline}` : ""}
+                            </div>
+                          </div>
                         </div>
                       </Td>
-                      <Td className="py-2">{r.isTalentCall ? "Talent form" : r.jobTitle}</Td>
-                      <Td className="py-2">
+                      <Td>{r.isTalentCall ? "Talent form" : r.jobTitle}</Td>
+                      <Td>
                         <StageBadge stage={r.stage} />
                       </Td>
-                      <Td className="py-2 whitespace-nowrap" title={fmtDateTime(r.createdAt)}>
+                      <Td className="whitespace-nowrap" title={fmtDateTime(r.createdAt)}>
                         {ago(r.createdAt)}
                       </Td>
-                      <Td className="py-2">
-                        {isOpen ? <Badge tone="info">New</Badge> : <Badge tone="muted" title={r.handledBy ? `Handled by ${r.handledBy}` : "In the pipeline"}>Handled</Badge>}
+                      <Td>
+                        {isOpen ? <Badge tone="info" pill dot>New</Badge> : <Badge tone="muted" pill dot title={r.handledBy ? `Handled by ${r.handledBy}` : "In the pipeline"}>Handled</Badge>}
                       </Td>
                     </Tr>
                   );
@@ -154,6 +156,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       {open ? (
         <SlideOver
           title={open.name}
+          media={<Avatar name={open.name} size="2xl" />}
+          subtitle={open.isTalentCall ? "Talent form" : open.jobTitle ?? undefined}
+          addon={isOpenInbound(open) ? <Badge tone="info" pill dot>New</Badge> : <Badge tone="muted" pill dot>Handled</Badge>}
+          meta={<StageBadge stage={open.stage} />}
           closeHref={hrefWith("/admin/applications", sp, { a: null })}
           footer={
             <div className="flex flex-wrap items-center gap-2">
@@ -198,7 +204,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                     .filter((a) => contact || !/e-?mail|phone/i.test(a.label))
                     .map((a) => (
                       <div key={a.label}>
-                        <dt className="text-xs text-muted-foreground">{a.label}</dt>
+                        <dt className="text-[13px] text-muted-foreground">{a.label}</dt>
                         <dd className="text-sm whitespace-pre-line text-foreground">{a.value}</dd>
                       </div>
                     ))}

@@ -16,11 +16,12 @@ import { ActivityTimeline } from "@/components/crm/activity-timeline";
 import { ContactStageChip, DueChip, Initials, PriorityDot, StageChip, StatusChip } from "@/components/crm/chips";
 import { DetailFields, NextStepFields } from "@/components/crm/company-fields";
 import { OrgLogo } from "@/components/crm/org-logo";
+import { Person } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
-import { DefinitionList, PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
+import { DefinitionList, FactsBar, PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Field, FieldRow, Input, Select, Textarea } from "@/components/ui/field";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
@@ -69,7 +70,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
     <>
       <PageHeader
         back={{ href: "/admin/accounts", label: "Accounts" }}
-        media={<OrgLogo name={c.name} domain={c.domain} size={40} />}
+        media={<OrgLogo name={c.name} domain={c.domain} size={48} />}
         title={c.name}
         badge={
           <>
@@ -77,11 +78,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
             <PriorityDot priority={c.priority} />
           </>
         }
-        meta={
-          <span>
-            {label(c.kind)} · {crmLabel(c.businessLine)}
-          </span>
-        }
+        subtitle={`${label(c.kind)} · ${crmLabel(c.businessLine)}${c.location ? ` · ${c.location}` : ""}`}
         actions={
           edit ? (
             <>
@@ -96,14 +93,22 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      <div className="mb-6">
-        <StatGrid>
-          <Stat label="Owner" value={c.ownerTeamMemberId && c.ownerTeamMemberId === meId ? "You" : (ownerLabel(c) ?? "No owner")} />
-          <Stat label="Next step due" value={c.nextStepDue ? (c.nextStepDue === today ? "Today" : shortDay(c.nextStepDue, today)) : "Not set"} hint={c.nextStepDue && c.nextStepDue < today && c.stage !== "dropped" ? "Late" : undefined} />
-          <Stat label="People" value={people.length} href={tabHref("people")} />
-          <Stat label="Last activity" value={c.lastActivityAt ? fmtDate(c.lastActivityAt) : "None"} hint={c.lastActivityAt ? ago(c.lastActivityAt) : undefined} href={tabHref("activity")} />
-        </StatGrid>
-      </div>
+      <FactsBar
+        items={[
+          {
+            label: "Owner",
+            value: (
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <Person name={ownerLabel(c)} empty="No owner" />
+                {c.ownerTeamMemberId && c.ownerTeamMemberId === meId ? <span className="text-[13px] text-muted-foreground">(you)</span> : null}
+              </span>
+            ),
+          },
+          { label: "Next step due", value: c.nextStepDue ? <DueChip due={c.nextStepDue} today={today} stage={c.stage} /> : <span className="text-muted-foreground">Not set</span>, hint: c.nextStep ?? undefined },
+          { label: "People", value: <span className="tabular">{people.length}</span>, href: tabHref("people") },
+          { label: "Last activity", value: c.lastActivityAt ? fmtDate(c.lastActivityAt) : <span className="text-muted-foreground">None</span>, hint: c.lastActivityAt ? ago(c.lastActivityAt) : undefined, href: tabHref("activity") },
+        ]}
+      />
       <Tabs
         tabs={[
           { href: tabHref("overview"), label: "Overview", active: tab === "overview" },
@@ -128,7 +133,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
               </Section>
               <div className="flex flex-wrap items-center gap-3">
                 <SubmitButton pendingText="Saving...">Save changes</SubmitButton>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[13px] text-muted-foreground">
                   Updated {ago(c.updatedAt)}
                   {c.updatedBy ? ` by ${c.updatedBy}` : ""}
                 </span>
@@ -203,7 +208,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                 <form action={addPerson} className="space-y-4">
                   <input type="hidden" name="companyId" value={c.id} />
                   <input type="hidden" name="returnTo" value={here} />
-                  {unlinked.length ? <p className="eyebrow text-muted-foreground">Or add someone new</p> : null}
+                  {unlinked.length ? <p className="text-sm font-medium text-foreground">Or add someone new</p> : null}
                   <FieldRow>
                     <Field label="Name" htmlFor="p-name">
                       <Input id="p-name" name="name" required />
@@ -243,13 +248,13 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
                   {shownPeople.map((p) => (
                     <Tr key={p.id}>
                       <Td>
-                        <Link href={`/admin/leads?view=${p.id}`} className="flex items-center gap-2.5 font-medium text-foreground hover:text-primary">
+                        <Link href={`/admin/leads?view=${p.id}`} className="flex items-center gap-3 font-medium text-foreground hover:text-primary">
                           <Initials name={p.name} />
                           {p.name}
                         </Link>
                       </Td>
                       <Td>{p.role ?? "–"}</Td>
-                      <Td className="text-small">{p.email ?? "–"}</Td>
+                      <Td>{p.email ?? "–"}</Td>
                       <Td>
                         <ContactStageChip stage={p.stage} />
                       </Td>
@@ -276,7 +281,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
               <EmptyState title="No people yet." description="Add the person you talk to, or link a lead you already have." />
             )}
           </Section>
-          {!canSeeContact(user.role) ? <p className="text-xs text-muted-foreground">Email addresses are masked for your role.</p> : null}
+          {!canSeeContact(user.role) ? <p className="text-[13px] text-muted-foreground">Email addresses are masked for your role.</p> : null}
         </Stack>
       ) : null}
 
@@ -466,11 +471,11 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
           </Section>
           <Section title={`Referrals (${referralTotal})`}>
             {referralTotal ? (
-              <div className="flex flex-wrap gap-x-8 gap-y-3">
+              <div className="flex flex-wrap gap-x-10 gap-y-4">
                 {Object.entries(links.referrals).map(([k, n]) => (
                   <div key={k}>
-                    <div className="eyebrow text-muted-foreground">{crmLabel(k)}</div>
-                    <div className="tabular text-xl font-light text-foreground">{n}</div>
+                    <div className="quiet-label">{crmLabel(k)}</div>
+                    <div className="figure mt-1 text-foreground">{n}</div>
                   </div>
                 ))}
               </div>

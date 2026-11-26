@@ -1,5 +1,6 @@
 // Stage chips and bars, due-date chips and owner labels for the CRM screens (FynoLabs wording).
 import { CalendarDays } from "lucide-react";
+import { Avatar, type AvatarSize } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/components/ui/cn";
 import { CONTACT_STEPS, STAGE_STEPS, crmLabel, dueState, isParked, stageGroup } from "@/lib/crm/labels";
@@ -16,9 +17,9 @@ export function StageSteps({ steps, current, label, parked = false, wonFrom, wid
   return (
     <span className="flex min-w-0 flex-col gap-1.5" title={`${label} · step ${Math.max(current, 0) + 1} of ${steps.length}`}>
       <span className={cn("truncate text-sm", parked ? "text-muted-foreground" : "text-foreground")}>{label}</span>
-      <span className="flex gap-1" style={{ width }} aria-hidden="true">
+      <span className="flex gap-[3px]" style={{ width }} aria-hidden="true">
         {steps.map((step, i) => (
-          <span key={step} className={cn("h-1.5 flex-1 rounded-full", i > current ? "bg-secondary" : parked ? "bg-muted-foreground/40" : won ? "bg-success" : "bg-foreground/75")} />
+          <span key={step} className={cn("h-1.5 flex-1 rounded-full", i > current ? "bg-foreground/[0.08]" : parked ? "bg-muted-foreground/40" : won ? "bg-success" : "bg-foreground/70")} />
         ))}
       </span>
     </span>
@@ -26,10 +27,14 @@ export function StageSteps({ steps, current, label, parked = false, wonFrom, wid
 }
 
 export function StageChip({ stage }: { stage: string }) {
-  return <Badge tone={GROUP_TONE[stageGroup(stage)]}>{crmLabel(stage)}</Badge>;
+  return (
+    <Badge tone={GROUP_TONE[stageGroup(stage)]} pill dot>
+      {crmLabel(stage)}
+    </Badge>
+  );
 }
 
-/** The 7 steps from Researching to Active (FynoLabs StagePipeline): filled up to the stage; won in the brand blue, parked grey. */
+/** The 7 steps from Researching to Active (FynoLabs StagePipeline): filled up to the stage; won in green, parked grey. */
 export function StageBar({ stage, compact }: { stage: string; compact?: boolean }) {
   const parked = isParked(stage);
   const step = (STAGE_STEPS as readonly string[]).indexOf(stage);
@@ -45,18 +50,32 @@ export function ContactStageBar({ stage }: { stage: string }) {
 }
 
 export function ContactStageChip({ stage }: { stage: string }) {
-  return <Badge tone={stage === "won" ? "success" : stage === "lost" ? "muted" : stage === "new" ? "outline" : "neutral"}>{crmLabel(stage, "contact")}</Badge>;
+  return (
+    <Badge tone={stage === "won" ? "success" : stage === "lost" ? "muted" : stage === "new" ? "outline" : stage === "call" || stage === "proposal" ? "info" : "neutral"} pill dot>
+      {crmLabel(stage, "contact")}
+    </Badge>
+  );
 }
 
-/** "Late · 5 Nov" / "Today" in red, the date in 3 days in normal text, later dates muted. */
+/**
+ * Due dates as chips: overdue in red ("Overdue · 5 Nov"), today in amber, the next 3 days in normal
+ * text, later dates muted (each with a calendar icon). Nothing due: `empty`.
+ */
 export function DueChip({ due, today, stage, empty = "–" }: { due: string | null | undefined; today: string; stage?: string | null; empty?: string }) {
   const s = dueState(due, today, stage);
   if (!due || !s) return <span className="text-muted-foreground/70">{due ? shortDay(due, today) : empty}</span>;
-  const text = s === "overdue" ? `Late · ${shortDay(due, today)}` : s === "today" ? "Today" : shortDay(due, today);
+  if (s === "overdue" || s === "today") {
+    return (
+      <span className={cn("inline-flex h-[22px] items-center gap-1 rounded-full pr-2.5 pl-2 text-xs leading-none font-medium whitespace-nowrap", s === "overdue" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning")}>
+        <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
+        {s === "overdue" ? `Overdue · ${shortDay(due, today)}` : "Today"}
+      </span>
+    );
+  }
   return (
-    <span className={cn("inline-flex items-center gap-1 text-small whitespace-nowrap", s === "overdue" || s === "today" ? "font-medium text-danger" : s === "soon" ? "text-foreground/85" : "text-muted-foreground")}>
+    <span className={cn("inline-flex items-center gap-1.5 text-[13px] whitespace-nowrap", s === "soon" ? "text-foreground/85" : "text-muted-foreground")}>
       <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      {text}
+      {shortDay(due, today)}
     </span>
   );
 }
@@ -73,34 +92,34 @@ const STATUS_TONE: Record<string, "neutral" | "muted" | "info" | "success" | "wa
 };
 
 export function StatusChip({ value, ctx }: { value: string; ctx?: "platform_status" | "calendar" }) {
-  return <Badge tone={STATUS_TONE[value] ?? "neutral"}>{crmLabel(value, ctx)}</Badge>;
-}
-
-export function Initials({ name, className }: { name: string; className?: string }) {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
   return (
-    <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[0.625rem] font-medium tracking-wider text-foreground/80", className)} aria-hidden>
-      {initials || "?"}
-    </span>
+    <Badge tone={STATUS_TONE[value] ?? "neutral"} pill dot>
+      {crmLabel(value, ctx)}
+    </Badge>
   );
 }
 
-/** A small dot for high priority. */
+/** A person's initials in a soft round avatar (see src/components/ui/avatar.tsx). */
+export function Initials({ name, className, size = "md" }: { name: string; className?: string; size?: AvatarSize }) {
+  return <Avatar name={name} size={size} className={className} />;
+}
+
+/** A short code (a project's P101, a requirement's reference) as a small grey tag. */
+export function CodeTag({ code, className }: { code: string; className?: string }) {
+  return <code className={cn("rounded-md border border-border bg-canvas px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-foreground/80", className)}>{code}</code>;
+}
+
+/** High priority as a small amber chip (normal priority shows nothing). */
 export function PriorityDot({ priority }: { priority: string }) {
   if (priority !== "high") return null;
   return (
-    <Badge tone="warning" className="ml-2 align-middle" title="High priority">
+    <Badge tone="warning" pill className="ml-2 align-middle" title="High priority">
       High
     </Badge>
   );
 }
 
-/** Facts for side panels: small label over value, empty ones hidden. */
+/** Facts for side panels: a quiet label over each value, empty ones hidden. */
 export function Facts({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   const shown = items.filter((i) => i.value != null && i.value !== "" && i.value !== false);
   if (!shown.length) return null;
@@ -108,7 +127,7 @@ export function Facts({ items }: { items: { label: string; value: React.ReactNod
     <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
       {shown.map((i) => (
         <div key={i.label} className="min-w-0">
-          <dt className="eyebrow text-muted-foreground">{i.label}</dt>
+          <dt className="quiet-label">{i.label}</dt>
           <dd className="mt-1 text-sm break-words text-foreground">{i.value}</dd>
         </div>
       ))}

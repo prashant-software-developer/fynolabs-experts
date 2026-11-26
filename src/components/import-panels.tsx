@@ -175,7 +175,7 @@ export function CsvImportPanel() {
                         {r.email ? <div className="text-xs text-muted-foreground">{r.email}</div> : null}
                       </td>
                       <td className="px-3 py-2">
-                        <Badge tone={ACTION_TONE[r.action]}>{ACTION_LABEL[r.action]}</Badge>
+                        <Badge tone={ACTION_TONE[r.action]} pill dot>{ACTION_LABEL[r.action]}</Badge>
                       </td>
                       <td className="px-3 py-2 text-xs text-foreground/70">
                         {r.reason}

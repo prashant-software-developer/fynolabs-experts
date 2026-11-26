@@ -4,9 +4,10 @@ import { cn } from "./cn";
 
 /**
  * Status pills: soft tints, never the primary blue (that is kept for the main action and links).
- * "outline" is for skills and tags, so they read differently from statuses.
+ * "outline" is for skills and tags, so they read differently from statuses. `pill` + `dot` is the
+ * admin's status chip (a rounded pill with a coloured dot); plain badges keep the website's shape.
  */
-type Tone = "neutral" | "muted" | "info" | "progress" | "success" | "warning" | "danger" | "outline";
+export type Tone = "neutral" | "muted" | "info" | "progress" | "success" | "warning" | "danger" | "outline";
 
 const tones: Record<Tone, string> = {
   neutral: "bg-secondary text-foreground/80",
@@ -19,12 +20,30 @@ const tones: Record<Tone, string> = {
   outline: "border border-border bg-background text-foreground/80",
 };
 
-export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
+const dots: Record<Tone, string> = {
+  neutral: "bg-foreground/45",
+  muted: "bg-muted-foreground/45",
+  info: "bg-info",
+  progress: "bg-progress",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger: "bg-danger",
+  outline: "bg-foreground/40",
+};
+
+export function Badge({ tone = "neutral", children, className, title, pill, dot }: { tone?: Tone; children: ReactNode; className?: string; title?: string; pill?: boolean; dot?: boolean }) {
   return (
     <span
       title={title}
-      className={cn("inline-flex h-5 items-center rounded-md px-1.5 text-xs leading-none font-medium whitespace-nowrap", tones[tone], className)}
+      className={cn(
+        "inline-flex items-center text-xs leading-none font-medium whitespace-nowrap",
+        pill ? "h-[22px] gap-1.5 rounded-full px-2.5" : "h-5 gap-1 rounded-sm px-1.5",
+        dot && pill && "pl-2",
+        tones[tone],
+        className,
+      )}
     >
+      {dot ? <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dots[tone])} aria-hidden /> : null}
       {children}
     </span>
   );
@@ -66,10 +85,13 @@ const STATUS_TONE: Record<string, Tone> = {
   paused: "warning",
 };
 
+/** The tone a status reads in (for pages that colour other things the same way). */
+export const statusTone = (value: string | null | undefined): Tone => (value ? (STATUS_TONE[value] ?? "neutral") : "muted");
+
 export function StatusBadge({ value, prefix }: { value: string | null | undefined; prefix?: string }) {
   if (!value) return <span className="text-muted-foreground/70">–</span>;
   return (
-    <Badge tone={STATUS_TONE[value] ?? "neutral"}>
+    <Badge tone={STATUS_TONE[value] ?? "neutral"} pill dot>
       {prefix ? `${prefix} ` : ""}
       {label(value)}
     </Badge>

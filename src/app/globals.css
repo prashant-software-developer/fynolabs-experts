@@ -64,6 +64,46 @@
   --chart-2: 222 90% 54% / 0.7;
   --chart-3: 222 90% 54% / 0.45;
   --chart-4: 222 90% 54% / 0.25;
+
+  /* The admin's canvas behind its cards, and the quiet surface inside a card (table headers, board columns). */
+  --canvas: 220 16% 98%;
+  --subtle: 220 14% 96.4%;
+
+  /*
+    Density. The public site and the expert portal keep the website's 4px corners and 36px controls;
+    the team admin (.admin-ui, set on its frame) uses a roomier scale: 6–12px corners, 40px controls.
+  */
+  --r-sm: var(--radius);
+  --r-md: var(--radius);
+  --r-lg: var(--radius);
+  --r-xl: var(--radius);
+  --r-2xl: var(--radius);
+  --control-h: 2.25rem;
+  --button-h: 2.25rem;
+  --button-sm-h: 2rem;
+}
+
+.admin-ui {
+  --r-sm: 0.375rem;
+  --r-md: 0.5rem;
+  --r-lg: 0.625rem;
+  --r-xl: 0.75rem;
+  --r-2xl: 1rem;
+  --control-h: 2.5rem;
+  --button-h: 2.5rem;
+  --button-sm-h: 2.125rem;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-accent: 220 14% 95%;
+  --sidebar-border: 225 12% 91%;
+}
+
+/* In the admin, the website's small letter-spaced capitals read as a quiet sentence-case label. */
+.admin-ui .eyebrow {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
 }
 
 @theme inline {
@@ -105,13 +145,19 @@
   --color-info-soft: hsl(var(--info-soft));
   --color-progress: hsl(var(--progress));
   --color-progress-soft: hsl(var(--progress-soft));
+  --color-canvas: hsl(var(--canvas));
+  --color-subtle: hsl(var(--subtle));
 
-  /* One radius (4px) for every rounded box; rounded-full stays for dots. */
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
-  --radius-2xl: var(--radius);
+  /* Corners follow the density above (4px on the site and portal, 6–12px in the admin); rounded-full stays for dots. */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
+
+  /* Cards sit on the canvas with a hairline and a whisper of shadow; raised: hovered board cards, menus. */
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04);
+  --shadow-raised: 0 6px 16px -6px rgb(16 24 40 / 0.12), 0 1px 2px 0 rgb(16 24 40 / 0.05);
 
   /* Type from the website: light page titles, small letter-spaced labels. */
   --text-title: clamp(1.625rem, 1.45rem + 0.6vw, 2rem);
@@ -178,7 +224,7 @@
   [tabindex]:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
-    border-radius: var(--radius);
+    border-radius: var(--r-sm);
   }
 }
 
@@ -187,8 +233,8 @@
   .control {
     display: block;
     width: 100%;
-    height: 2.25rem;
-    border-radius: var(--radius);
+    height: var(--control-h);
+    border-radius: var(--r-md);
     border: 1px solid hsl(var(--input));
     background-color: hsl(var(--background));
     padding: 0 0.75rem;
@@ -247,7 +293,7 @@
   .file-control::file-selector-button {
     margin-right: 0.75rem;
     height: 2rem;
-    border-radius: var(--radius);
+    border-radius: var(--r-md);
     border: 1px solid hsl(var(--input));
     background: hsl(var(--background));
     padding: 0 0.75rem;
@@ -264,7 +310,7 @@
   /* Long-form text (notes, pasted requirement text). */
   .prose-box {
     white-space: pre-wrap;
-    border-radius: var(--radius);
+    border-radius: var(--r-lg);
     background: hsl(var(--muted) / 0.6);
     padding: 1rem;
     font-family: inherit;
@@ -291,6 +337,27 @@
   &:hover {
     background-color: hsl(var(--foreground) / 0.025);
   }
+}
+
+/* Admin type: page titles (28px, 24px on phones), big figures on stat tiles, and the quiet label above a value. */
+@utility page-title {
+  font-size: clamp(1.5rem, 1.3rem + 0.6vw, 1.75rem);
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.012em;
+}
+@utility figure {
+  font-size: clamp(1.5rem, 1.35rem + 0.45vw, 1.75rem);
+  line-height: 1.15;
+  font-weight: 350;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+@utility quiet-label {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Job descriptions on the public site (rendered from Markdown by src/lib/markdown.ts). */

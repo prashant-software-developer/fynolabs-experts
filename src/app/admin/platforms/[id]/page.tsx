@@ -51,7 +51,7 @@ export default async function PlatformPage({ params, searchParams }: { params: P
     <>
       <PageHeader
         back={{ href: "/admin/platforms", label: "Platforms" }}
-        media={p ? <OrgLogo name={p.name} logoUrl={p.logoUrl} domain={p.domain} size={40} /> : undefined}
+        media={p ? <OrgLogo name={p.name} logoUrl={p.logoUrl} domain={p.domain} size={48} /> : undefined}
         title={
           <span>
             <span>
@@ -69,7 +69,8 @@ export default async function PlatformPage({ params, searchParams }: { params: P
             </span>
           </span>
         }
-        meta={p ? <StatusChip value={p.status} ctx="platform_status" /> : undefined}
+        badge={p ? <StatusChip value={p.status} ctx="platform_status" /> : undefined}
+        subtitle={p ? [crmLabel(p.kind), p.domain].filter(Boolean).join(" · ") : "A platform or agency we refer people to."}
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Stack>
@@ -174,7 +175,7 @@ export default async function PlatformPage({ params, searchParams }: { params: P
                         <OrgLogo name={c.name} size={24} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium text-foreground">{c.name}</span>
-                          <span className="block text-xs text-muted-foreground">
+                          <span className="block text-[13px] text-muted-foreground">
                             {label(c.kind)}
                             {c.nextStepDue ? (
                               <>

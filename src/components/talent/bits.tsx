@@ -14,7 +14,7 @@ import { Tabs } from "@/components/ui/tabs";
 
 export function ToneBadge({ tone, children, title }: { tone?: Tone; children: ReactNode; title?: string }) {
   return (
-    <Badge tone={tone ?? "neutral"} title={title}>
+    <Badge tone={tone ?? "neutral"} title={title} pill dot>
       {children}
     </Badge>
   );
@@ -23,12 +23,20 @@ export function ToneBadge({ tone, children, title }: { tone?: Tone; children: Re
 /** A label from a map, with its tone (unknown values show as they are). */
 export function MapBadge({ value, labels, tones }: { value: string | null | undefined; labels: Record<string, string>; tones?: Record<string, Tone> }) {
   if (!value) return <span className="text-muted-foreground/70">–</span>;
-  return <Badge tone={tones?.[value] ?? "neutral"}>{labels[value] ?? value.replace(/_/g, " ")}</Badge>;
+  return (
+    <Badge tone={tones?.[value] ?? "neutral"} pill dot>
+      {labels[value] ?? value.replace(/_/g, " ")}
+    </Badge>
+  );
 }
 
 export function StageBadge({ stage }: { stage: string | null | undefined }) {
   if (!stage) return <span className="text-muted-foreground/70">–</span>;
-  return <Badge tone={STAGE_TONE[stage as PipelineStage] ?? "neutral"}>{stageLabel(stage)}</Badge>;
+  return (
+    <Badge tone={STAGE_TONE[stage as PipelineStage] ?? "neutral"} pill dot>
+      {stageLabel(stage)}
+    </Badge>
+  );
 }
 
 /** The pipeline stage bar: the steps filled up to the stage, Active and after in green; Rejected greyed. */
@@ -64,9 +72,9 @@ export function SectionBlocked({ title, section }: { title: string; section: Sec
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
             <Lock className="h-5 w-5 text-muted-foreground" aria-hidden />
           </span>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">You don&apos;t have access to {SECTIONS[section].label}</p>
-            <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">Ask an admin to give you access in Team &amp; access.</p>
+          <div className="space-y-1.5">
+            <p className="text-[15px] font-medium text-foreground">You don&apos;t have access to {SECTIONS[section].label}</p>
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">Ask an admin to give you access in Team &amp; access.</p>
           </div>
         </div>
       </Section>
@@ -91,13 +99,13 @@ export function PeopleTabs({ value, counts }: { value: "profiles" | "groups"; co
   );
 }
 
-/** A row of facts in a side panel (label above value). */
+/** A row of facts in a side panel (a quiet label above each value). */
 export function Facts({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
     <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
       {items.map((i) => (
         <div key={i.label} className="min-w-0">
-          <dt className="eyebrow text-muted-foreground">{i.label}</dt>
+          <dt className="quiet-label">{i.label}</dt>
           <dd className="mt-1 text-sm break-words text-foreground">{i.value ?? <span className="text-muted-foreground/70">–</span>}</dd>
         </div>
       ))}
@@ -105,12 +113,12 @@ export function Facts({ items }: { items: { label: string; value: ReactNode }[] 
   );
 }
 
-/** A small titled block inside a side panel. */
+/** A small titled block inside a side panel (14px medium title; blocks are divided by a hairline). */
 export function PanelBlock({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
   return (
-    <section className="space-y-4 [&+&]:mt-10">
-      <div className="flex min-h-5 items-center justify-between gap-3">
-        <h3 className="eyebrow text-muted-foreground">{title}</h3>
+    <section className="space-y-4 [&+&]:mt-8 [&+&]:border-t [&+&]:border-border [&+&]:pt-7">
+      <div className="flex min-h-6 items-center justify-between gap-3">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
         {actions}
       </div>
       {children}

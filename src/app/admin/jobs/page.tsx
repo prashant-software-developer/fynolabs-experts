@@ -12,10 +12,11 @@ import { publicState } from "@/lib/jobs-public";
 import { listPartners } from "@/lib/server/requirements";
 import { jobCounts, listJobs } from "@/lib/server/jobs";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { cn } from "@/components/ui/cn";
+import { ButtonLink } from "@/components/ui/button";
+import { OrgLogo } from "@/components/crm/org-logo";
+import { Tabs } from "@/components/ui/tabs";
+import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Input, Select } from "@/components/ui/field";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 
@@ -70,42 +71,13 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      <nav className="mb-5 flex gap-5 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Views">
-        {VIEWS.map((v) => {
-          const active = view === v.id;
-          const n = viewCount(v.id);
-          return (
-            <Link
-              key={v.id}
-              href={hrefWith("/admin/jobs", sp, { view: v.id || null, ok: null, error: null })}
-              aria-current={active ? "page" : undefined}
-              className={cn("eyebrow -mb-px inline-flex h-10 items-center gap-1.5 border-b-2 whitespace-nowrap transition-colors", active ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
-            >
-              {v.label}
-              {n != null ? <span className="tabular text-muted-foreground">({n})</span> : null}
-            </Link>
-          );
-        })}
-      </nav>
-      <Section className="mb-6">
-        <form method="get" className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-          {view ? <input type="hidden" name="view" value={view} /> : null}
-          <Input name="q" defaultValue={q} placeholder="Search title or summary" aria-label="Search jobs" />
-          <Select name="visibility" defaultValue={visibility} options={JOB_VISIBILITY.map((x) => ({ value: x, label: label(x) }))} placeholder="Any visibility" aria-label="Visibility" className="sm:w-40" />
-          <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="Any partner" aria-label="Partner" className="sm:w-52" />
-          <div className="flex items-center gap-3">
-            <Button type="submit" variant="secondary">
-              Apply
-            </Button>
-            {filtered ? (
-              <Link href={view ? `/admin/jobs?view=${view}` : "/admin/jobs"} className="text-sm text-muted-foreground hover:text-foreground">
-                Clear
-              </Link>
-            ) : null}
-          </div>
-        </form>
-      </Section>
+      <Tabs tabs={VIEWS.map((v) => ({ href: hrefWith("/admin/jobs", sp, { view: v.id || null, ok: null, error: null }), label: v.label, active: view === v.id, count: viewCount(v.id) }))} />
       <Section flush>
+        <Toolbar hidden={{ view }} clearHref={filtered ? (view ? `/admin/jobs?view=${view}` : "/admin/jobs") : null} end={<ResultCount n={rows.length} noun="job" />}>
+          <SearchField defaultValue={q} placeholder="Search title or summary" label="Search jobs" />
+          <FilterSelect name="visibility" defaultValue={visibility} options={JOB_VISIBILITY.map((x) => ({ value: x, label: label(x) }))} placeholder="Any visibility" label="Visibility" />
+          <FilterSelect name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="Any partner" label="Partner" />
+        </Toolbar>
         {rows.length ? (
           <Table>
             <THead>
@@ -127,22 +99,33 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                         {job.featured ? <Star className="h-3.5 w-3.5 fill-current text-warning" aria-label="Featured" /> : null}
                         {job.title}
                       </Link>
-                      <div className="text-xs text-muted-foreground">/jobs/{job.slug}</div>
+                      <div className="mt-0.5 text-[13px] text-muted-foreground">/jobs/{job.slug}</div>
                     </Td>
                     <Td>
                       <StatusBadge value={job.status} />
-                      {pub === "closed" && job.status === "open" ? <div className="mt-1 text-xs text-muted-foreground">Past closing date</div> : null}
+                      {pub === "closed" && job.status === "open" ? <div className="mt-1 text-[13px] text-muted-foreground">Past closing date</div> : null}
                     </Td>
                     <Td>
-                      <Badge tone={job.visibility === "public" ? "outline" : "muted"}>{label(job.visibility)}</Badge>
+                      <Badge tone={job.visibility === "public" ? "outline" : "muted"} pill>{label(job.visibility)}</Badge>
                     </Td>
                     <Td className="tabular text-right">
-                      <Link href={`/admin/jobs/${job.id}?tab=applicants`} className="hover:text-primary">
-                        {applicants}
-                      </Link>
-                      {newApplicants ? <div className="text-xs text-info">{newApplicants} new</div> : null}
+                      <span className="inline-flex items-center gap-2">
+                        <Link href={`/admin/jobs/${job.id}?tab=applicants`} className="hover:text-primary">
+                          {applicants}
+                        </Link>
+                        {newApplicants ? <Badge tone="info" pill>{newApplicants} new</Badge> : null}
+                      </span>
                     </Td>
-                    <Td className="text-muted-foreground">{partnerName ?? "–"}</Td>
+                    <Td>
+                      {partnerName ? (
+                        <span className="inline-flex max-w-52 items-center gap-2 text-foreground/85">
+                          <OrgLogo name={partnerName} size={22} />
+                          <span className="truncate">{partnerName}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/70">–</span>
+                      )}
+                    </Td>
                     <Td className="whitespace-nowrap">{fmtDate(job.closesOn)}</Td>
                     <Td className="whitespace-nowrap text-muted-foreground">{fmtDate(job.updatedAt)}</Td>
                   </Tr>

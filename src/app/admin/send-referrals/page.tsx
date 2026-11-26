@@ -18,6 +18,7 @@ import { SelectAll, SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, Notice } from "@/components/ui/feedback";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
+import { SearchField } from "@/components/ui/toolbar";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { CountTabs, Email, SectionBlocked } from "@/components/talent/bits";
@@ -102,8 +103,8 @@ export default async function SendReferralsPage({ searchParams }: { searchParams
                       <label key={m} className="flex items-center gap-2 text-sm text-foreground/85">
                         <input type="radio" name="method" value={m} defaultChecked={m === "link"} disabled={m === "email" && !email} className="h-4 w-4" />
                         {REFERRAL_METHOD_LABELS[m]}
-                        {m === "email" && !email ? <span className="text-xs text-muted-foreground">(email isn&apos;t set up yet)</span> : null}
-                        {m === "profile_share" || m === "intro" ? <span className="text-xs text-muted-foreground">(needs consent)</span> : null}
+                        {m === "email" && !email ? <span className="text-[13px] text-muted-foreground">(email isn&apos;t set up yet)</span> : null}
+                        {m === "profile_share" || m === "intro" ? <span className="text-[13px] text-muted-foreground">(needs consent)</span> : null}
                       </label>
                     ))}
                   </fieldset>
@@ -114,19 +115,19 @@ export default async function SendReferralsPage({ searchParams }: { searchParams
                     <Checkbox name="consentConfirmed" value="yes" label="They agreed to have their profile shared (records consent for anyone who has none on file)" />
                     <Checkbox name="allowRepeat" value="yes" label="Send again even if they were sent there in the last 30 days" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Profile shares and introductions pass someone&apos;s details on, so they need consent on record. People marked do not contact are never referred.</p>
+                  <p className="text-[13px] text-muted-foreground">Profile shares and introductions pass someone&apos;s details on, so they need consent on record. People marked do not contact are never referred.</p>
                 </div>
               </Section>
             </Stack>
           </form>
 
           <Section title="Who" description="Search experts or pick a group. People marked do not contact or without an email can't be ticked." flush>
-            <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+            <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 sm:px-6">
               {preselected.length ? <input type="hidden" name="ids" value={preselected.join(",")} /> : null}
               {projectId ? <input type="hidden" name="project" value={projectId} /> : null}
-              <Input name="q" defaultValue={q} placeholder="Search people" className="h-9 min-w-56 flex-1" aria-label="Search people" />
-              <Select name="group" defaultValue={groupId} options={groups.map((g) => ({ value: g.id, label: `${g.name} · ${g.members}` }))} placeholder="No group" className="h-9 w-auto" aria-label="Group" />
-              <Select name="platform" defaultValue={platformId} options={platformList.map((p) => ({ value: p.id, label: p.name }))} placeholder="Platform for the preview" className="h-9 w-auto" aria-label="Platform" />
+              <SearchField defaultValue={q} placeholder="Search people" label="Search people" />
+              <Select name="group" defaultValue={groupId} options={groups.map((g) => ({ value: g.id, label: `${g.name} · ${g.members}` }))} placeholder="No group" className="w-auto" aria-label="Group" />
+              <Select name="platform" defaultValue={platformId} options={platformList.map((p) => ({ value: p.id, label: p.name }))} placeholder="Platform for the preview" className="w-auto" aria-label="Platform" />
               <Button type="submit" variant="secondary">
                 Find
               </Button>
@@ -147,24 +148,24 @@ export default async function SendReferralsPage({ searchParams }: { searchParams
                     const blocked = p.status === "do_not_contact" || !p.email;
                     return (
                       <Tr key={p.id} className={blocked ? "opacity-60" : undefined}>
-                        <Td className="py-2">
+                        <Td>
                           <input type="checkbox" form="refer" name="ids" value={p.id} defaultChecked={ticked.has(p.id) && !blocked} disabled={blocked} aria-label={`Select ${p.name}`} className="h-4 w-4 rounded-sm align-middle" />
                         </Td>
-                        <Td className="py-2">
+                        <Td>
                           <Link href={`/admin/experts/${p.id}`} className="font-medium text-foreground hover:text-primary">
                             {p.name}
                           </Link>
-                          {p.headline ? <div className="max-w-sm truncate text-xs text-muted-foreground">{p.headline}</div> : null}
+                          {p.headline ? <div className="max-w-sm truncate text-[13px] text-muted-foreground">{p.headline}</div> : null}
                         </Td>
-                        <Td className="py-2 text-small">
+                        <Td className="text-small">
                           <Email value={p.email} contact={contact} />
                         </Td>
-                        <Td className="py-2">
+                        <Td>
                           <div className="flex flex-wrap gap-1">
-                            {p.status === "do_not_contact" ? <Badge tone="danger">Do not contact</Badge> : null}
-                            {!p.email ? <Badge tone="muted">No email</Badge> : null}
-                            {p.cvConsent !== "yes" ? <Badge tone="warning">No consent on file</Badge> : <Badge tone="success">Consent</Badge>}
-                            {referred.has(p.id) ? <Badge tone="info">Already referred</Badge> : null}
+                            {p.status === "do_not_contact" ? <Badge tone="danger" pill dot>Do not contact</Badge> : null}
+                            {!p.email ? <Badge tone="muted" pill dot>No email</Badge> : null}
+                            {p.cvConsent !== "yes" ? <Badge tone="warning" pill dot>No consent on file</Badge> : <Badge tone="success" pill dot>Consent</Badge>}
+                            {referred.has(p.id) ? <Badge tone="info" pill dot>Already referred</Badge> : null}
                           </div>
                         </Td>
                       </Tr>

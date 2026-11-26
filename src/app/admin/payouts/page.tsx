@@ -17,7 +17,9 @@ import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback"
 import { Field, FieldRow, Input, Select } from "@/components/ui/field";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
-import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
+import { CellStack, Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
+import { Avatar } from "@/components/ui/avatar";
+import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { Facts, PanelBlock, SectionBlocked } from "@/components/talent/bits";
 import { findPayoutExpertAction, markPayoutAction } from "./actions";
 import { AddPayoutForm } from "./add-form";
@@ -30,7 +32,11 @@ const what = (r: Pick<AdminPayout, "label" | "periodStart" | "periodEnd">) => r.
 
 function StatusChip({ status }: { status: string }) {
   const s = statusOf(status);
-  return <Badge tone={PAYOUT_STATUS_TONE[s]}>{PAYOUT_STATUS_LABELS[s]}</Badge>;
+  return (
+    <Badge tone={PAYOUT_STATUS_TONE[s]} pill dot>
+      {PAYOUT_STATUS_LABELS[s]}
+    </Badge>
+  );
 }
 
 export default async function PayoutsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -75,70 +81,54 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
         }
       />
       {open || adding ? null : <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />}
-      <Section className="mb-6">
-        <form method="get" className="flex flex-wrap items-center gap-3">
-          <Select name="status" defaultValue={status} options={PAYOUT_STATUSES.map((s) => ({ value: s, label: PAYOUT_STATUS_LABELS[s] }))} placeholder="Any status" aria-label="Status" className="h-9 w-auto" />
-          <Input name="q" type="search" defaultValue={q} placeholder="Expert name or email" aria-label="Expert name or email" className="h-9 w-64 max-w-full" />
-          <Input name="month" type="month" defaultValue={month} aria-label="Month" title="Month paid, or expected if not paid yet" className="h-9 w-auto" />
-          <SubmitButton size="sm" variant="secondary">
-            Apply
-          </SubmitButton>
-          {filtered ? (
-            <Link href="/admin/payouts" className="text-sm text-muted-foreground hover:text-foreground">
-              Clear
-            </Link>
-          ) : null}
-        </form>
-      </Section>
       <Section flush>
+        <Toolbar submit clearHref={filtered ? "/admin/payouts" : null} end={<ResultCount n={rows.length} noun="payout" />}>
+          <SearchField name="q" defaultValue={q} placeholder="Expert name or email" label="Expert name or email" />
+          <FilterSelect name="status" defaultValue={status} options={PAYOUT_STATUSES.map((s) => ({ value: s, label: PAYOUT_STATUS_LABELS[s] }))} placeholder="Any status" label="Status" />
+          <Input name="month" type="month" defaultValue={month} aria-label="Month" title="Month paid, or expected if not paid yet" className="w-auto" />
+        </Toolbar>
         {rows.length ? (
           <Table>
             <THead>
               <Th>Expert</Th>
-              <Th>Project</Th>
-              <Th>Label</Th>
-              <Th className="text-right">Amount</Th>
-              <Th>Currency</Th>
+              <Th>Payout</Th>
+              <Th>Amount</Th>
               <Th>Status</Th>
               <Th>Expected</Th>
               <Th>Paid</Th>
-              <Th>Reference</Th>
+              <Th className="hidden 2xl:table-cell">Reference</Th>
               {manage ? <Th className="text-right">Next step</Th> : null}
             </THead>
             <TBody>
               {rows.map((r) => (
                 <Tr key={r.id}>
-                  <Td className="py-2">
-                    <Link href={`/admin/experts/${r.expertId}`} className="font-medium text-foreground hover:text-primary">
-                      {r.expertName}
-                    </Link>
-                    {r.expertEmail ? <div className="text-xs text-muted-foreground">{r.expertEmail}</div> : null}
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={r.expertName} />
+                      <CellStack primary={<Link href={`/admin/experts/${r.expertId}`} className="font-medium text-foreground hover:text-primary">{r.expertName}</Link>} secondary={r.expertEmail} />
+                    </div>
                   </Td>
-                  <Td className="py-2">
-                    {r.projectName ? (
-                      <>
-                        <div>{r.projectName}</div>
-                        {r.partnerName ? <div className="text-xs text-muted-foreground">{r.partnerName}</div> : null}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground/70">–</span>
-                    )}
+                  <Td className="min-w-56">
+                    <CellStack
+                      primary={
+                        <Link href={panelHref(r.id)} scroll={false} className="font-medium text-foreground hover:text-primary">
+                          {what(r)}
+                        </Link>
+                      }
+                      secondary={r.projectName ? [r.projectName, r.partnerName].filter(Boolean).join(" · ") : undefined}
+                    />
                   </Td>
-                  <Td className="py-2">
-                    <Link href={panelHref(r.id)} scroll={false} className="text-foreground hover:text-primary">
-                      {what(r)}
-                    </Link>
+                  <Td className="tabular whitespace-nowrap">
+                    {plainAmount(r.amount, r.currency)} <span className="text-[13px] text-muted-foreground">{r.currency}</span>
                   </Td>
-                  <Td className="tabular py-2 text-right whitespace-nowrap">{plainAmount(r.amount, r.currency)}</Td>
-                  <Td className="py-2">{r.currency}</Td>
-                  <Td className="py-2">
+                  <Td>
                     <StatusChip status={r.status} />
                   </Td>
-                  <Td className="py-2 whitespace-nowrap">{fmtDate(r.expectedOn)}</Td>
-                  <Td className="py-2 whitespace-nowrap">{fmtDate(r.paidOn)}</Td>
-                  <Td className="py-2 text-small">{r.reference ?? "–"}</Td>
+                  <Td className="whitespace-nowrap">{fmtDate(r.expectedOn)}</Td>
+                  <Td className="whitespace-nowrap">{fmtDate(r.paidOn)}</Td>
+                  <Td className="hidden text-[13px] 2xl:table-cell">{r.reference ?? "–"}</Td>
                   {manage ? (
-                    <Td className="py-2 text-right">
+                    <Td className="text-right">
                       <NextStep row={r} back={list} panel={panelHref(r.id)} />
                     </Td>
                   ) : null}
@@ -148,11 +138,12 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
             <tfoot className="border-t border-border">
               {totals.totals.map((t, i) => (
                 <tr key={t.currency}>
-                  <Td colSpan={3} className="py-2.5 text-small text-muted-foreground">
+                  <Td colSpan={2} className="text-[13px] text-muted-foreground">
                     {i === 0 ? `Total · ${totals.count} ${totals.count === 1 ? "payout" : "payouts"}${status ? "" : " (cancelled and failed left out)"}` : null}
                   </Td>
-                  <Td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-foreground">{plainAmount(t.amount, t.currency)}</Td>
-                  <Td className="py-2.5 font-medium text-foreground">{t.currency}</Td>
+                  <Td className="tabular font-medium whitespace-nowrap text-foreground">
+                    {plainAmount(t.amount, t.currency)} <span className="text-[13px] font-normal text-muted-foreground">{t.currency}</span>
+                  </Td>
                   <Td colSpan={manage ? 5 : 4} />
                 </tr>
               ))}
@@ -304,7 +295,7 @@ async function PayoutPanel({ row, sp, manage, closeHref, here }: { row: AdminPay
             </div>
           </PanelBlock>
         ) : null}
-        {manage && (s === "paid" || s === "void") ? <p className="text-xs text-muted-foreground">{s === "paid" ? "Paid payouts are final." : "Cancelled payouts are final."}</p> : null}
+        {manage && (s === "paid" || s === "void") ? <p className="text-[13px] text-muted-foreground">{s === "paid" ? "Paid payouts are final." : "Cancelled payouts are final."}</p> : null}
         <PanelBlock title="History">
           <ActivityList items={history} showEntity={false} />
         </PanelBlock>

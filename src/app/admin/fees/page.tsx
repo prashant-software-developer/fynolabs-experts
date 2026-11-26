@@ -18,6 +18,7 @@ import { Checkbox, Field, FieldRow, Input, Select, Textarea } from "@/components
 import { PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
+import { FilterSelect, ResultCount, Toolbar } from "@/components/ui/toolbar";
 import { CountTabs, Facts, MapBadge, PanelBlock, SectionBlocked } from "@/components/talent/bits";
 import { ChoiceFields } from "@/components/talent/client";
 import { addMissingFeesAction, markFeesAction, saveFeeRuleAction } from "./actions";
@@ -94,28 +95,17 @@ async function FeesTab({ tab, sp, manage, here }: { tab: string; sp: SearchParam
   const filtered = Boolean(one(sp.project) || one(sp.month));
   return (
     <>
-      <Section className="mb-6">
-        <form method="get" className="flex flex-wrap items-center gap-3">
-          {tab !== "expected" ? <input type="hidden" name="tab" value={tab} /> : null}
-          <Select name="project" defaultValue={one(sp.project)} options={projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))} placeholder="Every project" aria-label="Project" className="h-9 w-auto" />
-          <Input name="month" type="month" defaultValue={one(sp.month)} aria-label="Month earned" className="h-9 w-auto" />
-          <SubmitButton size="sm" variant="secondary">
-            Apply
-          </SubmitButton>
-          {filtered ? (
-            <Link href={tab === "expected" ? "/admin/fees" : `/admin/fees?tab=${tab}`} className="text-sm text-muted-foreground hover:text-foreground">
-              Clear
-            </Link>
-          ) : null}
-        </form>
-      </Section>
       <Section flush>
+        <Toolbar submit hidden={{ tab: tab !== "expected" ? tab : null }} clearHref={filtered ? (tab === "expected" ? "/admin/fees" : `/admin/fees?tab=${tab}`) : null} end={<ResultCount n={rows.length} noun="fee" />}>
+          <FilterSelect name="project" defaultValue={one(sp.project)} options={projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))} placeholder="Every project" label="Project" />
+          <Input name="month" type="month" defaultValue={one(sp.month)} aria-label="Month earned" className="w-auto" />
+        </Toolbar>
         <form id="bulk-fees" action={markFeesAction}>
           <input type="hidden" name="returnTo" value={here} />
         </form>
         {manage && rows.some((r) => r.status === "expected" || r.status === "invoiced") ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-            <span className="text-small text-muted-foreground">Ticked:</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-canvas px-6 py-2.5">
+            <span className="text-[13px] text-muted-foreground">With the ticked:</span>
             <ChoiceFields
               form="bulk-fees"
               name="to"
@@ -140,7 +130,7 @@ async function FeesTab({ tab, sp, manage, here }: { tab: string; sp: SearchParam
             <SubmitButton form="bulk-fees" size="sm" variant="secondary" pendingText="Saving...">
               Apply
             </SubmitButton>
-            <span className="text-xs text-muted-foreground">Paid fees are locked.</span>
+            <span className="text-[13px] text-muted-foreground">Paid fees are locked.</span>
           </div>
         ) : null}
         {rows.length ? (
@@ -164,22 +154,22 @@ async function FeesTab({ tab, sp, manage, here }: { tab: string; sp: SearchParam
               {rows.map((r) => (
                 <Tr key={r.id}>
                   {manage ? (
-                    <Td className="py-2">
+                    <Td>
                       <input type="checkbox" form="bulk-fees" name="ids" value={r.id} disabled={r.status === "paid" || r.status === "void"} aria-label={`Select fee for ${r.personName ?? "someone"}`} className="h-4 w-4 rounded-sm align-middle" />
                     </Td>
                   ) : null}
-                  <Td className="py-2">
+                  <Td>
                     <Link href={hrefWith("/admin/fees", sp, { f: r.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                       {r.personName ?? "–"}
                     </Link>
                   </Td>
-                  <Td className="py-2">{r.projectCode ?? "–"}</Td>
-                  <Td className="py-2">{r.companyName ?? "–"}</Td>
-                  <Td className="tabular py-2 text-right">{money(r.status === "paid" ? (r.paidAmount ?? r.amount) : r.amount, r.currency)}</Td>
-                  <Td className="py-2 whitespace-nowrap">{fmtDate(r.earnedOn)}</Td>
-                  <Td className="py-2 text-small">{r.status === "void" ? r.voidReason : (r.invoiceNumber ?? "–")}</Td>
+                  <Td>{r.projectCode ?? "–"}</Td>
+                  <Td>{r.companyName ?? "–"}</Td>
+                  <Td className="tabular text-right">{money(r.status === "paid" ? (r.paidAmount ?? r.amount) : r.amount, r.currency)}</Td>
+                  <Td className="whitespace-nowrap">{fmtDate(r.earnedOn)}</Td>
+                  <Td className="text-small">{r.status === "void" ? r.voidReason : (r.invoiceNumber ?? "–")}</Td>
                   <Td className={r.overdue ? "py-2 whitespace-nowrap text-danger" : "py-2 whitespace-nowrap"}>{r.status === "paid" ? `paid ${fmtDate(r.paidOn)}` : fmtDate(r.dueOn)}</Td>
-                  <Td className="py-2">{r.overdue ? <Badge tone="danger">Overdue</Badge> : <MapBadge value={r.status} labels={FEE_STATUS_LABELS} tones={FEE_STATUS_TONE} />}</Td>
+                  <Td>{r.overdue ? <Badge tone="danger" pill dot>Overdue</Badge> : <MapBadge value={r.status} labels={FEE_STATUS_LABELS} tones={FEE_STATUS_TONE} />}</Td>
                 </Tr>
               ))}
             </TBody>
@@ -211,7 +201,7 @@ function FeePanel({ fee, sp, manage, here }: { fee: FeeRow; sp: SearchParams; ma
         <div className="space-y-2">
           <div className="text-sm text-muted-foreground">{fee.personName ?? "Someone"}</div>
           <div className="tabular text-stat text-foreground">{money(fee.status === "paid" ? (fee.paidAmount ?? fee.amount) : fee.amount, fee.currency)}</div>
-          {fee.overdue ? <Badge tone="danger">Overdue</Badge> : <MapBadge value={fee.status} labels={FEE_STATUS_LABELS} tones={FEE_STATUS_TONE} />}
+          {fee.overdue ? <Badge tone="danger" pill dot>Overdue</Badge> : <MapBadge value={fee.status} labels={FEE_STATUS_LABELS} tones={FEE_STATUS_TONE} />}
         </div>
         <PanelBlock title="Details">
           <Facts
@@ -330,7 +320,7 @@ async function TotalsTab() {
       <TotalsTable title="By project" first="Project" rows={t.byProject} />
       <TotalsTable title="By payer" first="Company" rows={t.byCompany} />
       <TotalsTable title="By month earned" first="Month" rows={t.byMonth} />
-      <p className="text-xs text-muted-foreground">Per currency; void fees left out. Paid counts what was received.</p>
+      <p className="text-[13px] text-muted-foreground">Per currency; void fees left out. Paid counts what was received.</p>
     </Stack>
   );
 }
@@ -367,7 +357,7 @@ async function RulesTab({ sp, manage }: { sp: SearchParams; manage: boolean }) {
                   <Td className="tabular text-right">{money(r.amount, r.currency)}</Td>
                   <Td>{stageLabel(r.earnedAtStage)}</Td>
                   <Td>{r.paymentTermsDays} days</Td>
-                  <Td>{r.active ? <Badge tone="success">On</Badge> : <Badge tone="muted">Off</Badge>}</Td>
+                  <Td>{r.active ? <Badge tone="success" pill dot>On</Badge> : <Badge tone="muted" pill dot>Off</Badge>}</Td>
                 </Tr>
               ))}
             </TBody>
@@ -441,7 +431,7 @@ async function RulesTab({ sp, manage }: { sp: SearchParams; manage: boolean }) {
                 </li>
               ))}
             </ul>
-            {missing.length > 100 ? <p className="text-xs text-muted-foreground">and {missing.length - 100} more</p> : null}
+            {missing.length > 100 ? <p className="text-[13px] text-muted-foreground">and {missing.length - 100} more</p> : null}
             <div className="flex gap-2">
               <form action={addMissingFeesAction}>
                 <input type="hidden" name="ruleId" value={missingFor} />
@@ -545,7 +535,7 @@ async function EarningsTab({ sp }: { sp: SearchParams }) {
                   </Td>
                   <Td>{g.platform}</Td>
                   <Td>{g.project ?? "–"}</Td>
-                  <Td>{g.status === "active" ? <Badge tone="success">Active</Badge> : <Badge tone="muted">{g.status}</Badge>}</Td>
+                  <Td>{g.status === "active" ? <Badge tone="success" pill dot>Active</Badge> : <Badge tone="muted" pill dot>{g.status}</Badge>}</Td>
                   <Td>{fmtDate(g.startedOn)}</Td>
                   <Td className="tabular text-right">{g.commissionPercent != null ? `${g.commissionPercent}%` : "–"}</Td>
                 </Tr>

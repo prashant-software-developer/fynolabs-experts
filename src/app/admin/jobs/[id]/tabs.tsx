@@ -135,16 +135,16 @@ function FieldCard({ f, i, last, jobId, open, manage }: { f: FieldDef; i: number
   return (
     <li id={`q-${f.id}`} className={cn("scroll-mt-24 rounded-md border bg-card", open ? "border-primary/50" : "border-border")}>
       <div className="flex items-start gap-3 px-4 py-3">
-        <span className="tabular mt-0.5 w-6 shrink-0 text-xs text-muted-foreground">{i + 1}</span>
+        <span className="tabular mt-0.5 w-6 shrink-0 text-[13px] text-muted-foreground">{i + 1}</span>
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge tone={f.type === "section" ? "progress" : "muted"}>{FIELD_TYPE_INFO[f.type].label}</Badge>
-            {f.required ? <Badge tone="warning">Required</Badge> : null}
-            {f.mapsTo ? <Badge tone="info">Fills: {PROFILE_KEY_INFO[f.mapsTo].label}</Badge> : null}
+            <Badge tone={f.type === "section" ? "progress" : "muted"} pill dot>{FIELD_TYPE_INFO[f.type].label}</Badge>
+            {f.required ? <Badge tone="warning" pill dot>Required</Badge> : null}
+            {f.mapsTo ? <Badge tone="info" pill dot>Fills: {PROFILE_KEY_INFO[f.mapsTo].label}</Badge> : null}
           </div>
           <p className={cn("text-sm text-foreground", f.type === "section" && "font-medium", f.type === "consent" && "line-clamp-2 text-foreground/80")}>{f.label}</p>
-          {f.helpText ? <p className="line-clamp-2 text-xs text-muted-foreground">{f.helpText}</p> : null}
-          {f.options?.choices?.length ? <p className="text-xs text-muted-foreground">Choices: {f.options.choices.join(" · ")}</p> : null}
+          {f.helpText ? <p className="line-clamp-2 text-[13px] text-muted-foreground">{f.helpText}</p> : null}
+          {f.options?.choices?.length ? <p className="text-[13px] text-muted-foreground">Choices: {f.options.choices.join(" · ")}</p> : null}
         </div>
         {manage ? (
           <form action={changeFormField} className="flex shrink-0 items-center">
@@ -349,10 +349,10 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
           <input type="hidden" name="jobId" value={job.id} />
           <input type="hidden" name="returnTo" value={here} />
         </form>
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-canvas px-6 py-2.5">
           {manage && rows.length ? (
             <>
-              <span className="text-[13px] text-muted-foreground">Ticked:</span>
+              <span className="text-[13px] text-muted-foreground">With the ticked:</span>
               <Select form="bulk-apps" name="status" defaultValue="" options={APPLICATION_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Set status to..." className="h-8 w-auto text-[13px]" aria-label="New status" />
               <SubmitButton form="bulk-apps" size="sm" variant="secondary" pendingText="Saving...">
                 Apply
@@ -403,7 +403,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                       <Link href={hrefWith(base, sp, { tab: "applicants", app: r.app.id, ok: null, error: null })} scroll={false} className="font-medium text-foreground hover:text-primary">
                         {r.expertName}
                       </Link>
-                      <div className="truncate text-xs text-muted-foreground">{contact ? r.expertEmail : maskEmail(r.expertEmail)}</div>
+                      <div className="truncate text-[13px] text-muted-foreground">{contact ? r.expertEmail : maskEmail(r.expertEmail)}</div>
                     </Td>
                     <Td className="whitespace-nowrap">{r.expertCountry ?? "–"}</Td>
                     <Td className="tabular">{r.yearsExperience ?? "–"}</Td>
@@ -418,7 +418,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                           <FileText className="h-3.5 w-3.5" /> CV
                         </a>
                       ) : cv ? (
-                        <span className="text-xs text-muted-foreground" title={r.cvConsent === "no" ? "They said no to sharing" : "Your role can't download CVs"}>
+                        <span className="text-[13px] text-muted-foreground" title={r.cvConsent === "no" ? "They said no to sharing" : "Your role can't download CVs"}>
                           On file
                         </span>
                       ) : (
@@ -445,7 +445,7 @@ export async function ApplicantsTab({ job, user, fields, sp, counts }: { job: Jo
                     </Td>
                     <Td className="whitespace-nowrap">
                       <div className="text-muted-foreground">{fmtDate(r.app.createdAt)}</div>
-                      <div className="text-xs text-muted-foreground/80">{src?.invited ? "via invite" : src?.utm?.source ? `via ${src.utm.source}` : src?.ref ? `via ${src.ref}` : "direct"}</div>
+                      <div className="text-[13px] text-muted-foreground/80">{src?.invited ? "via invite" : src?.utm?.source ? `via ${src.utm.source}` : src?.ref ? `via ${src.ref}` : "direct"}</div>
                     </Td>
                   </Tr>
                 );
@@ -476,7 +476,7 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
       closeHref={closeHref}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[13px] text-muted-foreground">
             Applied {fmtDateTime(a.app.createdAt)}
             {a.app.updatedAt.getTime() - a.app.createdAt.getTime() > 60_000 ? ` · updated ${fmtDateTime(a.app.updatedAt)}` : ""}
           </span>
@@ -526,7 +526,7 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
               const masked = !contact && (field.mapsTo === "email" || field.mapsTo === "phone");
               return (
                 <div key={field.id} className="space-y-1 px-4 py-3">
-                  <dt className="text-xs text-muted-foreground">{field.type === "consent" ? "Consent" : field.label}</dt>
+                  <dt className="text-[13px] text-muted-foreground">{field.type === "consent" ? "Consent" : field.label}</dt>
                   <dd className="text-sm break-words whitespace-pre-line text-foreground">
                     {isFile ? (
                       canCv ? (
@@ -534,7 +534,7 @@ async function ApplicantPanel({ job, user, fields, a, closeHref }: { job: Job; u
                           <FileText className="h-3.5 w-3.5" /> {(answer as FileAnswer).filename}
                         </a>
                       ) : (
-                        <span>{(answer as FileAnswer).filename} <span className="text-xs text-muted-foreground">({a.cvConsent === "no" ? "they said no to sharing" : "your role can't download"})</span></span>
+                        <span>{(answer as FileAnswer).filename} <span className="text-[13px] text-muted-foreground">({a.cvConsent === "no" ? "they said no to sharing" : "your role can't download"})</span></span>
                       )
                     ) : masked ? (
                       field.mapsTo === "email" ? maskEmail(String(answer ?? "")) : maskPhone(String(answer ?? ""))
@@ -599,7 +599,7 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
                 <SubmitButton size="sm" variant="secondary" pendingText="Adding...">
                   Shortlist ticked to the requirement
                 </SubmitButton>
-                <span className="text-xs text-muted-foreground">Shortlisting doesn&apos;t send anything.</span>
+                <span className="text-[13px] text-muted-foreground">Shortlisting doesn&apos;t send anything.</span>
               </form>
             ) : null}
             <Table>
@@ -628,8 +628,8 @@ export async function MatchesTab({ job, user }: { job: Job; user: CurrentUser })
                         <Link href={`/admin/experts/${m.expertId}`} className="font-medium text-foreground hover:text-primary">
                           {m.expert.fullName}
                         </Link>
-                        <div className="text-xs text-muted-foreground">{[m.expert.domain, m.expert.country].filter(Boolean).join(" · ") || "–"}</div>
-                        {m.invited ? <div className="mt-1 text-xs text-info">Invited {fmtDate(m.invited.createdAt)}{m.invited.emailed ? " by email" : ""}</div> : null}
+                        <div className="text-[13px] text-muted-foreground">{[m.expert.domain, m.expert.country].filter(Boolean).join(" · ") || "–"}</div>
+                        {m.invited ? <div className="mt-1 text-[13px] text-info">Invited {fmtDate(m.invited.createdAt)}{m.invited.emailed ? " by email" : ""}</div> : null}
                       </Td>
                       <Td>
                         <ScoreBar score={m.score} />
@@ -795,7 +795,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
                       {c.label}
                     </span>
                   </Td>
-                  <Td className="max-w-[28rem] truncate font-mono text-xs text-muted-foreground" title={link}>
+                  <Td className="max-w-[28rem] truncate font-mono text-[13px] text-muted-foreground" title={link}>
                     {link.replace(/^https?:\/\//, "")}
                   </Td>
                   <Td className="text-right whitespace-nowrap">
@@ -830,7 +830,7 @@ export async function ShareTab({ job, user, sp }: { job: Job; user: CurrentUser;
           ) : null}
         </form>
       </Section>
-      <p className="text-xs text-muted-foreground">Public pages never show pay, a pay basis or the partner. The company label reads &quot;{job.publicCompanyLabel}&quot;.</p>
+      <p className="text-[13px] text-muted-foreground">Public pages never show pay, a pay basis or the partner. The company label reads &quot;{job.publicCompanyLabel}&quot;.</p>
     </Stack>
   );
 }

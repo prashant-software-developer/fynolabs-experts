@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { ExternalLink, LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { BoardCard, BoardCardFooter, BoardColumn, BoardEmpty, BoardScroller } from "@/components/crm/board";
+import { Avatar } from "@/components/ui/avatar";
+import { FilterSelect, ResultCount, SearchField, Toolbar } from "@/components/ui/toolbar";
 import { getDb } from "@/db/client";
 import { can, canSeeContact } from "@/lib/auth/permissions";
 import { requireSection } from "@/lib/auth/section-guard";
@@ -13,8 +16,8 @@ import { allContacts, contactView, getContact, parseContactFilters, visibleConta
 import { ContactStageBar, ContactStageChip, DueChip, Facts, Initials } from "@/components/crm/chips";
 import { OrgLogo } from "@/components/crm/org-logo";
 import { RowLink } from "@/components/crm/row-link";
-import { Segments } from "@/components/crm/segments";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ViewSwitch } from "@/components/crm/segments";
+import { ButtonLink } from "@/components/ui/button";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
@@ -58,30 +61,23 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const filtered = Boolean(f.q || f.kind || f.stage || f.source || f.company || f.followUp);
   const lanes = (f.tab === "open" ? CONTACT_OPEN : f.tab === "won" ? ["won"] : f.tab === "lost" ? ["lost"] : CONTACT_STAGES) as readonly string[];
 
+  const layoutHref = (l: "board" | null) => hrefWith("/admin/leads", sp, { layout: l, view: null, ok: null, error: null });
+
   return (
     <>
       <PageHeader
         title="Leads"
         subtitle="The people at accounts: who we talk to, where we found them, and the next follow-up."
         actions={
-          <>
-            <Segments
-              label="Layout"
-              items={[
-                { href: hrefWith("/admin/leads", sp, { layout: null, view: null, ok: null, error: null }), label: <><Rows3 className="h-3.5 w-3.5" aria-hidden /> Table</>, active: layout === "table" },
-                { href: hrefWith("/admin/leads", sp, { layout: "board", view: null, ok: null, error: null }), label: <><LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Board</>, active: layout === "board" },
-              ]}
-            />
-            {edit ? (
-              <ButtonLink href={hrefWith("/admin/leads", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
-                <Plus className="h-4 w-4" aria-hidden /> New lead
-              </ButtonLink>
-            ) : null}
-          </>
+          edit ? (
+            <ButtonLink href={hrefWith("/admin/leads", sp, { new: "1", view: null, ok: null, error: null })} variant="primary">
+              <Plus className="h-4 w-4" aria-hidden /> New lead
+            </ButtonLink>
+          ) : null
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
-      <div className="mb-6">
+      <div className="mb-8">
         <StatGrid>
           <Stat label="Open leads" value={view.stats.open} />
           <Stat label="Calls booked" value={view.stats.calls} />
@@ -90,89 +86,79 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         </StatGrid>
       </div>
       <Tabs tabs={CONTACT_TABS.map((t) => ({ href: hrefWith("/admin/leads", sp, { tab: t === "open" ? null : t, view: null, ok: null, error: null }), label: CONTACT_TAB_LABELS[t], active: f.tab === t, count: view.counts[t] }))} />
-      <Section className="mb-6">
-        <form method="get" className="space-y-3">
-          {f.tab !== "open" ? <input type="hidden" name="tab" value={f.tab} /> : null}
-          {layout === "board" ? <input type="hidden" name="layout" value="board" /> : null}
-          <div className="flex gap-2">
-            <Input name="q" defaultValue={f.q} placeholder={contact ? "Search leads: name, company, role, email, notes" : "Search leads: name, company, role, notes"} aria-label="Search leads" className="flex-1" />
-            <Button type="submit" variant="secondary">
-              Search
-            </Button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Select name="stage" defaultValue={f.stage} options={opts(CONTACT_STAGES, "contact")} placeholder="Any stage" aria-label="Stage" />
-            <Select name="kind" defaultValue={f.kind} options={opts(CONTACT_KINDS)} placeholder="Any type" aria-label="Type" />
-            <Select name="source" defaultValue={f.source} options={opts(CONTACT_SOURCES)} placeholder="Any source" aria-label="Source" />
-            <Select name="company" defaultValue={f.company} options={[{ value: "none", label: "No account" }, ...companies.map((c) => ({ value: c.id, label: c.name }))]} placeholder="Any account" aria-label="Account" />
-            <Select name="followUp" defaultValue={f.followUp} options={[{ value: "due", label: "Follow-up due" }, { value: "set", label: "Has a follow-up" }, { value: "none", label: "No follow-up" }]} placeholder="Any follow-up" aria-label="Follow-up" />
-            <div className="flex items-center gap-2">
-              <Button type="submit" variant="secondary" className="flex-1">
-                Apply
-              </Button>
-              {filtered ? (
-                <Link href={hrefWith("/admin/leads", {}, { tab: f.tab === "open" ? null : f.tab, layout: layout === "board" ? "board" : null })} className="text-sm text-muted-foreground hover:text-foreground">
-                  Clear
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        </form>
-      </Section>
 
       <Section flush>
+        <Toolbar
+          hidden={{ tab: f.tab !== "open" ? f.tab : null, layout: layout === "board" ? "board" : null }}
+          clearHref={filtered ? hrefWith("/admin/leads", {}, { tab: f.tab === "open" ? null : f.tab, layout: layout === "board" ? "board" : null }) : null}
+          end={
+            <>
+              <ResultCount n={rows.length} noun="lead" />
+              <ViewSwitch
+                label="Layout"
+                items={[
+                  { href: layoutHref(null), label: <><Rows3 aria-hidden /> Table</>, active: layout === "table" },
+                  { href: layoutHref("board"), label: <><LayoutGrid aria-hidden /> Board</>, active: layout === "board" },
+                ]}
+              />
+            </>
+          }
+        >
+          <SearchField defaultValue={f.q} placeholder={contact ? "Search name, company, role, email" : "Search name, company, role"} label="Search leads" />
+          <FilterSelect name="stage" defaultValue={f.stage} options={opts(CONTACT_STAGES, "contact")} placeholder="Any stage" label="Stage" />
+          <FilterSelect name="kind" defaultValue={f.kind} options={opts(CONTACT_KINDS)} placeholder="Any type" label="Type" />
+          <FilterSelect name="source" defaultValue={f.source} options={opts(CONTACT_SOURCES)} placeholder="Any source" label="Source" />
+          <FilterSelect name="company" defaultValue={f.company} options={[{ value: "none", label: "No account" }, ...companies.map((c) => ({ value: c.id, label: c.name }))]} placeholder="Any account" label="Account" />
+          <FilterSelect name="followUp" defaultValue={f.followUp} options={[{ value: "due", label: "Follow-up due" }, { value: "set", label: "Has a follow-up" }, { value: "none", label: "No follow-up" }]} placeholder="Any follow-up" label="Follow-up" />
+        </Toolbar>
         {layout === "board" && all.length ? (
-          <div className="max-h-[calc(100vh-15rem)] overflow-auto">
-            <div className="flex min-w-max items-start gap-3 p-4">
-              {lanes.map((stage) => {
-                const inLane = rows.filter((r) => r.stage === stage);
-                return (
-                  <section key={stage} className="flex w-64 shrink-0 flex-col rounded-md border border-border bg-muted" aria-label={crmLabel(stage, "contact")}>
-                    <header className="sticky top-0 z-10 flex items-center justify-between rounded-t-md bg-muted px-3 py-2.5">
-                      <span className="text-small font-medium text-foreground">{crmLabel(stage, "contact")}</span>
-                      <span className="tabular text-xs text-muted-foreground">{inLane.length}</span>
-                    </header>
-                    <ul className="flex flex-col gap-2 px-2 pb-2">
-                      {inLane.length ? (
-                        inLane.map((c) => (
-                          <li key={c.id} className="rounded-md border border-border bg-card p-3">
-                            <Link href={hrefWith("/admin/leads", sp, { view: c.id, ok: null, error: null })} scroll={false} className="group block space-y-1.5">
-                              <span className="flex items-center gap-2">
-                                <Initials name={c.name} />
-                                <span className="min-w-0">
-                                  <span className="block truncate text-sm font-medium text-foreground group-hover:text-primary">{c.name}</span>
-                                  <span className="block truncate text-xs text-muted-foreground">{c.role ?? "–"}</span>
-                                </span>
-                              </span>
-                              <span className="block truncate text-xs text-foreground/75">{c.companyName ?? c.company ?? "No account"}</span>
-                              {c.nextFollowUp ? <DueChip due={c.nextFollowUp} today={today} /> : null}
-                            </Link>
-                            {edit ? (
-                              <form action={setLeadStage} className="mt-2">
-                                <input type="hidden" name="id" value={c.id} />
-                                <input type="hidden" name="returnTo" value={here} />
-                                <AutoSubmitSelect name="stage" defaultValue={c.stage} aria-label={`Stage of ${c.name}`} className="control h-7 w-full text-xs">
-                                  {CONTACT_STAGES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {crmLabel(s, "contact")}
-                                    </option>
-                                  ))}
-                                </AutoSubmitSelect>
-                              </form>
-                            ) : null}
-                          </li>
-                        ))
-                      ) : (
-                        <li className="px-1 py-2">
-                          <EmptyState title="Nothing here" padded={false} />
-                        </li>
-                      )}
-                    </ul>
-                  </section>
-                );
-              })}
-            </div>
-          </div>
+          <BoardScroller label="Leads board">
+            {lanes.map((stage) => {
+              const inLane = rows.filter((r) => r.stage === stage);
+              const due = inLane.filter((r) => r.nextFollowUp && r.nextFollowUp <= today).length;
+              return (
+                <BoardColumn key={stage} label={crmLabel(stage, "contact")} title={crmLabel(stage, "contact")} count={inLane.length} extra={due && stage !== "won" && stage !== "lost" ? <span className="font-medium text-danger">{due} due</span> : null}>
+                  {inLane.length ? (
+                    inLane.map((c) => (
+                      <BoardCard key={c.id}>
+                        <Link href={hrefWith("/admin/leads", sp, { view: c.id, ok: null, error: null })} scroll={false} className="group block space-y-2.5">
+                          <span className="flex items-center gap-2.5">
+                            <Avatar name={c.name} size="lg" />
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-medium text-foreground group-hover:text-primary">{c.name}</span>
+                              <span className="block truncate text-[13px] text-muted-foreground">{c.role ?? "–"}</span>
+                            </span>
+                          </span>
+                          <BoardCardFooter>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              {c.companyId ? <OrgLogo name={c.companyName ?? ""} size={18} /> : null}
+                              <span className="truncate">{c.companyName ?? c.company ?? "No account"}</span>
+                            </span>
+                            {c.nextFollowUp ? <DueChip due={c.nextFollowUp} today={today} stage={stage === "won" || stage === "lost" ? "dropped" : undefined} /> : null}
+                          </BoardCardFooter>
+                        </Link>
+                        {edit ? (
+                          <form action={setLeadStage} className="mt-3 border-t border-border pt-3">
+                            <input type="hidden" name="id" value={c.id} />
+                            <input type="hidden" name="returnTo" value={here} />
+                            <AutoSubmitSelect name="stage" defaultValue={c.stage} aria-label={`Stage of ${c.name}`} className="control h-8 w-full text-[13px]">
+                              {CONTACT_STAGES.map((s) => (
+                                <option key={s} value={s}>
+                                  {crmLabel(s, "contact")}
+                                </option>
+                              ))}
+                            </AutoSubmitSelect>
+                          </form>
+                        ) : null}
+                      </BoardCard>
+                    ))
+                  ) : (
+                    <BoardEmpty />
+                  )}
+                </BoardColumn>
+              );
+            })}
+          </BoardScroller>
         ) : rows.length ? (
           <Table sticky>
             <THead>
@@ -187,8 +173,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <TBody>
               {rows.map((c) => (
                 <tr key={c.id} className="row-hover relative">
-                  <Td className="py-2.5">
-                    <div className="flex items-center gap-2.5">
+                  <Td>
+                    <div className="flex items-center gap-3">
                       <Initials name={c.name} />
                       <RowLink href={hrefWith("/admin/leads", sp, { view: c.id, new: null, ok: null, error: null })} className="max-w-48 truncate">
                         {c.name}
@@ -202,8 +188,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </Td>
                   <Td>
                     {c.companyId ? (
-                      <Link href={`/admin/accounts?view=${c.companyId}`} className="relative z-10 inline-flex max-w-48 items-center gap-2 hover:text-primary">
-                        <OrgLogo name={c.companyName ?? ""} size={20} />
+                      <Link href={`/admin/accounts?view=${c.companyId}`} className="relative z-10 inline-flex max-w-52 items-center gap-2 hover:text-primary">
+                        <OrgLogo name={c.companyName ?? ""} size={22} />
                         <span className="truncate">{c.companyName}</span>
                       </Link>
                     ) : (
@@ -213,9 +199,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <Td>
                     <ContactStageBar stage={c.stage} />
                   </Td>
-                  <Td className="text-small">
+                  <Td>
                     <span className="flex items-center gap-2">
-                      <span className="max-w-48 truncate">{c.email ?? <span className="text-muted-foreground/70">–</span>}</span>
+                      <span className="max-w-52 truncate">{c.email ?? <span className="text-muted-foreground/70">–</span>}</span>
                       {c.profileUrl ? (
                         <a href={c.profileUrl} target="_blank" rel="noreferrer noopener" className="relative z-10 text-muted-foreground hover:text-primary" aria-label={`Profile of ${c.name}`}>
                           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -237,11 +223,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <EmptyState size="page" title="No leads yet." description={edit ? "Use “New lead” to add the first one." : "An admin or recruiter adds leads."} action={edit ? <ButtonLink href="/admin/leads?new=1" variant="primary">New lead</ButtonLink> : undefined} />
         )}
       </Section>
-      {!contact ? <p className="mt-3 text-xs text-muted-foreground">Email addresses are masked for your role.</p> : null}
+      {!contact ? <p className="mt-3 text-[13px] text-muted-foreground">Email addresses are masked for your role.</p> : null}
 
       {(one(sp.new) && edit) || viewing ? (
         <SlideOver
-          title={viewing ? "Lead" : "New lead"}
+          title={viewing ? viewing.name || "Unnamed lead" : "New lead"}
+          media={viewing ? <Avatar name={viewing.name} size="2xl" /> : undefined}
+          subtitle={viewing ? [viewing.role, viewing.companyName ?? viewing.company].filter(Boolean).join(" · ") || undefined : "Someone at an account: who they are, where you found them, the next follow-up."}
+          addon={viewing ? <ContactStageChip stage={viewing.stage} /> : undefined}
+          meta={viewing?.nextFollowUp ? <DueChip due={viewing.nextFollowUp} today={today} stage={viewing.stage === "won" || viewing.stage === "lost" ? "dropped" : undefined} /> : undefined}
           closeHref={close}
           footer={
             viewing && can(user.role, "crm.delete") ? (
@@ -271,15 +261,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
 function LeadSummary({ c, today, contact }: { c: ContactRow; today: string; contact: boolean }) {
   return (
-    <div className="mb-7 space-y-5">
-      <div className="flex items-center gap-3">
-        <Initials name={c.name} className="h-10 w-10 text-sm" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg text-foreground">{c.name || "Unnamed lead"}</p>
-          <p className="truncate text-small text-muted-foreground">{[c.role, c.companyName ?? c.company].filter(Boolean).join(" · ") || "–"}</p>
-        </div>
-        <ContactStageChip stage={c.stage} />
-      </div>
+    <div className="mb-8 border-b border-border pb-7">
       <Facts
         items={[
           { label: "Account", value: c.companyId ? <Link href={`/admin/accounts/${c.companyId}`} className="text-primary hover:underline">{c.companyName}</Link> : null },
@@ -342,7 +324,7 @@ function LeadForm({ c, companies, close, here }: { c: ContactRow | null; compani
           <Select id={`${id}-source`} name="source" defaultValue={c?.source ?? "linkedin"} options={opts(CONTACT_SOURCES)} />
         </Field>
       </div>
-      <p className="-mt-2 text-xs text-muted-foreground">{KIND_HINT}</p>
+      <p className="-mt-2 text-[13px] text-muted-foreground">{KIND_HINT}</p>
       <FieldRow>
         <Field label="Profile link" htmlFor={`${id}-profile`} hint="LinkedIn or their website.">
           <Input id={`${id}-profile`} name="profileUrl" defaultValue={c?.profileUrl ?? ""} placeholder="linkedin.com/in/…" />

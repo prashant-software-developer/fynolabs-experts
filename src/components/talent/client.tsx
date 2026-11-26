@@ -35,7 +35,7 @@ export function StageForm({ action, id, stage, rejectReason, returnTo, compact }
         name="stage"
         value={to}
         aria-label="Stage"
-        className={cn("control w-auto", compact ? "h-7 text-xs" : "h-8 text-small")}
+        className={cn("control w-auto", compact ? "h-8 text-[13px]" : "h-9 text-sm")}
         onChange={(e) => {
           setTo(e.currentTarget.value);
           if (e.currentTarget.value !== "rejected") e.currentTarget.form?.requestSubmit();
@@ -49,7 +49,7 @@ export function StageForm({ action, id, stage, rejectReason, returnTo, compact }
       </select>
       {to === "rejected" ? (
         <>
-          <select name="rejectReason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} aria-label="Why rejected" required className={cn("control w-auto", compact ? "h-7 text-xs" : "h-8 text-small")}>
+          <select name="rejectReason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} aria-label="Why rejected" required className={cn("control w-auto", compact ? "h-8 text-[13px]" : "h-9 text-sm")}>
             <option value="">Why?</option>
             {REJECT_REASONS.map((r) => (
               <option key={r} value={r}>
@@ -95,7 +95,7 @@ export function ReferralTarget({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="min-w-0 space-y-1.5">
-        <span className="block eyebrow text-muted-foreground">Platform</span>
+        <span className="block text-[13px] font-medium text-foreground/80">Platform</span>
         <select
           name="platformId"
           value={pf}
@@ -114,7 +114,7 @@ export function ReferralTarget({
         </select>
       </label>
       <label className="min-w-0 space-y-1.5">
-        <span className="block eyebrow text-muted-foreground">Project</span>
+        <span className="block text-[13px] font-medium text-foreground/80">Project</span>
         <select
           name="projectId"
           value={pj}
@@ -135,7 +135,7 @@ export function ReferralTarget({
         </select>
       </label>
       <label className="min-w-0 space-y-1.5 sm:col-span-2">
-        <span className="block eyebrow text-muted-foreground">Referral link</span>
+        <span className="block text-[13px] font-medium text-foreground/80">Referral link</span>
         <input
           name="referralUrl"
           value={url}
@@ -158,7 +158,7 @@ export function ChoiceFields({ name, options, fields, placeholder, className, fo
   const [v, setV] = useState("");
   return (
     <>
-      <select name={name} form={form} value={v} onChange={(e) => setV(e.currentTarget.value)} className={cn("control h-8 w-auto text-small", className)} aria-label={placeholder}>
+      <select name={name} form={form} value={v} onChange={(e) => setV(e.currentTarget.value)} className={cn("control", className ?? "h-9 w-auto text-[13px]")} aria-label={placeholder}>
         <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>

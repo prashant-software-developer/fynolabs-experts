@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { Briefcase, ExternalLink } from "lucide-react";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { getDb } from "@/db/client";
 import { can } from "@/lib/auth/permissions";
 import { canOpenSection } from "@/lib/auth/sections";
@@ -16,7 +16,7 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/client";
 import { FlashFromParams } from "@/components/ui/feedback";
-import { PageHeader } from "@/components/ui/layout";
+import { FactsBar, PageHeader } from "@/components/ui/layout";
 import { Tabs } from "@/components/ui/tabs";
 import { setJobSharing } from "../actions";
 import { ApplicantsTab, DetailsTab, FormTab, MatchesTab, ShareTab } from "./tabs";
@@ -61,24 +61,19 @@ export default async function JobPage({ params, searchParams }: { params: Promis
     <>
       <PageHeader
         title={job.title}
+        subtitle={`/jobs/${job.slug}`}
+        media={
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-card" aria-hidden>
+            <Briefcase className="h-5 w-5" />
+          </span>
+        }
         back={{ href: "/admin/jobs", label: "Jobs" }}
         meta={
           <>
             <StatusBadge value={job.status} />
-            <Badge tone={job.visibility === "public" ? "outline" : "muted"}>{label(job.visibility)}</Badge>
-            {job.featured ? <Badge tone="info">Featured</Badge> : null}
-            {state === "closed" && job.status === "open" ? <Badge tone="warning">Past closing date</Badge> : null}
-            <span className="text-muted-foreground">
-              {applicants} {applicants === 1 ? "applicant" : "applicants"}
-              {counts.new ? ` · ${counts.new} new` : ""}
-            </span>
-            {partnerName ? <span className="text-muted-foreground">· Partner: {partnerName} (internal)</span> : null}
-            {job.requirementId && requirementTitle ? (
-              <Link href={`/admin/requirements/${job.requirementId}`} className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-                · Requirement: {requirementTitle}
-              </Link>
-            ) : null}
-            {job.closesOn ? <span className="text-muted-foreground">· Closes {fmtDate(job.closesOn)}</span> : null}
+            <Badge tone={job.visibility === "public" ? "outline" : "muted"} pill dot>{label(job.visibility)}</Badge>
+            {job.featured ? <Badge tone="info" pill dot>Featured</Badge> : null}
+            {state === "closed" && job.status === "open" ? <Badge tone="warning" pill dot>Past closing date</Badge> : null}
           </>
         }
         actions={
@@ -104,6 +99,14 @@ export default async function JobPage({ params, searchParams }: { params: Promis
         }
       />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
+      <FactsBar
+        items={[
+          { label: "Applicants", value: <span className="tabular">{applicants}</span>, hint: counts.new ? `${counts.new} new` : "None new", href: `${base}?tab=applicants` },
+          { label: "Partner (internal)", value: partnerName ? <span className="inline-flex min-w-0 items-center gap-2"><OrgLogo name={partnerName} size={22} /><span className="truncate">{partnerName}</span></span> : null },
+          { label: "Requirement", value: requirementTitle ? <span className="truncate">{requirementTitle}</span> : null, href: job.requirementId && requirementTitle ? `/admin/requirements/${job.requirementId}` : undefined },
+          { label: "Closes", value: job.closesOn ? fmtDate(job.closesOn) : null, hint: job.closesOn ? undefined : "No closing date" },
+        ]}
+      />
       <Tabs
         tabs={[
           { href: `${base}?tab=details`, label: "Details", active: tab === "details" },

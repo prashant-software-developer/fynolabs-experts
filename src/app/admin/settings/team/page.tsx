@@ -13,6 +13,7 @@ import { activityOfType } from "@/lib/server/activity";
 import { listPartners } from "@/lib/server/requirements";
 import { listTeam } from "@/lib/server/team";
 import { ActivityList } from "@/components/activity-list";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AutoSubmitSelect, SubmitButton } from "@/components/ui/client";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
@@ -52,9 +53,9 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
   const resetFor = members.find((m) => m.id === one(sp.reset));
   const signInUrl = `${await siteUrl()}/signin`;
   const lastSignIn = (m: (typeof members)[number]) => {
-    if (!m.login) return <span className="text-xs text-muted-foreground">No login yet</span>;
+    if (!m.login) return <span className="text-[13px] text-muted-foreground">No login yet</span>;
     return (
-      <div className="text-xs text-muted-foreground">
+      <div className="text-[13px] text-muted-foreground">
         <div className="text-[13px] text-foreground/80">{m.login.lastLoginAt ? fmtDate(m.login.lastLoginAt) : "Never"}</div>
         {m.login.mustChangePassword ? <div>Temporary password</div> : null}
         {m.login.lockedUntil && m.login.lockedUntil > new Date() ? <div className="text-warning">Locked (too many wrong passwords)</div> : null}
@@ -82,18 +83,23 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                 {bootstrap.map((email) => (
                   <Tr key={email}>
                     <Td className="min-w-56">
-                      <div className="font-medium text-foreground">{email}</div>
-                      <div className="text-xs text-muted-foreground">{email === user.email ? "You · " : ""}set by ADMIN_EMAILS</div>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={email} size="lg" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground">{email}</div>
+                          <div className="text-[13px] text-muted-foreground">{email === user.email ? "You · " : ""}set by ADMIN_EMAILS</div>
+                        </div>
+                      </div>
                     </Td>
                     <Td>
-                      <Badge tone="info">Admin</Badge>
+                      <Badge tone="info" pill dot>Admin</Badge>
                     </Td>
                     <Td className="text-muted-foreground/70">–</Td>
                     <Td>
-                      <span className="text-xs text-muted-foreground">Always (bootstrap)</span>
+                      <span className="text-[13px] text-muted-foreground">Always (bootstrap)</span>
                     </Td>
-                    <Td className="text-xs text-muted-foreground">Not on the list yet</Td>
-                    <Td className="text-xs text-muted-foreground">npm run admin:create</Td>
+                    <Td className="text-[13px] text-muted-foreground">Not on the list yet</Td>
+                    <Td className="text-[13px] text-muted-foreground">npm run admin:create</Td>
                   </Tr>
                 ))}
                 {members.map((m) => {
@@ -105,19 +111,24 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                   return (
                     <Tr key={m.id} className={m.active ? undefined : "opacity-60"}>
                       <Td className="min-w-56">
-                        <div className="font-medium text-foreground">{m.email}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {[self ? "You" : null, m.name, envAdmin ? "admin via ADMIN_EMAILS" : null].filter(Boolean).join(" · ") || " "}
-                          <div>
-                            Added {fmtDate(m.createdAt)}
-                            {m.createdBy ? ` by ${m.createdBy}` : ""}
+                        <div className="flex items-start gap-3">
+                          <Avatar name={m.name || m.email} size="lg" />
+                          <div className="min-w-0">
+                            <div className="font-medium text-foreground">{m.email}</div>
+                            <div className="text-[13px] text-muted-foreground">
+                              {[self ? "You" : null, m.name, envAdmin ? "admin via ADMIN_EMAILS" : null].filter(Boolean).join(" · ") || " "}
+                              <div>
+                                Added {fmtDate(m.createdAt)}
+                                {m.createdBy ? ` by ${m.createdBy}` : ""}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </Td>
                       <Td>
                         <form action={changeTeamRole} className="flex items-center gap-2" title={lockedWhy}>
                           <input type="hidden" name="id" value={m.id} />
-                          <AutoSubmitSelect name="role" defaultValue={m.role} disabled={locked} className="control h-8 w-auto text-[13px]" aria-label={`Role for ${m.email}`}>
+                          <AutoSubmitSelect name="role" defaultValue={m.role} disabled={locked} className="control w-auto" aria-label={`Role for ${m.email}`}>
                             {roleOptions.map((o) => (
                               <option key={o.value} value={o.value}>
                                 {o.label}
@@ -139,21 +150,21 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                                 </Badge>
                               ))
                             ) : (
-                              <span className="text-xs text-warning">No partners yet: sees no submissions</span>
+                              <span className="text-[13px] text-warning">No partners yet: sees no submissions</span>
                             )}
                             <Link href={hrefWith("/admin/settings/team", sp, { scope: m.id, ok: null, error: null })} scroll={false} className="text-[13px] font-medium text-primary underline-offset-4 hover:underline">
                               Edit
                             </Link>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">{m.role === "viewer" ? "–" : "All partners"}</span>
+                          <span className="text-[13px] text-muted-foreground">{m.role === "viewer" ? "–" : "All partners"}</span>
                         )}
                       </Td>
                       <Td className="whitespace-nowrap">
                         <form action={setTeamActive} className="flex items-center gap-2" title={lockedWhy}>
                           <input type="hidden" name="id" value={m.id} />
                           <input type="hidden" name="active" value={m.active ? "no" : "yes"} />
-                          <Badge tone={m.active ? "success" : "muted"}>{m.active ? "Active" : "Off"}</Badge>
+                          <Badge tone={m.active ? "success" : "muted"} pill dot>{m.active ? "Active" : "Off"}</Badge>
                           {!locked ? (
                             <SubmitButton size="sm" variant="ghost" confirm={m.active ? `Turn off access for ${m.email}? They are signed out at once and can't sign in until it's turned back on.` : undefined}>
                               {m.active ? "Turn off" : "Turn on"}
@@ -172,7 +183,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                             {m.login ? "Reset password" : "Create login"}
                           </Link>
                         ) : (
-                          <span className="text-xs text-muted-foreground">–</span>
+                          <span className="text-[13px] text-muted-foreground">–</span>
                         )}
                       </Td>
                     </Tr>

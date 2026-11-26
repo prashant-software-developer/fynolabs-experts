@@ -63,7 +63,7 @@ export function LessonForm({ courseId, lesson, defaultPosition, cancelHref }: { 
           </label>
           <Textarea id="lf-quiz" name="quizText" rows={16} spellCheck={false} className="font-mono text-[13px]" defaultValue={v("quizText", lesson?.quizText)} aria-invalid={quizErrors.length ? true : undefined} aria-describedby="lf-quiz-help" />
           {quizErrors.length ? (
-            <div role="alert" className="rounded-md border border-danger/25 bg-danger-soft px-3 py-2.5 text-xs text-danger">
+            <div role="alert" className="rounded-md border border-danger/25 bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
               <p className="font-medium">Fix these, then save again:</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-4">
                 {quizErrors.map((e) => (
@@ -72,7 +72,7 @@ export function LessonForm({ courseId, lesson, defaultPosition, cancelHref }: { 
               </ul>
             </div>
           ) : null}
-          <div id="lf-quiz-help" className="space-y-1.5 text-xs text-muted-foreground">
+          <div id="lf-quiz-help" className="space-y-1.5 text-[13px] text-muted-foreground">
             <p>One block per question: “Q:” then the question, options as A), B), C)..., then “Answer:” with the letter and an optional “Why:”. Experts need 70% to pass.</p>
             <pre className="overflow-x-auto rounded-md bg-secondary px-3 py-2 font-mono text-[12px] leading-relaxed text-foreground/80">{QUIZ_TEXT_EXAMPLE}</pre>
           </div>

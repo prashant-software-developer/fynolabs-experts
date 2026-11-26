@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/ui/avatar";
 import type { Activity } from "@/db/schema";
 import { roleLabel } from "@/lib/auth/permissions";
 import { label } from "@/lib/constants";
@@ -108,8 +109,9 @@ export function ActivityList({ items, showEntity = true }: { items: Activity[]; 
         const href = showEntity ? hrefFor(a) : null;
         const text = describe(a);
         return (
-          <li key={a.id} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
-            <div className="min-w-0">
+          <li key={a.id} className="flex items-start gap-3 py-3 text-sm first:pt-0 last:pb-0">
+            <Avatar name={a.actorEmail} size="md" className="mt-0.5" />
+            <div className="min-w-0 flex-1">
               {href ? (
                 <Link href={href} className="text-foreground hover:text-primary">
                   {text}
@@ -117,12 +119,12 @@ export function ActivityList({ items, showEntity = true }: { items: Activity[]; 
               ) : (
                 <span className="text-foreground">{text}</span>
               )}
-              <span className="ml-2 text-xs text-muted-foreground/70">
+              <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
                 {a.actorEmail}
                 {a.actorRole ? ` · ${roleLabel(a.actorRole)}` : ""}
-              </span>
+              </p>
             </div>
-            <time className="shrink-0 text-xs text-muted-foreground/70" title={fmtDateTime(a.createdAt)}>
+            <time className="shrink-0 pt-0.5 text-[13px] whitespace-nowrap text-muted-foreground" title={fmtDateTime(a.createdAt)}>
               {ago(a.createdAt)}
             </time>
           </li>

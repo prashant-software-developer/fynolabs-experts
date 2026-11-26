@@ -15,6 +15,8 @@ import { StatusBadge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/client";
 import { FlashFromParams, NoAccess } from "@/components/ui/feedback";
 import { Field, Input, Select } from "@/components/ui/field";
+import { Avatar } from "@/components/ui/avatar";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { DefinitionList, PageHeader, Section, Stack } from "@/components/ui/layout";
 import { savePlacementProgress } from "../actions";
 
@@ -53,18 +55,18 @@ export default async function PlacementPage({ params, searchParams }: { params: 
       <PageHeader
         title={p.projectName}
         back={{ href: "/admin/placements", label: "Placements" }}
+        media={<OrgLogo name={row.partnerName ?? ""} size={48} />}
+        badge={<StatusBadge value={p.status} />}
+        subtitle={row.partnerName ?? undefined}
         meta={
-          <>
-            {p.expertId ? (
-              <Link href={`/admin/experts/${p.expertId}`} className="font-medium text-foreground hover:text-primary">
-                {row.expertName}
-              </Link>
-            ) : (
-              <span className="text-muted-foreground/70">Deleted expert</span>
-            )}
-            <span className="text-muted-foreground">· {row.partnerName}</span>
-            <StatusBadge value={p.status} />
-          </>
+          p.expertId ? (
+            <Link href={`/admin/experts/${p.expertId}`} className="inline-flex items-center gap-2 font-medium text-foreground hover:text-primary">
+              <Avatar name={row.expertName} size="sm" />
+              {row.expertName}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground/70">Deleted expert</span>
+          )
         }
       />
       <FlashFromParams ok={sp.ok} error={sp.error} />

@@ -9,9 +9,9 @@ import { listPartners, listRequirements } from "@/lib/server/requirements";
 import { listSubmissions } from "@/lib/server/submissions";
 import { SubmissionStatusForm } from "@/components/submission-status-form";
 import { StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Select } from "@/components/ui/field";
+import { FilterSelect, ResultCount, Toolbar } from "@/components/ui/toolbar";
 import { PageHeader, Section } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 
@@ -40,27 +40,11 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
       <PageHeader title="Submissions" subtitle={scope ? "Everyone put forward to your partners." : "Everyone put forward to a partner, across all requirements."} />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Section flush>
-        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
-          <Select name="requirement" defaultValue={requirementId} options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))} placeholder="All requirements" className="w-auto max-w-xs" aria-label="Requirement" />
-          <Select
-            name="status"
-            defaultValue={status}
-            options={[{ value: "waiting", label: "Waiting on partner" }, ...SUBMISSION_STATUSES.map((s) => ({ value: s, label: label(s) }))]}
-            placeholder="Any status"
-            className="w-auto"
-            aria-label="Status"
-          />
-          <Button type="submit" variant="secondary" size="sm">
-            Filter
-          </Button>
-          {filtered ? (
-            <Link href="/admin/submissions" className="text-sm text-muted-foreground hover:text-foreground">
-              Clear
-            </Link>
-          ) : null}
-          <span className="ml-auto text-[13px] text-muted-foreground">{rows.length} shown</span>
-        </form>
+        <Toolbar clearHref={filtered ? "/admin/submissions" : null} end={<ResultCount n={rows.length} noun="submission" />}>
+          <FilterSelect name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" label="Partner" />
+          <FilterSelect name="requirement" defaultValue={requirementId} options={reqs.map((r) => ({ value: r.req.id, label: `${r.req.title} · ${r.partnerName}` }))} placeholder="All requirements" label="Requirement" className="max-w-xs" />
+          <FilterSelect name="status" defaultValue={status} options={[{ value: "waiting", label: "Waiting on partner" }, ...SUBMISSION_STATUSES.map((s) => ({ value: s, label: label(s) }))]} placeholder="Any status" label="Status" />
+        </Toolbar>
         {rows.length ? (
           <Table>
             <THead>
@@ -77,11 +61,14 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                 return (
                   <Tr key={s.sub.id}>
                     <Td className="min-w-40">
-                      <Link href={`/admin/experts/${s.sub.expertId}`} className="font-medium text-foreground hover:text-primary">
-                        {s.expertName}
-                      </Link>
-                      <div className="mt-0.5">
-                        <StatusBadge value={s.cvConsent} prefix="CV:" />
+                      <div className="flex items-center gap-3">
+                        <Avatar name={s.expertName} />
+                        <div className="min-w-0 space-y-1">
+                          <Link href={`/admin/experts/${s.sub.expertId}`} className="block truncate font-medium text-foreground hover:text-primary">
+                            {s.expertName}
+                          </Link>
+                          <StatusBadge value={s.cvConsent} prefix="CV:" />
+                        </div>
                       </div>
                     </Td>
                     <Td className="min-w-44">
@@ -97,13 +84,13 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                       ) : (
                         <div className="space-y-0.5">
                           <StatusBadge value={s.sub.status} />
-                          {s.sub.partnerNote ? <div className="text-xs text-muted-foreground">{s.sub.partnerNote}</div> : null}
+                          {s.sub.partnerNote ? <div className="text-[13px] text-muted-foreground">{s.sub.partnerNote}</div> : null}
                         </div>
                       )}
                     </Td>
                     <Td className="whitespace-nowrap">
                       {fmtDate(s.sub.submittedAt)}
-                      {waiting != null && waiting >= 3 ? <div className="text-xs text-warning">{waiting} days waiting</div> : null}
+                      {waiting != null && waiting >= 3 ? <div className="mt-0.5 text-[13px] text-warning">{waiting} days waiting</div> : null}
                     </Td>
                   </Tr>
                 );

@@ -9,11 +9,11 @@ import { listPartners, listRequirements } from "@/lib/server/requirements";
 import { Chips, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Select } from "@/components/ui/field";
+import { FilterSelect, ResultCount, Toolbar } from "@/components/ui/toolbar";
+import { OrgLogo } from "@/components/crm/org-logo";
 import { PageHeader, Section } from "@/components/ui/layout";
-import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
+import { CellStack, Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Requirements" };
 
@@ -48,13 +48,9 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Tabs tabs={VIEWS.map((v) => ({ href: hrefWith("/admin/requirements", sp, { view: v.key === "active" ? null : v.key, ok: null }), label: v.label, active: v.key === view }))} />
       <Section flush>
-        <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          {view !== "active" ? <input type="hidden" name="view" value={view} /> : null}
-          <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
-          <Button type="submit" variant="secondary" size="sm">
-            Filter
-          </Button>
-        </form>
+        <Toolbar hidden={{ view: view !== "active" ? view : null }} clearHref={partnerId ? hrefWith("/admin/requirements", {}, { view: view === "active" ? null : view }) : null} end={<ResultCount n={rows.length} noun="requirement" />}>
+          <FilterSelect name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" label="Partner" />
+        </Toolbar>
         {rows.length ? (
           <Table>
             <THead>
@@ -70,17 +66,19 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
               {rows.map((r) => (
                 <Tr key={r.req.id}>
                   <Td className="min-w-56">
-                    <Link href={`/admin/requirements/${r.req.id}`} className="font-medium text-foreground hover:text-primary">
-                      {r.req.title}
-                    </Link>
-                    {r.req.externalRef ? <div className="text-xs text-muted-foreground">{r.req.externalRef}</div> : null}
+                    <CellStack primary={<Link href={`/admin/requirements/${r.req.id}`} className="font-medium text-foreground hover:text-primary">{r.req.title}</Link>} secondary={r.req.externalRef} />
                   </Td>
-                  <Td>{r.partnerName}</Td>
+                  <Td>
+                    <span className="inline-flex max-w-56 items-center gap-2">
+                      <OrgLogo name={r.partnerName ?? ""} size={22} />
+                      <span className="truncate">{r.partnerName}</span>
+                    </span>
+                  </Td>
                   <Td>
                     <StatusBadge value={r.req.status} />
                   </Td>
-                  <Td className="tabular whitespace-nowrap">
-                    {r.filled} / {r.req.slots}
+                  <Td className="whitespace-nowrap">
+                    <FillMeter filled={r.filled} slots={r.req.slots} />
                   </Td>
                   <Td className="tabular">{r.sent}</Td>
                   <Td>
@@ -107,5 +105,20 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
         )}
       </Section>
     </>
+  );
+}
+
+/** "2 / 3" with a thin bar: how full a requirement is. */
+function FillMeter({ filled, slots }: { filled: number; slots: number }) {
+  const pct = slots > 0 ? Math.min(100, Math.round((filled / slots) * 100)) : 0;
+  return (
+    <span className="flex w-24 flex-col gap-1.5">
+      <span className="tabular text-sm text-foreground">
+        {filled} <span className="text-muted-foreground">/ {slots}</span>
+      </span>
+      <span className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.08]" aria-hidden>
+        <span className={pct >= 100 ? "block h-full rounded-full bg-success" : "block h-full rounded-full bg-foreground/70"} style={{ width: `${pct}%` }} />
+      </span>
+    </span>
   );
 }

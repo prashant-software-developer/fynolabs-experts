@@ -99,16 +99,16 @@ export default async function AdminLearnPage({ searchParams }: { searchParams: P
             <TBody>
               {rows.map((c) => (
                 <tr key={c.id} className="row-hover relative">
-                  <Td className="py-2.5">
+                  <Td className=".5">
                     <RowLink href={hrefWith(BASE, sp, { view: c.id, new: null, ok: null, error: null })} className="block max-w-96 truncate">
                       {c.title}
                     </RowLink>
-                    <span className="block text-xs text-muted-foreground">/me/learn/{c.slug}</span>
+                    <span className="block text-[13px] text-muted-foreground">/me/learn/{c.slug}</span>
                   </Td>
                   <Td>{courseKindLabel(c.kind)}</Td>
                   <Td>{levelLabel(c.level)}</Td>
                   <Td className="tabular text-right">{c.lessons}</Td>
-                  <Td>{c.published ? <Badge tone="success">Published</Badge> : <Badge tone="muted">Draft</Badge>}</Td>
+                  <Td>{c.published ? <Badge tone="success" pill dot>Published</Badge> : <Badge tone="muted" pill dot>Draft</Badge>}</Td>
                   <Td className="tabular text-right">{c.started}</Td>
                   <Td className="tabular text-right">{c.completed}</Td>
                 </tr>
@@ -138,7 +138,7 @@ export default async function AdminLearnPage({ searchParams }: { searchParams: P
         <SlideOver
           title="Course"
           closeHref={close}
-          addon={viewing.published ? <Badge tone="success">Published</Badge> : <Badge tone="muted">Draft</Badge>}
+          addon={viewing.published ? <Badge tone="success" pill dot>Published</Badge> : <Badge tone="muted" pill dot>Draft</Badge>}
           footer={
             <>
               <form action={setPublishedForm}>
@@ -181,7 +181,7 @@ export default async function AdminLearnPage({ searchParams }: { searchParams: P
                     <li key={l.id} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
                       <span className="tabular w-5 shrink-0 text-muted-foreground">{i + 1}</span>
                       <span className="min-w-0 flex-1 truncate text-foreground">{l.title}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{lessonKindLabel(l.kind)}</span>
+                      <span className="shrink-0 text-[13px] text-muted-foreground">{lessonKindLabel(l.kind)}</span>
                     </li>
                   ))}
                 </ol>

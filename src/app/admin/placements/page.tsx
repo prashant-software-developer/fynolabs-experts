@@ -10,9 +10,11 @@ import { computeMoney, formatMoney, summarize } from "@/lib/money";
 import { listPlacements } from "@/lib/server/placements";
 import { listPartners } from "@/lib/server/requirements";
 import { StatusBadge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
+import { OrgLogo } from "@/components/crm/org-logo";
+import { FilterSelect, ResultCount, Toolbar } from "@/components/ui/toolbar";
 import { EmptyState, FlashFromParams } from "@/components/ui/feedback";
-import { Select } from "@/components/ui/field";
 import { PageHeader, Section, Stat, StatGrid, Stack } from "@/components/ui/layout";
 import { Table, TBody, Td, Th, THead, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
@@ -77,15 +79,15 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
             ]}
           />
           <Section flush>
-            <form method="get" className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-              {tab !== "list" ? <input type="hidden" name="tab" value={tab} /> : null}
-              <Select name="status" defaultValue={status} options={PLACEMENT_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Any status" className="w-auto" aria-label="Status" />
-              <Select name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" className="w-auto" aria-label="Partner" />
-              <Button type="submit" variant="secondary" size="sm">
-                Filter
-              </Button>
-              {can(user.role, "placements.create") ? <span className="ml-auto text-xs text-muted-foreground">New placements start from an approved submission (Requirement → Submissions).</span> : null}
-            </form>
+            <Toolbar
+              hidden={{ tab: tab !== "list" ? tab : null }}
+              clearHref={status || partnerId ? hrefWith("/admin/placements", {}, { tab: tab !== "list" ? tab : null }) : null}
+              end={<ResultCount n={rows.length} noun="placement" />}
+            >
+              <FilterSelect name="status" defaultValue={status} options={PLACEMENT_STATUSES.map((s) => ({ value: s, label: label(s) }))} placeholder="Any status" label="Status" />
+              <FilterSelect name="partner" defaultValue={partnerId} options={partners.map((p) => ({ value: p.id, label: p.name }))} placeholder="All partners" label="Partner" />
+            </Toolbar>
+            {can(user.role, "placements.create") ? <p className="border-b border-border bg-canvas px-6 py-2.5 text-[13px] text-muted-foreground">New placements start from an approved submission (Requirement → Submissions).</p> : null}
             {!rows.length ? (
               <EmptyState
                 size="page"
@@ -112,19 +114,25 @@ export default async function PlacementsPage({ searchParams }: { searchParams: P
                       <Tr key={r.p.id}>
                         <Td>
                           {r.p.expertId ? (
-                            <Link href={`/admin/experts/${r.p.expertId}`} className="font-medium text-foreground hover:text-primary">
-                              {r.expertName}
+                            <Link href={`/admin/experts/${r.p.expertId}`} className="inline-flex items-center gap-3 whitespace-nowrap text-foreground hover:text-primary">
+                              <Avatar name={r.expertName} />
+                              <span className="truncate">{r.expertName}</span>
                             </Link>
                           ) : (
                             <span className="text-muted-foreground/70">Deleted expert</span>
                           )}
                         </Td>
-                        <Td>
-                          <Link href={`/admin/placements/${r.p.id}`} className="text-foreground hover:text-primary">
+                        <Td className="min-w-44">
+                          <Link href={`/admin/placements/${r.p.id}`} className="font-medium text-foreground hover:text-primary">
                             {r.p.projectName}
                           </Link>
                         </Td>
-                        <Td>{r.partnerName}</Td>
+                        <Td>
+                          <span className="inline-flex max-w-56 items-center gap-2">
+                            <OrgLogo name={r.partnerName ?? ""} size={22} />
+                            <span className="truncate">{r.partnerName}</span>
+                          </span>
+                        </Td>
                         <Td>
                           <StatusBadge value={r.p.status} />
                         </Td>
@@ -166,7 +174,7 @@ function TotalsTable({ rows, first, money }: { rows: { key: string; label: strin
         {rows.map((r) => (
           <Tr key={r.key}>
             <Td className="font-medium text-foreground">
-              {r.label} {money ? <span className="text-xs font-normal text-muted-foreground/70">{r.currency}</span> : null}
+              {r.label} {money ? <span className="text-[13px] font-normal text-muted-foreground/70">{r.currency}</span> : null}
             </Td>
             <Td className="tabular text-right">{r.count}</Td>
             <Td className="tabular text-right">{r.hours}</Td>

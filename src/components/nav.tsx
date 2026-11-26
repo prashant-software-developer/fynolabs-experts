@@ -1,5 +1,5 @@
 "use client";
-// The admin frame, in Expert Hub's own design: a 224px sidebar (the FynoLabs mark with "Expert Hub",
+// The admin frame, in Expert Hub's own design: a 240px sidebar (the FynoLabs mark with "Expert Hub",
 // each group under a small label, the public job board at the bottom), and a top bar with where you
 // are (Group / Page), search (Ctrl K) and your account (email and role; its menu has Settings,
 // password, the job board, Refresh and Sign out). Below 1024px a menu button opens the same groups.
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { Avatar } from "@/components/ui/avatar";
 import { RoleChip } from "@/components/ui/role-chip";
 import {
   BadgeCheck,
@@ -201,8 +202,8 @@ function NavGroups({ path, access, onNavigate }: { path: string; access: NavAcce
   return (
     <>
       {groupsFor(access).map((group) => (
-        <div key={group.label} className="mt-6 first:mt-0">
-          <p className="eyebrow px-3 pb-1.5 text-muted-foreground">{group.label}</p>
+        <div key={group.label} className="mt-5 first:mt-0">
+          <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground/80">{group.label}</p>
           <ul className="space-y-0.5">
             {group.links.map((l) => {
               const on = active === l.href;
@@ -213,8 +214,8 @@ function NavGroups({ path, access, onNavigate }: { path: string; access: NavAcce
                     onClick={onNavigate}
                     aria-current={on ? "page" : undefined}
                     className={cn(
-                      "flex h-9 items-center gap-3 rounded-r-md border-l-2 pr-3 pl-2.5 text-sm transition-colors",
-                      on ? "border-foreground bg-sidebar-accent font-medium text-foreground" : "border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-foreground",
+                      "flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
+                      on ? "bg-sidebar-accent font-medium text-foreground" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
                     )}
                   >
                     <l.icon className={cn("h-4 w-4 shrink-0", on ? "text-foreground" : "text-muted-foreground")} aria-hidden />
@@ -254,16 +255,16 @@ export function Sidebar({ access }: { access: NavAccess }) {
   }, [path]);
   return (
     // The outer column carries the background and line to the bottom of long pages; the inner one stays in view.
-    <div className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">
+    <div className="hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">
       <aside className="sticky top-0 flex h-screen flex-col">
-        <div className="flex h-14 items-center px-5">
+        <div className="flex h-14 items-center px-6">
           <Brand />
         </div>
-        <nav ref={navRef} className="flex-1 overflow-y-auto px-3 pt-5 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main">
+        <nav ref={navRef} className="flex-1 overflow-y-auto px-3 pt-4 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main">
           <NavGroups path={path} access={access} />
         </nav>
         <div className="border-t border-sidebar-border px-3 py-3">
-          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/70 hover:text-foreground">
+          <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-foreground">
             <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             Public job board
           </a>
@@ -310,7 +311,7 @@ export function SearchButton() {
       type="button"
       onClick={openSearch}
       aria-label="Search (Ctrl K)"
-      className="inline-flex h-9 items-center gap-2 rounded-md border-input text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground max-md:w-9 max-md:justify-center md:w-56 md:border md:bg-background md:px-3 md:hover:bg-background md:hover:border-foreground/25"
+      className="inline-flex h-9 items-center gap-2 rounded-lg border-input text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground max-md:w-9 max-md:justify-center md:w-64 md:border md:bg-canvas md:px-3 md:hover:border-foreground/25 md:hover:bg-background"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
       <span className="hidden flex-1 text-left md:inline">Search…</span>
@@ -412,9 +413,9 @@ export function CommandPalette({ access }: { access: NavAccess }) {
   if (!open) return null;
   let index = -1;
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Search">
-      <div className="animate-fade absolute inset-0 bg-foreground/10 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-hidden="true" />
-      <div className="animate-pop absolute top-[12vh] left-1/2 flex max-h-[70vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-md border border-border bg-popover shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
+    <div className="admin-ui fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="animate-fade absolute inset-0 bg-foreground/15 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-hidden="true" />
+      <div className="animate-pop absolute top-[12vh] left-1/2 flex max-h-[70vh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
@@ -463,7 +464,7 @@ export function CommandPalette({ access }: { access: NavAccess }) {
           ) : (
             sections.map((s) => (
               <div key={s.key} role="group" aria-label={s.label} className="pb-1">
-                <p aria-hidden="true" className="eyebrow px-4 pt-3 pb-1 text-muted-foreground">
+                <p aria-hidden="true" className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
                   {s.label}
                 </p>
                 {s.hits.map((h) => {
@@ -511,12 +512,6 @@ const menuIcon = "h-4 w-4 shrink-0 text-muted-foreground";
  * Your email and role in the top bar. Opens a small menu: Settings (when you may), Change password,
  * Public job board, Refresh, Sign out. Arrow keys move through it; Escape closes it.
  */
-/** "Prashant Kumar Singh" -> "PS"; an email -> its first two letters. */
-const initials = (who: string) => {
-  const words = who.split("@")[0].split(/[\s._-]+/).filter(Boolean);
-  return ((words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? "?").slice(0, 2)) || "?").toUpperCase();
-};
-
 export function AccountMenu({ user, access, signOut }: { user: NavUser; access: NavAccess; signOut: () => Promise<void> }) {
   const settingsHref = settingsLink(access)?.href;
   const [open, setOpen] = useState(false);
@@ -563,9 +558,7 @@ export function AccountMenu({ user, access, signOut }: { user: NavUser; access: 
           open && "bg-foreground/[0.04] text-foreground",
         )}
       >
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-medium text-foreground/80" aria-hidden>
-          {initials(user.name || user.email)}
-        </span>
+        <Avatar name={user.name || user.email} size="md" />
         <span className="hidden max-w-[16rem] truncate md:inline">{user.email}</span>
         <RoleChip role={user.role} />
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden />
@@ -573,9 +566,7 @@ export function AccountMenu({ user, access, signOut }: { user: NavUser; access: 
       {open ? (
         <div ref={menu} role="menu" aria-label="Account" className="animate-pop absolute top-full right-0 z-50 mt-1.5 w-64 origin-top-right rounded-md border border-border bg-popover p-1 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
           <div className="flex items-start gap-3 px-2.5 py-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-xs font-medium text-foreground/80" aria-hidden>
-              {initials(user.name || user.email)}
-            </span>
+            <Avatar name={user.name || user.email} size="lg" />
             <div className="min-w-0 space-y-1.5">
               <div>
                 <p className="truncate text-sm text-foreground">{user.name}</p>
@@ -652,8 +643,8 @@ export function MobileNav({ access }: { access: NavAccess }) {
       {/* Portalled to <body>: the top bar's backdrop blur would otherwise trap a fixed panel inside the bar. */}
       {open
         ? createPortal(
-            <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-              <button type="button" className="animate-fade absolute inset-0 bg-foreground/10 backdrop-blur-[2px]" aria-label="Close menu" onClick={() => setOpen(false)} />
+            <div className="admin-ui fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+              <button type="button" className="animate-fade absolute inset-0 bg-foreground/15 backdrop-blur-[2px]" aria-label="Close menu" onClick={() => setOpen(false)} />
               <div className="absolute inset-y-0 left-0 flex w-72 max-w-[86%] flex-col border-r border-sidebar-border bg-sidebar shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
                 <div className="flex h-14 items-center justify-between px-5">
                   <Brand compact />
@@ -670,7 +661,7 @@ export function MobileNav({ access }: { access: NavAccess }) {
                   <NavGroups path={path} access={access} onNavigate={() => setOpen(false)} />
                 </nav>
                 <div className="border-t border-sidebar-border px-3 py-3">
-                  <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-foreground">
+                  <a href="/" target="_blank" rel="noreferrer" className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground">
                     <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     Public job board
                   </a>

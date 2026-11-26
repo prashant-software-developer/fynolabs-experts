@@ -15,6 +15,7 @@ import { SubmitButton } from "@/components/ui/client";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, FlashFromParams, NoAccess, Notice } from "@/components/ui/feedback";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { SearchField, Toolbar } from "@/components/ui/toolbar";
 import { PageHeader, Section, Stack } from "@/components/ui/layout";
 import { Pagination } from "@/components/ui/pagination";
 import { SlideOver } from "@/components/ui/slide-over";
@@ -56,36 +57,25 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Messages" subtitle="What people sent through the website's contact form." />
       <FlashFromParams ok={one(sp.ok)} error={one(sp.error)} />
       <Tabs tabs={MESSAGE_TABS.map((t) => ({ href: hrefWith("/admin/messages", sp, { tab: t === "all" ? null : t, page: null, view: null, ok: null, error: null }), label: MESSAGE_TAB_LABELS[t], active: tab === t, count: counts[t] }))} />
-      <Section className="mb-6">
-        <form method="get" className="flex gap-2">
-          {tab !== "all" ? <input type="hidden" name="tab" value={tab} /> : null}
-          <Input name="q" defaultValue={q} placeholder="Search messages" aria-label="Search messages" className="flex-1" />
-          <Button type="submit" variant="secondary">
-            Search
-          </Button>
-          {q ? (
-            <Link href={hrefWith("/admin/messages", sp, { q: null, page: null })} className="self-center text-sm text-muted-foreground hover:text-foreground">
-              Clear
-            </Link>
-          ) : null}
-        </form>
-      </Section>
       <Section flush>
+        <Toolbar hidden={{ tab: tab !== "all" ? tab : null }} clearHref={q ? hrefWith("/admin/messages", sp, { q: null, page: null }) : null}>
+          <SearchField defaultValue={q} placeholder="Search messages" label="Search messages" className="sm:w-96" />
+        </Toolbar>
         {rows.length ? (
           <>
             <ul className="divide-y divide-border">
               {rows.map((m) => (
-                <li key={m.id} className="row-hover relative flex gap-3 px-5 py-4">
-                  <Initials name={m.name} />
+                <li key={m.id} className="row-hover relative flex gap-4 px-6 py-4">
+                  <Initials name={m.name} size="lg" />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Link href={hrefWith("/admin/messages", sp, { view: m.id, ok: null, error: null })} scroll={false} className="text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
+                      <Link href={hrefWith("/admin/messages", sp, { view: m.id, ok: null, error: null })} scroll={false} className="text-[15px] font-medium text-foreground after:absolute after:inset-0 hover:text-primary">
                         {m.name}
                       </Link>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[13px] text-muted-foreground">
                         {m.email} · {fmtDateTime(m.createdAt)}
                       </span>
-                      <span className="ml-auto">{m.handledAt ? <Badge tone="muted">Handled</Badge> : <Badge tone="info">New</Badge>}</span>
+                      <span className="ml-auto">{m.handledAt ? <Badge tone="muted" pill dot>Handled</Badge> : <Badge tone="info" pill dot>New</Badge>}</span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-small text-foreground/80">{m.message}</p>
                   </div>
@@ -98,7 +88,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           <EmptyState size="page" icon={Mail} title={counts.all || q ? "No messages match this view." : "No messages yet."} description={counts.all || q ? "Try another tab or a shorter search." : "Messages from the website's contact form land here."} />
         )}
       </Section>
-      {!canSeeContact(user.role) ? <p className="mt-3 text-xs text-muted-foreground">Email addresses are masked for your role.</p> : null}
+      {!canSeeContact(user.role) ? <p className="mt-3 text-[13px] text-muted-foreground">Email addresses are masked for your role.</p> : null}
 
       {opened ? (
         <SlideOver
@@ -135,7 +125,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                 <p className="truncate text-lg text-foreground">{opened.message.name}</p>
                 <p className="text-small text-muted-foreground">Message from the website</p>
               </div>
-              {opened.message.handledAt ? <Badge tone="muted">Handled</Badge> : <Badge tone="info">New</Badge>}
+              {opened.message.handledAt ? <Badge tone="muted" pill dot>Handled</Badge> : <Badge tone="info" pill dot>New</Badge>}
             </div>
             <Facts
               items={[
@@ -210,11 +200,11 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                       <details>
                         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
                           <span className="text-sm font-medium text-foreground">{r.subject}</span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[13px] text-muted-foreground">
                             {fmtDateTime(r.createdAt)}
                             {r.sentBy ? ` · ${r.sentBy.split("@")[0]}` : ""}
                           </span>
-                          {r.status !== "sent" ? <Badge tone="danger">{r.status === "suppressed" ? "Not delivered" : "Failed"}</Badge> : null}
+                          {r.status !== "sent" ? <Badge tone="danger" pill dot>{r.status === "suppressed" ? "Not delivered" : "Failed"}</Badge> : null}
                         </summary>
                         <p className="border-t border-border px-4 py-3 text-small whitespace-pre-line text-foreground/85">{r.body}</p>
                       </details>

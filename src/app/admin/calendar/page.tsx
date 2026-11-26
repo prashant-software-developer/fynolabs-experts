@@ -19,6 +19,8 @@ import { SubmitButton } from "@/components/ui/client";
 import { cn } from "@/components/ui/cn";
 import { EmptyState, FlashFromParams, NoAccess } from "@/components/ui/feedback";
 import { Checkbox, Field, FieldRow, Input, Select, Textarea } from "@/components/ui/field";
+import { FilterSelect } from "@/components/ui/toolbar";
+import { Avatar } from "@/components/ui/avatar";
 import { PageHeader, Section, Stack, Stat, StatGrid } from "@/components/ui/layout";
 import { SlideOver } from "@/components/ui/slide-over";
 import { markCalendarEventDone, removeCalendarEvent, saveCalendarEvent } from "./actions";
@@ -107,7 +109,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <Stat label="Overdue" value={stats.overdue} />
         </StatGrid>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card sm:px-5">
           <Segments
             label="View"
             items={[
@@ -127,13 +129,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
-          <h2 className="text-[15px] font-medium text-foreground">{title}</h2>
+          <h2 className="text-base font-medium text-foreground">{title}</h2>
           <form method="get" className="ml-auto flex flex-wrap items-center gap-2">
             {view !== "agenda" ? <input type="hidden" name="view" value={view} /> : null}
             {one(sp.date) ? <input type="hidden" name="date" value={anchor} /> : null}
-            <Select name="kind" defaultValue={kind} options={Object.entries(KIND_FILTERS).filter(([k]) => k).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Everything" aria-label="Show" className="h-8 w-auto text-small" />
+            <FilterSelect name="kind" defaultValue={kind} options={Object.entries(KIND_FILTERS).filter(([k]) => k).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Everything" label="Show" />
             <Checkbox name="mine" value="1" defaultChecked={mine} label="Only mine" />
-            <Button type="submit" variant="secondary" size="sm">
+            <Button type="submit" variant="secondary">
               Show
             </Button>
           </form>
@@ -142,8 +144,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         {view === "agenda" ? (
           <>
             {overdue.length ? (
-              <details className="border border-destructive/40">
-                <summary className="cursor-pointer list-none px-5 py-3 text-sm font-medium text-danger [&::-webkit-details-marker]:hidden">
+              <details className="overflow-hidden rounded-xl border border-danger/30 bg-card shadow-card">
+                <summary className="cursor-pointer list-none bg-danger-soft px-6 py-3.5 text-sm font-medium text-danger [&::-webkit-details-marker]:hidden">
                   {overdue.length} overdue from earlier days · Show / hide
                 </summary>
                 <ul className="divide-y divide-border border-t border-border bg-card">{overdue.map((i) => row(i, true))}</ul>
@@ -190,7 +192,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                 <thead>
                   <tr className="border-b border-border">
                     {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                      <th key={d} className="eyebrow h-9 px-2 text-left font-normal text-muted-foreground">
+                      <th key={d} className="h-10 bg-canvas px-3 text-left text-[13px] font-medium text-muted-foreground">
                         {d}
                       </th>
                     ))}
@@ -203,14 +205,14 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                         const list = byDay.get(day) ?? [];
                         const out = day.slice(0, 7) !== monthStart(anchor).slice(0, 7);
                         return (
-                          <td key={day} className={cn("h-28 border-r border-border p-1.5 align-top last:border-r-0", out && "bg-muted/50")}>
-                            <Link href={nav(day, "agenda")} className={cn("mb-1 inline-flex h-6 min-w-6 items-center justify-center px-1.5 text-xs", day === today ? "bg-primary text-primary-foreground" : out ? "text-muted-foreground/60" : "text-foreground/80 hover:bg-accent")}>
+                          <td key={day} className={cn("h-32 border-r border-border p-2 align-top last:border-r-0", out && "bg-canvas")}>
+                            <Link href={nav(day, "agenda")} className={cn("mb-1.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-[13px]", day === today ? "bg-primary font-medium text-primary-foreground" : out ? "text-muted-foreground/60" : "text-foreground/80 hover:bg-accent")}>
                               {Number(day.slice(8))}
                             </Link>
                             <ul className="space-y-0.5">
                               {list.slice(0, 3).map((i) => (
                                 <li key={i.key}>
-                                  <Link href={itemHref(i)} scroll={false} title={`${i.start ? `${i.start} ` : ""}${i.title}`} className={cn("block truncate rounded-sm px-1 py-0.5 text-xs hover:bg-accent", dotTone(i), i.status === "done" && "line-through opacity-60")}>
+                                  <Link href={itemHref(i)} scroll={false} title={`${i.start ? `${i.start} ` : ""}${i.title}`} className={cn("block truncate rounded-md px-1.5 py-1 text-[13px] hover:bg-accent", dotTone(i), i.status === "done" && "line-through opacity-60")}>
                                     {i.start ? <span className="tabular text-muted-foreground">{i.start} </span> : null}
                                     {i.title}
                                   </Link>
@@ -218,7 +220,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                               ))}
                               {list.length > 3 ? (
                                 <li>
-                                  <Link href={nav(day, "agenda")} className="px-1 text-xs text-muted-foreground hover:text-foreground">
+                                  <Link href={nav(day, "agenda")} className="px-1 text-[13px] text-muted-foreground hover:text-foreground">
                                     +{list.length - 3} more
                                   </Link>
                                 </li>
@@ -279,7 +281,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                 <p className={cn("text-lg text-foreground", opened.status === "done" && "line-through opacity-70")}>{opened.title}</p>
                 <p className="text-small text-muted-foreground">{opened.companyName ?? "Calendar"}</p>
               </div>
-              {opened.eventDate && opened.eventDate < today && opened.status !== "done" && opened.status !== "cancelled" ? <Badge tone="danger">Overdue</Badge> : <StatusChip value={opened.status} />}
+              {opened.eventDate && opened.eventDate < today && opened.status !== "done" && opened.status !== "cancelled" ? <Badge tone="danger" pill dot>Overdue</Badge> : <StatusChip value={opened.status} />}
             </div>
             <Facts
               items={[
@@ -298,7 +300,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
               </div>
             ) : null}
             {opened.companyId && (opened.kind === "call" || opened.kind === "meeting") && opened.status !== "done" ? (
-              <p className="text-xs text-muted-foreground">Marking it done logs the {crmLabel(opened.kind, "calendar").toLowerCase()} on {opened.companyName}&apos;s activity.</p>
+              <p className="text-[13px] text-muted-foreground">Marking it done logs the {crmLabel(opened.kind, "calendar").toLowerCase()} on {opened.companyName}&apos;s activity.</p>
             ) : null}
           </div>
         </SlideOver>
@@ -358,24 +360,24 @@ function ItemRow({ i, today, showDate, href, names, edit, returnTo }: { i: Timel
   const theirs = i.source === "calendar" ? i.contactIds.map((id) => names.contacts.get(id)).filter(Boolean) : [];
   const ours = i.teamMemberIds.map((id) => names.team.get(id)).filter(Boolean);
   return (
-    <li className="row-hover relative flex items-start gap-4 px-5 py-3">
-      <div className={cn("tabular w-20 shrink-0 pt-0.5 text-small", late ? "font-medium text-danger" : "text-foreground/80")}>
+    <li className="row-hover relative flex min-h-16 items-start gap-4 px-6 py-3.5">
+      <div className={cn("tabular w-20 shrink-0 pt-0.5 text-sm", late ? "font-medium text-danger" : "text-foreground/80")}>
         {showDate ? (
           i.date ? shortDay(i.date, today) : "No date"
         ) : i.start ? (
           <>
             <span className="block">{i.start}</span>
-            {i.end ? <span className="block text-xs text-muted-foreground">{i.end}</span> : null}
+            {i.end ? <span className="block text-[13px] text-muted-foreground">{i.end}</span> : null}
           </>
         ) : (
           <span className="text-muted-foreground">All day</span>
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <Link href={href} scroll={false} className={cn("text-sm font-medium text-foreground after:absolute after:inset-0 hover:text-primary", i.status === "done" && "line-through opacity-60")}>
+        <Link href={href} scroll={false} className={cn("text-[15px] font-medium text-foreground after:absolute after:inset-0 hover:text-primary", i.status === "done" && "line-through opacity-60")}>
           {i.title}
         </Link>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
           <span className={dotTone(i)}>{crmLabel(i.kind, "calendar")}</span>
           {i.source !== "calendar" ? <span>· {SOURCE_LABELS[i.source]}</span> : null}
           {i.companyName ? (
@@ -384,7 +386,11 @@ function ItemRow({ i, today, showDate, href, names, edit, returnTo }: { i: Timel
             </span>
           ) : null}
           {theirs.length ? <span>· {theirs.join(", ")}</span> : null}
-          {ours.length ? <span>· ours: {ours.join(", ")}</span> : null}
+          {ours.length ? (
+            <span className="inline-flex items-center gap-1.5">
+              · <span className="inline-flex -space-x-1">{ours.slice(0, 3).map((n) => <Avatar key={n} name={n} size="xs" className="ring-2 ring-card" />)}</span> {ours.join(", ")}
+            </span>
+          ) : null}
           {i.status !== "planned" && i.source === "calendar" ? <span>· {crmLabel(i.status)}</span> : null}
         </p>
       </div>
@@ -483,7 +489,7 @@ function EventForm({
                 <Checkbox key={t.id} name="teamMemberIds" value={t.id} defaultChecked={ourSide.has(t.id)} label={t.name || t.email.split("@")[0]} />
               ))}
           </div>
-          <p className="text-xs text-muted-foreground">Everyone joining from the team. They see it on My work.</p>
+          <p className="text-[13px] text-muted-foreground">Everyone joining from the team. They see it on My work.</p>
         </fieldset>
       ) : null}
       <Field label="Meeting link" htmlFor="ev-url">
