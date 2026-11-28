@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BriefcaseBusiness, ChevronDown, Mail, Send } from "@/components/icons";
+import { BriefcaseBusiness, ChevronDown, ChevronRight, Mail, Send } from "@/components/icons";
 import { getDb } from "@/db/client";
 import { portalContext } from "@/lib/auth/expert";
 import { one, type SearchParams } from "@/lib/filters";
@@ -191,21 +191,18 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <PortalCard>
             <ul className="divide-y divide-border">
               {apps.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                <li key={a.id} className="relative flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-canvas">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary text-foreground/60" aria-hidden>
                     <Send className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    {a.linkable ? (
-                      <Link href={`/jobs/${a.slug}`} className="truncate text-[16px] text-foreground underline-offset-4 hover:underline">
-                        {a.title}
-                      </Link>
-                    ) : (
-                      <p className="truncate text-[16px] text-foreground">{a.title}</p>
-                    )}
+                    <Link href={`/me/applications/${a.id}`} className="block truncate text-[16px] text-foreground underline-offset-4 after:absolute after:inset-0 hover:underline">
+                      {a.title}
+                    </Link>
                     <p className="mt-0.5 text-sm text-muted-foreground">Applied {fmtDate(a.createdAt)}</p>
                   </div>
-                  <Badge tone="neutral">{a.statusLabel}</Badge>
+                  <Badge tone={a.status === "hired" ? "success" : a.status === "rejected" || a.status === "withdrawn" ? "muted" : "neutral"}>{a.statusLabel}</Badge>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
                 </li>
               ))}
             </ul>

@@ -184,6 +184,37 @@ export async function ownApplications(db: DB, expertId: string) {
   return rows.map((r) => ({ ...r, statusLabel: APPLICATION_STATUS_FOR_EXPERT[r.status as ApplicationStatus] ?? "Received", linkable: r.visibility !== "internal" && r.jobStatus !== "draft" }));
 }
 
+/**
+ * One of the expert's own applications, for its page in the portal: the role's title, where it stands,
+ * dates and their answers. Nothing internal (notes, partner, pay). `roleHref` only for a role with a
+ * public page (public or unlisted, not a draft); internal roles show their title only.
+ */
+export async function ownApplication(db: DB, expertId: string, id: string) {
+  const [r] = await db
+    .select({ id: applications.id, jobId: applications.jobId, status: applications.status, answers: applications.answers, createdAt: applications.createdAt, updatedAt: applications.updatedAt, title: jobs.title, slug: jobs.slug, jobStatus: jobs.status, visibility: jobs.visibility })
+    .from(applications)
+    .innerJoin(jobs, eq(jobs.id, applications.jobId))
+    .where(and(eq(applications.id, id), eq(applications.expertId, expertId)));
+  if (!r) return null;
+  const fields = await jobFields(db, r.jobId);
+  const answers = fields
+    .filter((f) => f.type !== "section")
+    .map((f) => ({ question: f.label, answer: answerText((r.answers as Record<string, Answer>)[f.id]) }))
+    .filter((x) => x.answer !== "");
+  const status = r.status as ApplicationStatus;
+  return {
+    id: r.id,
+    title: r.title,
+    status,
+    statusLabel: APPLICATION_STATUS_FOR_EXPERT[status] ?? "Received",
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    roleOpen: r.jobStatus === "open" || r.jobStatus === "paused",
+    roleHref: r.visibility !== "internal" && r.jobStatus !== "draft" ? `/jobs/${r.slug}` : null,
+    answers,
+  };
+}
+
 /** "Download my data": what they gave us and their applications, as JSON. No internal team fields. */
 export async function exportOwnData(db: DB, expertId: string) {
   const profile = await ownProfile(db, expertId);

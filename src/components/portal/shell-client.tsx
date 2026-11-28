@@ -55,7 +55,7 @@ export function PortalRail({ attention }: { attention?: PortalAttention }) {
             )}
           >
             <span className="relative">
-              <n.icon className="h-5 w-5" strokeWidth={on ? 2 : 1.6} aria-hidden />
+              <n.icon className="h-5 w-5" weight={on ? "fill" : "regular"} aria-hidden />
               <Dot n={count} />
             </span>
             {n.label}
